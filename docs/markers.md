@@ -45,3 +45,5 @@ When adding a panorama spot, use a NASA waypoint for the same site/drive as its 
 - [NASA Sol 4512 Right Navcam cylindrical projection](https://science.nasa.gov/resource/sol-4512-right-navigation-camera-cylindrical-projection/)
 - [NASA Sol 4671 Right Navcam cylindrical projection](https://science.nasa.gov/resource/sol-4671-right-navigation-camera-cylindrical-projection/)
 - [NASA Curiosity studies nodules on boxwork formations (Sol 4636 MAHLI mosaic)](https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/)
+- [PDS Analyst's Notebook — MSL (Curiosity)](https://an.rsl.wustl.edu/msl) — source of the Target Summary science targets export (`data/raw/curiosity/MSL-Science-targets.csv`); see `docs/curiosity-data.md`
+- [MSL Rover PLACES bundle (PDS Imaging Node, JPL)](https://planetarydata.jpl.nasa.gov/img/data/msl/msl_places/) — source of `localized_pos.csv` v42.0 (mission traverse/localized rover positions); see `docs/curiosity-data.md`
