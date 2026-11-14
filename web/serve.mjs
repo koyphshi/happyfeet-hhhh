@@ -5,7 +5,7 @@
 // Usage: node serve.mjs [--no-open]      (PORT=9000 node serve.mjs to change the port)
 import http from "node:http";
 import { createReadStream } from "node:fs";
-import { stat, mkdir, readFile, writeFile, rename, open, rm } from "node:fs/promises";
+import { stat, mkdir, readFile, writeFile, rename, open, rm, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
@@ -23,6 +23,7 @@ const types = {
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".geojson": "application/geo+json; charset=utf-8",
   ".map": "application/json; charset=utf-8",
   ".xml": "application/xml; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
@@ -183,14 +184,19 @@ async function getCatalog() {
 }
 
 // ---------------------------------------------------------------- terrain (MOLA heights)
-// Source: MGS MOLA MEGDR topography from NASA PDS Geosciences, at three resolutions.
-// Each is one raw file: big-endian int16, metres above the Mars areoid, line 0 = 90°N,
-// sample 0 = 0°E, pixel centres at +0.5. Lines are stored one after another, so any band
-// of latitudes is one contiguous byte range: we fetch only the chunks a tile needs (HTTP
-// Range), keep them in a sparse file under web/data/, and resume after a restart.
-//   4 px/deg  (2 MB)  : fetched whole at startup, serves the global view (levels 0-3)
-//  16 px/deg (33 MB)  : fetched on demand for levels 4-5
-//  32 px/deg (133 MB) : fetched on demand for levels 6+ (~1.85 km/px)
+// Source: MGS MOLA MEGDR topography from NASA PDS Geosciences, at five resolutions.
+// Each file is raw big-endian int16, metres above the Mars areoid, line 0 at the file's
+// north edge, sample 0 at its west edge, pixel centres at +0.5. Lines are stored one after
+// another, so any band of latitudes is one contiguous byte range: we fetch only the chunks a
+// tile needs (HTTP Range), keep them in a sparse file under web/data/, and resume after a
+// restart. Only fetched chunks are held in memory.
+//   4 px/deg  (2 MB)        : fetched whole at startup, serves the global view (levels 0-3)
+//  16 px/deg (33 MB)        : on demand for levels 4-5
+//  32 px/deg (133 MB)       : on demand for level 6 (~1.85 km/px)
+//  64 px/deg (4 x 133 MB)   : on demand for level 7 (~925 m/px), four 90 x 180 degree files
+// 128 px/deg (16 x 130 MB)  : on demand for level 8 (~463 m/px), sixteen 44 x 90 degree
+//                             files covering 88N-88S (the poles fall back to 64 px/deg)
+// Finer still, for levels 9+: the USGS HRSC + MOLA blended DEM, ~200 m/px (BlendDem below).
 // While a tile's chunks are missing the server answers 202 and the page keeps showing the
 // coarser parent tile until it asks again.
 const MEGDR = "https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x";
@@ -214,19 +220,26 @@ function pumpNet() {
   }
 }
 
+// One MEGDR file covering a lat/lon box: north edge, west edge (0-360 E) and spans in degrees.
 class LazyDem {
-  constructor({ dir, file, ppd, chunk }) {
+  constructor({ dir, file, ppd, chunk, north = 90, west = 0, latSpan = 180, lonSpan = 360 }) {
     this.url = `${MEGDR}/${dir}/${file}`;
     this.file = path.join(DATA_DIR, file);
     this.part = this.file + ".part";
     this.doneFile = this.part + ".json"; // indices of chunks already in .part
     this.ppd = ppd;
-    this.w = 360 * ppd;
-    this.h = 180 * ppd;
+    this.north = north;
+    this.south = north - latSpan;
+    this.west = west;
+    this.lonSpan = lonSpan;
+    this.global = lonSpan === 360;
+    this.w = lonSpan * ppd;
+    this.h = latSpan * ppd;
     this.bytes = this.w * this.h * 2;
     this.chunk = chunk; // even, so a chunk never splits a sample
+    this.chunkSamples = chunk / 2;
     this.nChunks = Math.ceil(this.bytes / chunk);
-    this.data = new Int16Array(this.w * this.h);
+    this.chunks = new Map(); // chunk index -> Int16Array, only for chunks fetched so far
     this.done = new Set();
     this.pending = new Map(); // chunk index -> promise
     this.saving = Promise.resolve();
@@ -236,9 +249,27 @@ class LazyDem {
   get complete() { return this.done.size === this.nChunks; }
   get progress() { return this.done.size / this.nChunks; }
 
+  // `buf` starts on a chunk boundary and holds one or more whole chunks (the last may be short).
   decode(buf, byteOffset) {
-    const base = byteOffset / 2;
-    for (let i = 0; i < buf.length; i += 2) this.data[base + i / 2] = buf.readInt16BE(i);
+    for (let off = 0; off < buf.length; off += this.chunk) {
+      const part = buf.subarray(off, Math.min(buf.length, off + this.chunk));
+      const arr = new Int16Array(part.length / 2);
+      for (let i = 0; i < arr.length; i++) arr[i] = part.readInt16BE(2 * i);
+      this.chunks.set((byteOffset + off) / this.chunk, arr);
+    }
+  }
+
+  sample(row, col) {
+    const idx = row * this.w + col;
+    const ci = Math.floor(idx / this.chunkSamples);
+    const arr = this.chunks.get(ci);
+    return arr ? arr[idx - ci * this.chunkSamples] : 0;
+  }
+
+  containsLon(lon) { // lon in degrees east, any range
+    if (this.global) return true;
+    const x = (((lon - this.west) % 360) + 360) % 360;
+    return x < this.lonSpan;
   }
 
   async init() {
@@ -248,6 +279,11 @@ class LazyDem {
       if (raw.length === this.bytes) {
         this.decode(raw, 0);
         for (let i = 0; i < this.nChunks; i++) this.done.add(i);
+        if (!this.dropEmptyChunks()) return;
+        // damaged: turn it back into a partial download so the empty chunks are fetched again
+        await rename(this.file, this.part);
+        await writeFile(this.doneFile, JSON.stringify([...this.done]));
+        this.fh = await open(this.part, "r+");
         return;
       }
     } catch {}
@@ -260,13 +296,35 @@ class LazyDem {
           if (raw.length < end) { this.done.delete(i); continue; }
           this.decode(raw.subarray(start, end), start);
         }
-        this.fh = await open(this.part, "r+");
+        if (this.dropEmptyChunks()) await writeFile(this.doneFile, JSON.stringify([...this.done]));
       } catch {
         this.done.clear();
+        this.chunks.clear();
       }
     }
-    if (!this.fh) this.fh = await open(this.part, "w");
+    // Never open with "w": that empties the file, and a second server sharing web/data (another
+    // port) would wipe chunks the first one already recorded as done.
+    if (!this.fh) {
+      await (await open(this.part, "a")).close(); // create if missing, keep contents
+      this.fh = await open(this.part, "r+");
+    }
     if (this.done.size) console.log(`MOLA ${this.ppd} px/deg: ${Math.round(this.progress * 100)}% cached`);
+  }
+
+  // A chunk that is all zeros was never really written (heights are never exactly 0 m across
+  // ~20 lines of a planet): forget it so it is downloaded again. Returns how many were dropped.
+  dropEmptyChunks() {
+    let dropped = 0;
+    for (const i of [...this.done]) {
+      const arr = this.chunks.get(i);
+      if (arr && arr.every((v) => v === 0)) {
+        this.done.delete(i);
+        this.chunks.delete(i);
+        dropped++;
+      }
+    }
+    if (dropped) console.warn(`MOLA ${this.ppd} px/deg ${path.basename(this.file)}: ${dropped} empty chunk(s) will be fetched again`);
+    return dropped;
   }
 
   // Chunk indices covering DEM lines r0..r1 that are not on disk yet.
@@ -331,43 +389,235 @@ class LazyDem {
   rows(north, south) {
     const clamp = (v) => Math.min(this.h - 1, Math.max(0, v));
     return [
-      clamp(Math.floor((90 - north) * this.ppd - 0.5)),
-      clamp(Math.floor((90 - south) * this.ppd - 0.5) + 1),
+      clamp(Math.floor((this.north - north) * this.ppd - 0.5)),
+      clamp(Math.floor((this.north - south) * this.ppd - 0.5) + 1),
     ];
   }
 
-  // Bilinear height (m) at a planetocentric lat/lon (lon -180..180 or 0..360).
+  // Bilinear height (m) at a planetocentric lat/lon (lon -180..180 or 0..360). Outside a
+  // regional file's box the nearest edge sample is used.
   height(lat, lon) {
-    const { data, w, h, ppd } = this;
-    const sx = (((lon % 360) + 360) % 360) * ppd - 0.5;
-    const sy = Math.min(h - 1, Math.max(0, (90 - lat) * ppd - 0.5));
+    const { w, h, ppd } = this;
+    let sx = ((((lon - this.west) % 360) + 360) % 360) * ppd - 0.5;
+    if (!this.global) {
+      if (sx > w - 0.5 + 180 * ppd) sx -= 360 * ppd; // just west of the box: clamp to its west edge
+      sx = Math.min(w - 1, Math.max(0, sx));
+    }
+    const sy = Math.min(h - 1, Math.max(0, (this.north - lat) * ppd - 0.5));
     const x0 = Math.floor(sx), y0 = Math.floor(sy);
     const fx = sx - x0, fy = sy - y0;
-    const xa = (x0 + w) % w, xb = (x0 + 1) % w; // wraps at the 0/360° seam
+    const xa = this.global ? (x0 + w) % w : x0;
+    const xb = this.global ? (x0 + 1) % w : Math.min(w - 1, x0 + 1); // global files wrap at 0/360°
     const ya = y0, yb = Math.min(h - 1, y0 + 1);
-    const h00 = data[ya * w + xa], h10 = data[ya * w + xb];
-    const h01 = data[yb * w + xa], h11 = data[yb * w + xb];
+    const h00 = this.sample(ya, xa), h10 = this.sample(ya, xb);
+    const h01 = this.sample(yb, xa), h11 = this.sample(yb, xb);
     return (h00 * (1 - fx) + h10 * fx) * (1 - fy) + (h01 * (1 - fx) + h11 * fx) * fy;
   }
 }
 
+// One resolution: a single global file or a grid of regional files.
+class DemSet {
+  constructor(ppd, files) {
+    this.ppd = ppd;
+    this.files = files;
+    this.north = Math.max(...files.map((f) => f.north));
+    this.south = Math.min(...files.map((f) => f.south));
+  }
+  async init() { for (const f of this.files) await f.init(); }
+  get progress() { return this.files.reduce((s, f) => s + f.progress, 0) / this.files.length; }
+  covers(north, south) { return north <= this.north && south >= this.south; }
+  fileAt(lat, lon) {
+    return this.files.find((f) => lat <= f.north && lat >= f.south && f.containsLon(lon)) ??
+      this.files.find((f) => f.containsLon(lon)) ?? this.files[0];
+  }
+  // Chunks still to fetch for a lat/lon box ([file, chunk index] pairs).
+  missing(north, south, west, east) {
+    const out = [];
+    for (const f of this.files) {
+      if (f.south > north || f.north < south) continue;
+      if (!f.global && !(f.containsLon(west) || f.containsLon(east) ||
+        f.containsLon((west + east) / 2) || east - west >= 90)) continue;
+      for (const i of f.missing(...f.rows(Math.min(north, f.north), Math.max(south, f.south)))) out.push([f, i]);
+    }
+    return out;
+  }
+  height(lat, lon) { return this.fileAt(lat, lon).height(lat, lon); }
+}
+
+// HRSC + MOLA blended DEM v2 (USGS Astrogeology; Fergason, Hare & Laura 2018), ~200 m/px global:
+// HRSC stereo heights where Mars Express covered the ground, MOLA elsewhere, same areoid datum
+// as the MEGDR files. One 11 GB uncompressed GeoTIFF on S3: int16 little-endian, one row per
+// strip, rows stored back to back, origin 180W 90N. It is read in 1024 x 64 pixel blocks (one
+// HTTP Range request per row, many at once), and blocks are kept under web/data/hrsc200/.
+const s3 = { active: 0, max: 24, queue: [] };
+function s3Run(fn) {
+  return new Promise((resolve, reject) => {
+    s3.queue.push({ fn, resolve, reject });
+    pumpS3();
+  });
+}
+function pumpS3() {
+  while (s3.active < s3.max && s3.queue.length) {
+    const job = s3.queue.pop(); // newest first, like the PDS queue
+    s3.active++;
+    job.fn().then(job.resolve, job.reject).finally(() => { s3.active--; pumpS3(); });
+  }
+}
+
+class BlendDem {
+  constructor(fallback) {
+    this.url = "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/HRSC_MOLA_Blend/" +
+      "Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif";
+    this.W = 106694;
+    this.H = 53347;
+    this.base = 854272;          // byte offset of row 0 (checked: rows are contiguous)
+    this.ppd = this.W / 360;     // ~296.4 px/deg
+    this.BW = 1024;              // block size in pixels
+    this.BH = 64;
+    this.nBlocks = Math.ceil(this.W / this.BW) * Math.ceil(this.H / this.BH);
+    this.dir = path.join(DATA_DIR, "hrsc200");
+    this.north = 90;
+    this.south = -90;
+    this.fallback = fallback;    // for no-data pixels
+    this.blocks = new Map();     // "br_bc" -> { w, data }, oldest first; capped (~128 KB each)
+    this.maxBlocks = 800;
+    this.pending = new Map();
+    this.onDisk = new Set();
+  }
+
+  async init() {
+    await mkdir(this.dir, { recursive: true });
+    for (const f of await readdir(this.dir)) if (f.endsWith(".bin")) this.onDisk.add(f.slice(0, -4));
+    if (this.onDisk.size) console.log(`HRSC/MOLA 200 m: ${this.onDisk.size} blocks cached`);
+  }
+
+  get progress() { return this.onDisk.size / this.nBlocks; }
+  covers() { return true; }
+
+  // Blocks needed (with bilinear neighbours) for a lat/lon box that are not in memory yet.
+  missing(north, south, west, east) {
+    const { ppd, BW, BH, W, H } = this;
+    const r0 = Math.max(0, Math.floor((90 - north) * ppd - 0.5) - 1);
+    const r1 = Math.min(H - 1, Math.floor((90 - south) * ppd - 0.5) + 2);
+    const c0 = Math.floor((west + 180) * ppd - 0.5) - 1;
+    const c1 = Math.floor((east + 180) * ppd - 0.5) + 2;
+    const cols = new Set();
+    for (let c = c0; c <= c1; c += BW) cols.add(Math.floor((((c % W) + W) % W) / BW));
+    cols.add(Math.floor((((c1 % W) + W) % W) / BW));
+    const out = [];
+    for (let br = Math.floor(r0 / BH); br <= Math.floor(r1 / BH); br++) {
+      for (const bc of cols) {
+        const key = `${br}_${bc}`;
+        if (!this.blocks.has(key)) out.push([this, key]);
+      }
+    }
+    return out;
+  }
+
+  ensureChunk(key) {
+    if (this.blocks.has(key)) return Promise.resolve();
+    if (this.pending.has(key)) return this.pending.get(key);
+    const p = this.loadBlock(key)
+      .then((block) => {
+        this.blocks.set(key, block);
+        while (this.blocks.size > this.maxBlocks) this.blocks.delete(this.blocks.keys().next().value);
+      })
+      .finally(() => this.pending.delete(key));
+    this.pending.set(key, p);
+    return p;
+  }
+
+  async loadBlock(key) {
+    const [br, bc] = key.split("_").map(Number);
+    const c0 = bc * this.BW, w = Math.min(this.BW, this.W - c0);
+    const r0 = br * this.BH, h = Math.min(this.BH, this.H - r0);
+    const file = path.join(this.dir, `${key}.bin`);
+    if (this.onDisk.has(key)) {
+      try {
+        const raw = await readFile(file);
+        if (raw.length === w * h * 2) return { w, data: decodeLE(raw) };
+      } catch {}
+      this.onDisk.delete(key);
+    }
+    const buf = Buffer.alloc(w * h * 2);
+    await Promise.all(Array.from({ length: h }, (_, i) => s3Run(async () => {
+      const start = this.base + ((r0 + i) * this.W + c0) * 2, end = start + w * 2 - 1;
+      for (let attempt = 1; ; attempt++) {
+        try {
+          const r = await fetch(this.url, { headers: { Range: `bytes=${start}-${end}` }, signal: AbortSignal.timeout(30_000) });
+          if (r.status !== 206) throw new Error(`HTTP ${r.status}`);
+          const row = Buffer.from(await r.arrayBuffer());
+          if (row.length !== w * 2) throw new Error(`short row ${row.length}`);
+          row.copy(buf, i * w * 2);
+          return;
+        } catch (err) {
+          if (attempt >= 4) throw err;
+          await new Promise((res) => setTimeout(res, 500 * attempt));
+        }
+      }
+    })));
+    await writeFile(file, buf);
+    this.onDisk.add(key);
+    return { w, data: decodeLE(buf) };
+  }
+
+  sample(row, col) {
+    row = Math.min(this.H - 1, Math.max(0, row));
+    col = ((col % this.W) + this.W) % this.W;
+    const br = Math.floor(row / this.BH), bc = Math.floor(col / this.BW);
+    const b = this.blocks.get(`${br}_${bc}`);
+    if (!b) return NaN;
+    const v = b.data[(row - br * this.BH) * b.w + (col - bc * this.BW)];
+    return v === -32768 ? NaN : v;
+  }
+
+  height(lat, lon) {
+    const sx = (((lon + 180) % 360) + 360) % 360 * this.ppd - 0.5;
+    const sy = Math.min(this.H - 1, Math.max(0, (90 - lat) * this.ppd - 0.5));
+    const x0 = Math.floor(sx), y0 = Math.floor(sy);
+    const fx = sx - x0, fy = sy - y0;
+    const h00 = this.sample(y0, x0), h10 = this.sample(y0, x0 + 1);
+    const h01 = this.sample(y0 + 1, x0), h11 = this.sample(y0 + 1, x0 + 1);
+    const v = (h00 * (1 - fx) + h10 * fx) * (1 - fy) + (h01 * (1 - fx) + h11 * fx) * fy;
+    return Number.isFinite(v) ? v : this.fallback.height(lat, lon);
+  }
+}
+function decodeLE(buf) {
+  const out = new Int16Array(buf.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = buf.readInt16LE(2 * i);
+  return out;
+}
+
+const MEG = (dir, ppd, chunk, n) => new LazyDem({ dir, ppd, chunk, ...n });
+const tiles = (ppd, code, chunk, latEdges, latSpan, lonEdges, lonSpan) =>
+  latEdges.flatMap((north) => lonEdges.map((west) => {
+    const ns = `${String(Math.abs(north)).padStart(2, "0")}${north < 0 ? "s" : "n"}`;
+    const file = `megt${ns}${String(west).padStart(3, "0")}${code}.img`;
+    return MEG(`meg${String(ppd).padStart(3, "0")}`, ppd, chunk, { file, north, west, latSpan, lonSpan });
+  }));
 const DEMS = [
-  new LazyDem({ dir: "meg004", file: "megt90n000cb.img", ppd: 4, chunk: 256 * 1024 }),
-  new LazyDem({ dir: "meg016", file: "megt90n000eb.img", ppd: 16, chunk: 1024 * 1024 }),
+  new DemSet(4, [MEG("meg004", 4, 256 * 1024, { file: "megt90n000cb.img" })]),
+  new DemSet(16, [MEG("meg016", 16, 1024 * 1024, { file: "megt90n000eb.img" })]),
   // 2 MB chunks: same layout as the old whole-file download, so a half-finished one is reused
-  new LazyDem({ dir: "meg032", file: "megt90n000fb.img", ppd: 32, chunk: 2 * 1024 * 1024 }),
+  new DemSet(32, [MEG("meg032", 32, 2 * 1024 * 1024, { file: "megt90n000fb.img" })]),
+  // regional files: smaller chunks (1 MB is ~45 lines at 64 px/deg, 512 KB ~22 lines at 128)
+  new DemSet(64, tiles(64, "gb", 1024 * 1024, [90, 0], 90, [0, 180], 180)),
+  new DemSet(128, tiles(128, "hb", 512 * 1024, [88, 44, 0, -44], 44, [0, 90, 180, 270], 90)),
 ];
+DEMS.push(new BlendDem(DEMS[3])); // no-data pixels fall back to 64 px/deg MOLA
 const terrain = { ready: false, error: null };
 
-// Coarsest DEM that still has at least one sample per tile cell at this level.
-function demFor(level) {
+// Coarsest DEM that still has at least one sample per tile cell at this level, among those
+// that cover the tile's latitudes (128 px/deg stops at 88 degrees).
+function demFor(level, north, south) {
   const cellsPerDeg = ((TILE_N - 1) * 2 ** level) / 180;
-  return DEMS.find((d) => d.ppd >= cellsPerDeg) ?? DEMS[DEMS.length - 1];
+  const cover = DEMS.filter((d) => d.covers(north, south));
+  return cover.find((d) => d.ppd >= cellsPerDeg) ?? cover[cover.length - 1];
 }
 
 async function loadTerrain() {
   for (const d of DEMS) await d.init();
-  const base = DEMS[0];
+  const base = DEMS[0].files[0];
   if (!base.complete) {
     console.log("Fetching global MOLA elevation (2 MB)…");
     await Promise.all(Array.from({ length: base.nChunks }, (_, i) => base.ensureChunk(i)));
@@ -387,10 +637,11 @@ function serveTerrain(url, res) {
     if (!terrain.ready || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90)
       return send(res, terrain.ready ? 400 : 503, "lat/lon needed");
     let best = DEMS[0];
-    for (const d of DEMS) {
-      const miss = d.missing(...d.rows(lat, lat));
+    const cover = DEMS.filter((d) => d.covers(lat, lat));
+    for (const d of cover) {
+      const miss = d.missing(lat, lat, lon, lon);
       if (!miss.length) best = d;
-      else if (d === DEMS[DEMS.length - 1]) for (const i of miss) d.ensureChunk(i).catch(() => {});
+      else if (d === cover[cover.length - 1]) for (const [f, i] of miss) f.ensureChunk(i).catch(() => {});
     }
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     return res.end(JSON.stringify({ height: Math.round(best.height(lat, lon)), ppd: best.ppd }));
@@ -418,10 +669,11 @@ function serveTerrain(url, res) {
   const border = url.searchParams.get("b") === "1" ? 1 : 0;
   const n = TILE_N + 2 * border, step = dLat / (TILE_N - 1);
 
-  const dem = demFor(z);
-  const missing = dem.missing(...dem.rows(north + border * step, north - dLat - border * step));
+  const pad = border * step;
+  const dem = demFor(z, Math.min(90, north + pad), Math.max(-90, north - dLat - pad));
+  const missing = dem.missing(north + pad, north - dLat - pad, west - pad, west + dLon + pad);
   if (missing.length) {
-    for (const i of missing) dem.ensureChunk(i).catch(() => {});
+    for (const [f, i] of missing) f.ensureChunk(i).catch(() => {});
     res.writeHead(202, { "Content-Type": "text/plain", "Cache-Control": "no-store", "Retry-After": "1" });
     return res.end(`fetching ${missing.length} chunk(s)`);
   }

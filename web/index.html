@@ -159,6 +159,8 @@
     }
     #shadeRow input[type=range] { flex: 1; }
     #shadeNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
+    #atmoRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    #atmoRow label { white-space: nowrap; }
     /* Mars clock, top right: local solar time at the view centre */
     #clock {
       position: absolute; top: 12px; right: 12px; z-index: 5; padding: 7px 12px 8px;
@@ -211,7 +213,7 @@
       <button id="btnTop" class="on">Top-down</button>
       <button id="btnTilt">Tilted 60°</button>
       <div id="tiltRow">
-        <span>Tilt</span><input id="tilt" type="range" min="0" max="60" step="1" value="0" />
+        <span>Tilt</span><input id="tilt" type="range" min="0" max="80" step="1" value="0" />
         <span id="tiltVal">0°</span>
       </div>
       <div id="reliefRow" class="tiltRow">
@@ -236,6 +238,9 @@
       <span id="shadeVal">70%</span>
     </div>
     <div id="shadeNote"></div>
+    <div id="atmoRow">
+      <label title="Thin dusty CO2 air: a glow on the limb, haze toward the horizon and a butterscotch sky when you tilt down low"><input id="atmo" type="checkbox" checked /> Atmosphere (sky glow &amp; dust haze)</label>
+    </div>
     <div id="marsTime"></div>
     <div id="readout"></div>
     <div id="ground"></div>
@@ -251,7 +256,7 @@
     <div id="status"></div>
     <div class="sub">Tile cache</div>
     <div id="cache"><span id="cacheInfo">…</span> <button id="btnClear">Clear</button></div>
-    <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 60°) · touch: two-finger drag up/down to tilt</div>
+    <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 80°) · touch: two-finger drag up/down to tilt</div>
   </div>
   <div id="clock">
     <div id="clockTime">--:--:--</div>
@@ -405,7 +410,7 @@
       animation: false,
       infoBox: false,
       selectionIndicator: false,
-      skyAtmosphere: false,     // the blue haze is Earth's
+      skyAtmosphere: false,     // Earth's blue haze; a Mars one is set up under "atmosphere" below
       // Cesium only builds its star skybox for an Earth ellipsoid, so ask for it explicitly.
       // It is the Tycho-2 star catalogue: real stars, though oriented to Earth's axis, not Mars's.
       skyBox: Cesium.SkyBox.createEarthSkyBox(),
@@ -414,7 +419,7 @@
     if (viewer.scene.moon) viewer.scene.moon.show = false;
     if (viewer.scene.sun) viewer.scene.sun.show = false;   // Cesium's sun is placed for Earth; Mars's own is drawn below
     const globe = viewer.scene.globe;
-    globe.showGroundAtmosphere = false;
+    globe.showGroundAtmosphere = false;   // switched on with the atmosphere toggle
     globe.enableLighting = false;
     globe.baseColor = Cesium.Color.fromCssColorString("#5b3a29");
     viewer.scene.screenSpaceCameraController.minimumZoomDistance = 50;
@@ -443,7 +448,7 @@
       }
       terrainTiles.set(key, { loading: true });
       const retry = (ms) => terrainTiles.set(key, { retryAt: performance.now() + ms, at: performance.now() });
-      fetch(`/terrain/${key}?v=3&b=1`)
+      fetch(`/terrain/${key}?v=6&b=1`)
         .then(async (r) => {
           if (r.status === 200) terrainTiles.set(key, { data: new Float32Array(await r.arrayBuffer()), at: performance.now() });
           else retry(r.status === 202 ? 1000 : 5000); // 202 = server is fetching this area
@@ -464,7 +469,9 @@
     const MAX_EXAG = 10; // the slider's top: horizon culling is computed for the tallest it can get
     // Slopes in 1.85 km/px MOLA are gentle; like the z-factor of a shaded-relief map, steepen
     // them for lighting only (geometry is unchanged) so craters and scarps read clearly.
-    const SHADE_Z = 4;
+    // Finer data has steeper real slopes, so the boost eases off as the detail level rises
+    // (level 7: 64 px/deg MOLA, 8: 128 px/deg, 9+: the ~200 m HRSC/MOLA blend).
+    const shadeZ = (level) => (level <= 6 ? 4 : level === 7 ? 3 : level === 8 ? 2.5 : 2);
     const TRI_INDICES = (() => {
       const idx = new Uint16Array(CELLS * CELLS * 6);
       let k = 0;
@@ -499,6 +506,7 @@
 
     function buildTerrainData(grid, x, y, level) {
       grid = withBorder(grid);
+      const SHADE_Z = shadeZ(level);
       const rect = tileScheme.tileXYToRectangle(x, y, level);
       const dLon = rect.width / CELLS, dLat = rect.height / CELLS;
       const R = MARS.maximumRadius;
@@ -571,7 +579,7 @@
       hasVertexNormals: true,
       availability: undefined,
       errorEvent: new Cesium.Event(),
-      credit: new Cesium.Credit("MOLA elevation: NASA/GSFC MGS MOLA team, via NASA PDS"),
+      credit: new Cesium.Credit("Elevation: MGS MOLA (NASA/GSFC, via NASA PDS); HRSC/MOLA blended DEM v2 (ESA/DLR/FU Berlin, USGS Astrogeology)"),
       getLevelMaximumGeometricError: (level) => levelZeroError / (1 << level),
       getTileDataAvailable: () => undefined,
       loadTileDataAvailability: () => undefined,
@@ -585,7 +593,7 @@
     const exagVal = document.getElementById("exagVal");
     const terrainNote = document.getElementById("terrainNote");
     let terrainReady = false;
-    let onReliefChange = () => {}; // set once the shading controls exist
+    const reliefHooks = []; // run after relief / exaggeration changes (shading, rover road)
 
     function applyRelief() {
       const on = terrainReady && reliefBox.checked;
@@ -594,7 +602,7 @@
       viewer.scene.verticalExaggeration = on ? Number(exagSlider.value) : 1;
       exagVal.textContent = `×${exagSlider.value}`;
       exagSlider.disabled = !on;
-      onReliefChange();
+      for (const hook of reliefHooks) hook();
     }
     reliefBox.addEventListener("change", applyRelief);
     exagSlider.addEventListener("input", applyRelief);
@@ -613,7 +621,7 @@
         await new Promise((r) => setTimeout(r, 1000));
       }
       terrainReady = true;
-      terrainNote.textContent = "MOLA elevation · detail sharpens as you zoom in (down to ~1.85 km/px)";
+      terrainNote.textContent = "MOLA + HRSC elevation · detail sharpens as you zoom in (down to ~200 m/px)";
       applyRelief();
     }
     applyRelief();
@@ -910,7 +918,7 @@
 
     // Tilt = angle away from looking straight down (0° = top-down, MAX_TILT = most oblique allowed).
     // Note: there is no 3D terrain yet, so a tilted view shows the flat imagery in perspective.
-    const MAX_TILT = 60;
+    const MAX_TILT = 80;
     let tiltDeg = 0;
     const currentTilt = () => 90 + Cesium.Math.toDegrees(viewer.camera.pitch);
     const pitchFor = (deg) => Cesium.Math.toRadians(-90 + deg);
@@ -1146,19 +1154,43 @@
       const gj = await r.json();
       const line = gj.features.find((f) => f.geometry?.type === "LineString");
       if (!line || line.geometry.coordinates.length < 2) throw new Error("traverse LineString missing");
-      const flat = line.geometry.coordinates.flatMap(([lon, lat]) => [lon, lat]);
+      // Not clampToGround: Cesium's ground-clamped lines use a built-in table of *Earth's*
+      // terrain heights, and Gale sits ~4.5 km below the Mars datum (~9 km with exaggeration),
+      // so most of the line was culled into scattered dots. Instead, sample the MOLA/HRSC heights
+      // once and draw the line just above them, re-placed when relief or exaggeration changes.
+      const cartos = line.geometry.coordinates.map(([lon, lat]) => Cesium.Cartographic.fromDegrees(lon, lat));
+      try {
+        await Cesium.sampleTerrain(molaTerrain, 9, cartos); // level 9: the ~200 m HRSC blend
+      } catch (err) {
+        console.warn("Rover road: terrain heights unavailable, drawing at datum", err);
+      }
+      traverseHeights = cartos.map((c) => (Number.isFinite(c.height) ? c.height : 0));
+      traverseCartos = cartos;
+      const amber = Cesium.Color.fromCssColorString("#ffd54f");
       traverseEntity = viewer.entities.add({
         id: "curiosity-traverse",
         name: "Curiosity localized traverse (PLACES)",
         polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArray(flat),
+          positions: traversePositions(),
           width: 4,
-          material: Cesium.Color.fromCssColorString("#ffd54f"),
-          clampToGround: true,
-          arcType: Cesium.ArcType.GEODESIC,
+          material: amber,
+          arcType: Cesium.ArcType.NONE, // points are ~20 m apart: straight segments are exact enough
+          // where a hill hides the line (tilted views), show it as a glow instead of losing it
+          depthFailMaterial: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.2, color: amber }),
         },
       });
     }
+    let traverseCartos = null, traverseHeights = null;
+    function traversePositions() {
+      const relief = terrainReady && reliefBox.checked;
+      const ex = viewer.scene.verticalExaggeration;
+      return traverseCartos.map((c, i) =>
+        Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, (relief ? traverseHeights[i] * ex : 0) + 15, MARS));
+    }
+    function placeTraverse() {
+      if (traverseEntity) traverseEntity.polyline.positions = traversePositions();
+    }
+    reliefHooks.push(placeTraverse); // also fires when the 3D relief finishes loading
     async function setTraverseVisible(show) {
       roadToggle.setAttribute("aria-pressed", String(show));
       roadToggle.classList.toggle("on", show);
@@ -1519,11 +1551,85 @@
     }
     shadeMode.addEventListener("change", applyShading);
     shadeStrength.addEventListener("input", applyShading);
-    onReliefChange = applyShading;
+    reliefHooks.push(applyShading);
     applyShading();
     viewer.camera.moveEnd.addEventListener(() => {
       if (shadeMode.value === "hill") { updateHillDir(); applyLightDir(); }
     });
+
+    // ---------------------------------------------------------------- atmosphere
+    // Cesium's sky and ground scattering, retuned from Earth to Mars. Mars's air is ~1% as dense
+    // as Earth's but full of fine reddish dust, so the scattering colours are roughly reversed:
+    // red scatters most (a butterscotch daytime sky, a salmon limb from orbit) instead of blue.
+    // The scale height is ~11 km (Earth: ~8 km for gas, ~1.2 km for haze), so the haze reaches
+    // high and the limb glow is thick for the planet's size. Three parts, all toggled together:
+    //  - sky: the glow around the limb from space, and the sky colour behind the horizon when tilted
+    //  - ground: haze laid over the surface, strongest toward the limb
+    //  - fog: distance haze that swallows far terrain when you look along the ground
+    // Each follows the scene light, so the night side has no glow (in hillshade mode the "sun"
+    // is the fixed NW light; with shading off the sky is lit evenly).
+    const MARS_AIR = {
+      rayleigh: new Cesium.Cartesian3(16e-6, 11e-6, 5e-6),  // reds first: dusty air
+      mie: new Cesium.Cartesian3(40e-6, 30e-6, 20e-6),      // dust dominates, slightly reddened
+      rayleighScaleHeight: 11100,
+      mieScaleHeight: 11100,                                         // dust mixes well up
+      mieAnisotropy: 0.75,                                            // softer forward glow than Earth's 0.9
+    };
+    const skyAtmo = new Cesium.SkyAtmosphere(MARS);
+    skyAtmo.atmosphereRayleighCoefficient = MARS_AIR.rayleigh;
+    skyAtmo.atmosphereMieCoefficient = MARS_AIR.mie;
+    skyAtmo.atmosphereRayleighScaleHeight = MARS_AIR.rayleighScaleHeight;
+    skyAtmo.atmosphereMieScaleHeight = MARS_AIR.mieScaleHeight;
+    skyAtmo.atmosphereMieAnisotropy = MARS_AIR.mieAnisotropy;
+    skyAtmo.atmosphereLightIntensity = 40;
+    skyAtmo.hueShift = -0.03;                     // nudge the horizon from greenish to tan
+    // Per vertex, not per pixel: the scattering loop (~64 steps) runs on the sky dome's vertices and
+    // is interpolated, instead of on every sky pixel. Much cheaper when tilted toward the horizon.
+    skyAtmo.perFragmentAtmosphere = false;
+    viewer.scene.skyAtmosphere = skyAtmo;
+
+    globe.atmosphereRayleighCoefficient = MARS_AIR.rayleigh;
+    globe.atmosphereMieCoefficient = MARS_AIR.mie;
+    globe.atmosphereRayleighScaleHeight = MARS_AIR.rayleighScaleHeight;
+    globe.atmosphereMieScaleHeight = MARS_AIR.mieScaleHeight;
+    globe.atmosphereMieAnisotropy = MARS_AIR.mieAnisotropy;
+    globe.atmosphereLightIntensity = 10;
+    globe.dynamicAtmosphereLighting = true;
+    globe.dynamicAtmosphereLightingFromSun = false; // use our light (Cesium's "sun" is Earth's)
+    // Cesium switches the ground haze to per-pixel once the camera is farther than this from the
+    // planet's centre (default ~5,300 km, i.e. ~1,900 km up, when the planet fills the screen).
+    // Push it out of reach so the haze always stays per vertex; it is a soft gradient anyway.
+    globe.nightFadeOutDistance = 1e12;
+    globe.nightFadeInDistance = 2e12;
+
+    // Fog colour comes from the scene-wide atmosphere settings.
+    const air = viewer.scene.atmosphere;
+    air.rayleighCoefficient = MARS_AIR.rayleigh;
+    air.mieCoefficient = MARS_AIR.mie;
+    air.rayleighScaleHeight = MARS_AIR.rayleighScaleHeight;
+    air.mieScaleHeight = MARS_AIR.mieScaleHeight;
+    air.mieAnisotropy = MARS_AIR.mieAnisotropy;
+    air.lightIntensity = 10;
+    air.dynamicLighting = Cesium.DynamicAtmosphereLightingType.SCENE_LIGHT;
+    const fog = viewer.scene.fog;
+    fog.density = 0.00035;          // per Cesium's model: Mars haze is light but deep
+    fog.visualDensityScalar = 0.25;
+    fog.maxHeight = 200000;         // no fog drawn above 200 km (whole-planet views)
+    fog.minimumBrightness = 0.02;   // the night side stays dark
+
+    const atmoBox = document.getElementById("atmo");
+    const ATMO_KEY = "mars-atmosphere-v1";
+    try { const v = localStorage.getItem(ATMO_KEY); if (v !== null) atmoBox.checked = v === "1"; } catch { /* ignore */ }
+    function applyAtmosphere() {
+      const on = atmoBox.checked;
+      skyAtmo.show = on;
+      globe.showGroundAtmosphere = on;
+      // fog.enabled also skips far tiles (fewer downloads), so keep it and only hide the haze
+      fog.renderable = on;
+      try { localStorage.setItem(ATMO_KEY, on ? "1" : "0"); } catch { /* ignore */ }
+    }
+    atmoBox.addEventListener("change", applyAtmosphere);
+    applyAtmosphere();
 
     // Clock tick: sun position, lighting, the panel's time readout (for the view centre) and
     // the clicked point's times.
