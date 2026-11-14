@@ -202,7 +202,7 @@
       <button id="routeGoalBtn" type="button">Choose destination</button>
       <button id="routeClearBtn" type="button">Clear</button>
       <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
-      <div class="hint">Red terrain exceeds the slope limit and is unwalkable.</div>
+      <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
       <div id="routeStatus" aria-live="polite">Choose a start and destination on the map.</div>
     </div>
     <div id="status"></div>
@@ -249,7 +249,7 @@
         "Cesium did not load. In the web folder run:  npm install cesium  and reload.";
       return;
     }
-    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, smoothTerrainPath } = await import("./pathfinding.js");
+    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg } = await import("./pathfinding.js");
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -1391,7 +1391,7 @@
 
     function drawRouteLine(grid, path) {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
-      routeDisplayPath = smoothTerrainPath(grid, path, maxSlopeDeg());
+      routeDisplayPath = path;
       const radians = Math.PI / 180;
       const showRelief = terrainReady && reliefBox.checked;
       const visualHeight = (elevationM) => (showRelief ? elevationM * viewer.scene.verticalExaggeration : 0) + 8;
@@ -1453,77 +1453,65 @@
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
       await new Promise((resolve) => requestAnimationFrame(resolve));
-      const w = Math.max(1, Math.min(1024, grid.width));
-      const h = Math.max(1, Math.min(512, grid.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      const pixels = ctx.createImageData(w, h);
-      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg, wrapX } = grid;
-      const sparse = heights instanceof Map, limit = maxSlopeDeg() * Math.PI / 180;
-      const visit = function* () {
-        if (sparse) yield* heights.keys();
-        else for (let id = 0; id < width * height; id++) yield id;
-      };
-      const moves = [[-1,-1], [0,-1], [1,-1], [-1,0], [1,0], [-1,1], [0,1], [1,1]];
-      let scanned = 0;
-      for (const id of visit()) {
-        const x = id % width, y = Math.floor(id / width), here = sparse ? heights.get(id) : heights[id];
-        if ((!wrapX && x === width - 1) || y === height - 1) continue;
-        let steep = false;
-        for (const [ox, oy] of moves) {
-          let nx = x + ox;
-          if (wrapX) nx = (nx + width) % width;
-          else if (nx < 0 || nx >= width) continue;
-          const ny = y + oy;
-          if (ny < 0 || ny >= height) continue;
-          const nextId = ny * width + nx;
-          const next = sparse ? heights.get(nextId) : heights[nextId];
-          if (next === undefined) continue;
-          const lat = (northDeg + (y + ny) * 0.5 * latStepDeg) * Math.PI / 180;
-          let dLon = ox * lonStepDeg * Math.PI / 180;
-          if (dLon > Math.PI) dLon -= 2 * Math.PI;
-          else if (dLon < -Math.PI) dLon += 2 * Math.PI;
-          const dLat = oy * latStepDeg * Math.PI / 180;
-          const distance = Math.hypot(dLon * 3_396_190 * Math.cos(lat), dLat * 3_396_190);
-          if (Math.atan2(Math.abs(next - here), distance) > limit) { steep = true; break; }
-        }
-        if (steep) {
-          const px = Math.min(w - 1, Math.floor(x * w / width));
-          const py = Math.min(h - 1, Math.floor(y * h / height));
-          const k = (py * w + px) * 4;
-          pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
-        }
-        if (++scanned % 24_000 === 0) {
-          await new Promise((resolve) => requestAnimationFrame(resolve));
-          if (!isCurrent()) return;
-        }
-      }
-      ctx.putImageData(pixels, 0, 0);
-      const south = northDeg + height * latStepDeg;
-      const east = westDeg + width * lonStepDeg;
-      const addLayer = async (image, west, east) => {
+      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
+      const sparse = heights instanceof Map;
+      const addLayer = async (image, west, south, east, north) => {
         const blob = await new Promise((resolve) => image.toBlob(resolve, "image/png"));
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         try {
           const provider = await Cesium.SingleTileImageryProvider.fromUrl(url, {
-            rectangle: Cesium.Rectangle.fromDegrees(west, south, east, northDeg), ellipsoid: MARS,
+            rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north), ellipsoid: MARS,
           });
           const layer = viewer.imageryLayers.addImageryProvider(provider);
           layer.alpha = 0.58;
           unwalkableLayers.push(layer);
         } finally { URL.revokeObjectURL(url); }
       };
-      if (east > 180) {
-        const split = Math.max(1, Math.min(w - 1, Math.round((180 - westDeg) / (east - westDeg) * w)));
-        const left = document.createElement("canvas"); left.width = split; left.height = h;
-        left.getContext("2d").drawImage(canvas, 0, 0, split, h, 0, 0, split, h);
-        const right = document.createElement("canvas"); right.width = w - split; right.height = h;
-        right.getContext("2d").drawImage(canvas, split, 0, w - split, h, 0, 0, w - split, h);
-        await addLayer(left, westDeg, 180);
-        await addLayer(right, -180, east - 360);
-      } else await addLayer(canvas, westDeg, east);
+      const paint = async (canvas, x0, y0) => {
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(canvas.width, canvas.height);
+        const x1 = x0 + canvas.width, y1 = y0 + canvas.height;
+        const limit = maxSlopeDeg();
+        for (let y = y0; y < y1; y++) {
+          for (let x = x0; x < x1; x++) {
+            if (x >= width || y >= height || terrainCellSlopeDeg(grid, x, y) <= limit) continue;
+            const px = x - x0, py = y - y0, k = (py * canvas.width + px) * 4;
+            pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+          }
+          if ((y - y0 + 1) % 32 === 0) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            if (!isCurrent()) return false;
+          }
+        }
+        ctx.putImageData(pixels, 0, 0);
+        return true;
+      };
+      if (sparse) {
+        // Sparse worldwide coordinates stay cheap: one full-resolution canvas per loaded tile.
+        for (const [tx, ty] of grid.tileKeys || []) {
+          if (!isCurrent()) return;
+          const x = tx * 64, y = ty * 64, size = 64;
+          const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+          if (!await paint(canvas, x, y)) return;
+          const west = -180 + x * lonStepDeg, east = west + size * lonStepDeg;
+          const north = 90 + y * latStepDeg, south = north + size * latStepDeg;
+          await addLayer(canvas, west, south, east, north);
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+      } else {
+        const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
+        if (!await paint(canvas, 0, 0)) return;
+        const south = northDeg + height * latStepDeg, east = westDeg + width * lonStepDeg;
+        if (east > 180) {
+          const split = Math.max(1, Math.min(width - 1, Math.round((180 - westDeg) / (east - westDeg) * width)));
+          const left = document.createElement("canvas"); left.width = split; left.height = height;
+          left.getContext("2d").drawImage(canvas, 0, 0, split, height, 0, 0, split, height);
+          const right = document.createElement("canvas"); right.width = width - split; right.height = height;
+          right.getContext("2d").drawImage(canvas, split, 0, width - split, height, 0, 0, width - split, height);
+          await addLayer(left, westDeg, south, 180, northDeg);
+          await addLayer(right, -180, south, east - 360, northDeg);
+        } else await addLayer(canvas, westDeg, south, east, northDeg);
+      }
     }
     async function waitForMola() {
       for (let i = 0; i < 300; i++) {
@@ -1564,7 +1552,8 @@
           if (request !== routeRequest) return;
           const ca = lonLatToTerrainCell(coarseGrid, routeStart.lon, routeStart.lat);
           const cb = lonLatToTerrainCell(coarseGrid, routeGoal.lon, routeGoal.lat);
-          const coarseResult = ca && cb ? planTerrainRoute(coarseGrid, ca, cb, { maxSlopeDeg: maxSlopeDeg() }) : null;
+          const coarseResult = ca && cb ? await planTerrainRoute(coarseGrid, ca, cb, { maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest }) : null;
+          if (request !== routeRequest) return;
           grid = coarseGrid;
           result = coarseResult;
           detail = `coarse MOLA z${coarseLevel}`;
@@ -1574,7 +1563,8 @@
             if (request !== routeRequest) return;
             const fa = lonLatToTerrainCell(fineGrid, routeStart.lon, routeStart.lat);
             const fb = lonLatToTerrainCell(fineGrid, routeGoal.lon, routeGoal.lat);
-            const refined = fa && fb ? planTerrainRoute(fineGrid, fa, fb, { maxSlopeDeg: maxSlopeDeg() }) : null;
+            const refined = fa && fb ? await planTerrainRoute(fineGrid, fa, fb, { maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest }) : null;
+            if (request !== routeRequest) return;
             if (refined) { grid = fineGrid; result = refined; detail = "refined MOLA z6 corridor"; }
             else { grid = fineGrid; result = null; detail = "no fine route within slope limit"; }
           } catch (error) {
@@ -1595,7 +1585,8 @@
           if (request !== routeRequest) return;
           const a = lonLatToTerrainCell(grid, routeStart.lon, routeStart.lat);
           const b = lonLatToTerrainCell(grid, routeGoal.lon, routeGoal.lat);
-          result = a && b ? planTerrainRoute(grid, a, b, { maxSlopeDeg: maxSlopeDeg() }) : null;
+          result = a && b ? await planTerrainRoute(grid, a, b, { maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest }) : null;
+          if (request !== routeRequest) return;
         }
         routeGrid = grid;
         routeRawPath = result?.path ?? null;
