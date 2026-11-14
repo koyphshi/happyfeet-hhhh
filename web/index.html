@@ -858,6 +858,8 @@
           )}`,
           width: 38, height: 46, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           scaleByDistance: new Cesium.NearFarScalar(2e4, 1, 1e7, 0.8),
+          // Keep nearby pins from being depth-culled into the terrain at close zoom.
+          disableDepthTestDistance: 50_000,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         },
         label: { text: spot.name, show: false, font: "12px sans-serif", fillColor: Cesium.Color.WHITE,
@@ -1356,8 +1358,8 @@
     const goGale = () => {
       if (flown) return;
       flown = true;
-      const entrySpot = SPOTS.find((spot) => spot.id === "gale-boxwork");
-      if (entrySpot) selectSpot(entrySpot);
+      // Start with a regional view of Gale, away from individual POI pins.
+      flyToSpot(137.8, -5.4, 400_000);
     };
     const onLoaded = (queued) => {
       if (queued === 0 && globe.tilesLoaded) {
