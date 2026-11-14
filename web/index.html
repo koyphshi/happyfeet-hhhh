@@ -61,6 +61,10 @@
     #reliefRow input[type=range] { flex: 1; }
     #terrainNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
     #ground { color: #c9e7a7; font: 12px ui-monospace, Consolas, monospace; min-height: 1.3em; }
+    #routeControls { margin: 8px 0; padding: 7px; border: 1px solid #444; border-radius: 5px; }
+    #routeControls button { margin: 2px 4px 2px 0; padding: 4px 7px; cursor: pointer; }
+    #routeControls button.on { border-color: #ffd54f; color: #ffe082; }
+    #routeStatus { color: #bbb; font-size: 11.5px; min-height: 1.4em; margin-top: 4px; }
     #readout, #scale .dist { white-space: pre; }
     #cacheInfo { color: #aaa; font-size: 11.5px; }
     /* scale bar, bottom right, above the credits */
@@ -190,6 +194,13 @@
     </div>
     <div id="readout"></div>
     <div id="ground"></div>
+    <div id="routeControls">
+      <div class="sub">Terrain route · MOLA</div>
+      <button id="routeStartBtn" type="button">Choose start</button>
+      <button id="routeGoalBtn" type="button">Choose destination</button>
+      <button id="routeClearBtn" type="button">Clear</button>
+      <div id="routeStatus" aria-live="polite">Choose a start and destination on the map.</div>
+    </div>
     <div id="status"></div>
     <div class="sub">Tile cache</div>
     <div id="cache"><span id="cacheInfo">…</span> <button id="btnClear">Clear</button></div>
@@ -234,6 +245,7 @@
         "Cesium did not load. In the web folder run:  npm install cesium  and reload.";
       return;
     }
+    const { loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute } = await import("./pathfinding.js");
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -1312,7 +1324,105 @@
 
     // A click (press + release without dragging) probes; dragging still pans the globe.
     const clicker = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    let routePickMode = null;
+    let routeStart = null, routeGoal = null, routeGraphic = null, routeStartPin = null, routeGoalPin = null;
+    let routeRequest = 0;
+    const routeStatus = document.getElementById("routeStatus");
+    const routeButtons = [document.getElementById("routeStartBtn"), document.getElementById("routeGoalBtn")];
+    function setRoutePickMode(mode) {
+      routePickMode = mode;
+      routeButtons[0].classList.toggle("on", mode === "start");
+      routeButtons[1].classList.toggle("on", mode === "goal");
+      routeStatus.textContent = mode === "start" ? "Click the map to set the start." :
+        mode === "goal" ? "Click the map to set the destination." : "Choose a start and destination on the map.";
+    }
+    function clearRouteGraphics() {
+      for (const e of [routeGraphic, routeStartPin, routeGoalPin]) if (e) viewer.entities.remove(e);
+      routeGraphic = routeStartPin = routeGoalPin = null;
+    }
+    function routePin(point, color, label) {
+      return viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(point.lon, point.lat),
+        point: { pixelSize: 11, color, outlineColor: Cesium.Color.BLACK, outlineWidth: 2, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND },
+        label: { text: label, font: "12px sans-serif", fillColor: color, outlineColor: Cesium.Color.BLACK, outlineWidth: 3,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cesium.Cartesian2(0, -16), heightReference: Cesium.HeightReference.CLAMP_TO_GROUND },
+      });
+    }
+    async function waitForMola() {
+      for (let i = 0; i < 300; i++) {
+        const response = await fetch("./terrain/status", { cache: "no-store" });
+        const state = await response.json();
+        if (state.ready) return;
+        if (state.error) throw new Error(state.error);
+        routeStatus.textContent = `Waiting for MOLA data… ${Math.round((state.progress || 0) * 100)}%`;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      throw new Error("MOLA terrain is still loading");
+    }
+    async function computeTerrainRoute() {
+      if (!routeStart || !routeGoal) return;
+      if (!USE_PROXY) { routeStatus.textContent = "Start the local viewer server to load MOLA heights."; return; }
+      const request = ++routeRequest;
+      clearRouteGraphics();
+      routeStartPin = routePin(routeStart, Cesium.Color.LIME, "Start");
+      routeGoalPin = routePin(routeGoal, Cesium.Color.ORANGE, "Target");
+      routeStatus.textContent = "Loading MOLA terrain tiles…";
+      try {
+        await waitForMola();
+        if (request !== routeRequest) return;
+        const pad = 0.12;
+        const lonA = routeStart.lon, lonB = routeGoal.lon;
+        const crossesSeam = Math.abs(lonA - lonB) > 180;
+        const patchBounds = {
+          west: crossesSeam ? Math.max(lonA, lonB) - pad : Math.max(-180, Math.min(lonA, lonB) - pad),
+          east: crossesSeam ? Math.min(lonA, lonB) + pad : Math.min(180, Math.max(lonA, lonB) + pad),
+          south: Math.max(-90, Math.min(routeStart.lat, routeGoal.lat) - pad),
+          north: Math.min(90, Math.max(routeStart.lat, routeGoal.lat) + pad),
+        };
+        let grid, tooLarge;
+        for (let level = 6; level >= 0; level--) {
+          try { grid = await loadTerrainPatch({ ...patchBounds, level }); break; }
+          catch (error) {
+            if (!error.message.includes("Terrain patch is too large")) throw error;
+            tooLarge = error;
+            routeStatus.textContent = `Route area is large; reducing terrain detail to z${level - 1}…`;
+          }
+        }
+        if (!grid) throw tooLarge || new Error("Could not load a terrain patch");
+        if (request !== routeRequest) return;
+        const a = lonLatToTerrainCell(grid, routeStart.lon, routeStart.lat);
+        const b = lonLatToTerrainCell(grid, routeGoal.lon, routeGoal.lat);
+        const result = a && b ? planTerrainRoute(grid, a, b) : null;
+        if (!result) { routeStatus.textContent = "No route found in the loaded terrain patch."; return; }
+        routeGraphic = viewer.entities.add({
+          polyline: {
+            positions: result.path.map((p) => Cesium.Cartesian3.fromDegrees(p.lon, p.lat)),
+            width: 5, material: Cesium.Color.CYAN, clampToGround: true,
+          },
+        });
+        routeStatus.textContent = `${result.path.length.toLocaleString()} points · terrain distance ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · MOLA z${grid.level}`;
+      } catch (error) {
+        if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
+      }
+    }
+    document.getElementById("routeStartBtn").addEventListener("click", () => setRoutePickMode("start"));
+    document.getElementById("routeGoalBtn").addEventListener("click", () => setRoutePickMode("goal"));
+    document.getElementById("routeClearBtn").addEventListener("click", () => {
+      routeRequest++; routeStart = routeGoal = null; clearRouteGraphics(); setRoutePickMode(null);
+    });
     clicker.setInputAction((e) => {
+      if (routePickMode) {
+        const world = surfaceAt(e.position.x, e.position.y);
+        if (!world) { routeStatus.textContent = "Click a visible point on Mars."; return; }
+        const c = MARS.cartesianToCartographic(world);
+        const point = { lon: Cesium.Math.toDegrees(c.longitude), lat: Cesium.Math.toDegrees(c.latitude) };
+        if (routePickMode === "start") routeStart = point;
+        else routeGoal = point;
+        setRoutePickMode(null);
+        if (routeStart && routeGoal) computeTerrainRoute();
+        else routeStatus.textContent = routeStart ? "Start set. Choose a destination." : "Destination set. Choose a start.";
+        return;
+      }
       const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
       const id = picked.map((p) => p?.id?.properties?.spotId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
       const spot = SPOTS.find((s) => s.id === id);
