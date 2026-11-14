@@ -256,6 +256,136 @@ const targetsGj = {
 writeFileSync(path.join(OUT, "curiosity_traverse.geojson"), JSON.stringify(traverse));
 writeFileSync(path.join(OUT, "curiosity_targets.geojson"), JSON.stringify(targetsGj));
 
+// Curated drill-sample campaigns, identified from the targets CSV itself.
+// Each entry is a set of (site, drive) RMC pairs whose rows belong to one
+// drilling campaign; the campaign's coordinates are the mean of located rows
+// (rows of one campaign agree to sub-meter). sol_range spans ALL AN target
+// rows at those RMCs (pointings, imaging, the drill work) — it is an upper
+// bound bracket for the drilling, not the precise drill sol. nearby_targets
+// lists every AN target name at the RMC, unfiltered. The four boxwork-era
+// campaigns have no drill_hole rows and are inferred from tailings rows; the
+// two Nevado_Sajama campaigns have NULL easting/northing in the export and
+// get null geometry. Nothing here is invented — every member name and
+// position is asserted against the committed CSV at conversion time.
+const SAMPLE_CAMPAIGNS = [
+  ["John_Klein", [[5, 1916], [5, 1954], [5, 2270]], false],
+  ["Cumberland", [[6, 0], [6, 68], [6, 82]], false],
+  ["Windjana", [[31, 1330]], false],
+  ["Confidence_Hills", [[42, 1020]], false],
+  ["Mojave", [[45, 0]], false],
+  ["Telegraph_Peak", [[45, 450]], false],
+  ["Buckskin", [[48, 2542]], false],
+  ["Greenhorn", [[50, 676]], false],
+  ["Lubango", [[54, 746]], false],
+  ["Okoruso", [[54, 938]], false],
+  ["Oudam", [[54, 2280]], false],
+  ["Marimba", [[56, 1236]], false],
+  ["Quela", [[57, 2798]], false],
+  ["Sebina", [[58, 2046]], false],
+  ["Duluth", [[70, 1752]], false],
+  ["Ailsa_Craig", [[72, 386]], false],
+  ["Stoer", [[72, 1316]], false],
+  ["Highfield", [[73, 550]], false],
+  ["Rock_Hall", [[73, 1206]], false],
+  ["Aberlady", [[75, 1386]], false],
+  ["Kilmarie", [[75, 1398]], false],
+  ["Mary_Anning", [[82, 2176]], false],
+  ["Glen_Etive", [[76, 3002]], false],
+  ["Hutton", [[79, 0]], false],
+  ["Edinburgh", [[79, 654]], false],
+  ["Pontours", [[89, 1992]], false],
+  ["Maria_Gordon", [[91, 390]], false],
+  ["Zechstein", [[91, 2132]], false],
+  ["Avanavero", [[95, 3152]], false],
+  ["Amapari2", [[98, 2704]], false],
+  ["Encanto", [[99, 1676]], false],
+  ["Dinira", [[100, 84]], false],
+  ["Tapo_Caparo", [[100, 1084]], false],
+  ["Ubajara", [[101, 774]], false],
+  ["Sequoia", [[105, 418]], false],
+  ["Altadena", [[116, 1944]], true],
+  ["Valle_de_la_Luna", [[119, 1722]], true],
+  ["Abanay / Nevado_Sajama", [[120, 82]], true],
+  ["Nevado_Sajama2", [[120, 574]], true],
+];
+
+const targetRows = tgt.rows.map((row) => ({
+  name: (tgtVal(row, "Target") || "").trim(),
+  sol: num(tgtVal(row, "Sol")),
+  site: num(tgtVal(row, "Site")),
+  drive: num(tgtVal(row, "Drive")),
+  easting: num(tgtVal(row, "Easting_m")),
+  northing: num(tgtVal(row, "Northing_m")),
+  elevation: num(tgtVal(row, "Elevation_m")),
+  locator: (tgtVal(row, "Locator") || "").trim().toUpperCase() === "NULL" ? null : (tgtVal(row, "Locator") || "").trim(),
+}));
+
+const samples = [];
+for (const [label, rmcList, inferredFromTailings] of SAMPLE_CAMPAIGNS) {
+  const members = targetRows.filter((r) => rmcList.some(([s, d]) => r.site === s && r.drive === d));
+  if (members.length === 0) {
+    console.error(`SAMPLE CAMPAIGN "${label}" matched no rows — curation bug`);
+    process.exitCode = 1;
+    continue;
+  }
+  const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  const located = members.filter((m) => m.easting !== null && m.northing !== null);
+  const easting = located.length ? mean(located.map((m) => m.easting)) : null;
+  const northing = located.length ? mean(located.map((m) => m.northing)) : null;
+  const elevation = mean(located.map((m) => m.elevation).filter((v) => v !== null));
+  const sols = members.map((m) => m.sol).filter((v) => v !== null);
+  const ll = easting !== null ? metersToDegrees(easting, northing) : null;
+  samples.push({
+    label,
+    nearbyTargets: members.map((m) => m.name).sort(),
+    sol_range: [Math.min(...sols), Math.max(...sols)],
+    rmc: rmcList.map(([s, d]) => `${s}/${d}`),
+    easting, northing, elevation, ll,
+    locator: members.find((m) => m.locator)?.locator ?? null,
+    inferredFromTailings,
+  });
+}
+
+const sampleFeatures = samples.map((s) => ({
+  type: "Feature",
+  geometry: s.ll
+    ? { type: "Point", coordinates: [round(s.ll.lonDeg, 7), round(s.ll.latPcDeg, 7), round(s.elevation, 1)] }
+    : null,
+  properties: {
+    sample: s.label,
+    nearby_targets: s.nearbyTargets,
+    n_nearby_targets: s.nearbyTargets.length,
+    sol_range: s.sol_range,
+    rmc: s.rmc,
+    easting_m: round(s.easting, 3),
+    northing_m: round(s.northing, 3),
+    elevation_m: round(s.elevation, 1),
+    lat_planetocentric_deg: s.ll ? round(s.ll.latPcDeg, 7) : null,
+    lat_planetodetic_deg: s.ll ? round(s.ll.latPdDeg, 7) : null,
+    longitude_deg: s.ll ? round(s.ll.lonDeg, 7) : null,
+    locator: s.locator,
+    inferred_from_tailings: s.inferredFromTailings,
+  },
+}));
+
+const samplesGj = {
+  type: "FeatureCollection",
+  name: "curiosity_samples",
+  features: sampleFeatures,
+  provenance: {
+    dataset: "Derived from the Analyst's Notebook Target Summary science targets table (2026-0912 build export, see MSL-Science-targets.csv); a curated list of Curiosity's 40 drilling campaigns by RMC",
+    mission: "Mars Science Laboratory (Curiosity)",
+    source_url: "https://an.rsl.wustl.edu/msl/AN/targetSummaryPage.aspx (same export as curiosity_targets.geojson)",
+    retrieved: "2026-11-14",
+    crs: "Same as curiosity_targets.geojson: geometry = [lon, lat_planetocentric, elevation] (EPSG:104905-ocentric compatible); lat_planetodetic_deg in properties.",
+    processing: "node scripts/curiosity-convert.mjs — campaigns curated by (site,drive) RMC from the exported target rows; coordinates are per-campaign means (sub-meter spread) of all located rows at the RMC; sol_range brackets ALL AN rows at the RMC (imaging/pointings + drilling), not the precise drill sol; nearby_targets lists every AN target name at the RMC; four boxwork-era campaigns inferred from tailings rows (see inferred_from_tailings); two Nevado_Sajama campaigns have NULL position upstream and get null geometry. Every campaign's rows are asserted present in the raw CSV.",
+    credit: "NASA/JPL-Caltech/PDS Analyst's Notebook (PDS Geosciences Node, Washington University in St. Louis)",
+  },
+};
+
+writeFileSync(path.join(OUT, "curiosity_samples.geojson"), JSON.stringify(samplesGj));
+
+
 // ---------------------------------------------------------------------------
 // 3. RFC 7946 structural validation of the written files
 // ---------------------------------------------------------------------------
@@ -360,7 +490,18 @@ const stats = {
   geojson_files: [
     validateGeoJson(path.join(OUT, "curiosity_traverse.geojson")),
     validateGeoJson(path.join(OUT, "curiosity_targets.geojson")),
+    validateGeoJson(path.join(OUT, "curiosity_samples.geojson")),
   ],
+  samples: {
+    campaigns: sampleFeatures.length,
+    with_geometry: sampleFeatures.filter((f) => f.geometry).length,
+    null_geometry: sampleFeatures.filter((f) => f.geometry === null).length,
+    inferred_from_tailings: sampleFeatures.filter((f) => f.properties.inferred_from_tailings).length,
+    sol_range: [
+      Math.min(...sampleFeatures.map((f) => f.properties.sol_range[0])),
+      Math.max(...sampleFeatures.map((f) => f.properties.sol_range[1])),
+    ],
+  },
 };
 
 console.log(JSON.stringify(stats, null, 2));
@@ -369,6 +510,7 @@ const errors = [];
 if (stats.traverse.stops < 500) errors.push("traverse unexpectedly small");
 if (stats.traverse.first_stop_offset_vs_bradbury_m > 200) errors.push("first stop not at Bradbury Landing");
 if (stats.targets.targets < 9000) errors.push("target count unexpectedly small");
+if (stats.samples.campaigns < 35) errors.push("sample campaign count unexpectedly small");
 if (Math.max(...bboxWithin(travBbox, GALE, GALE.radius_m)) > GALE.radius_m) errors.push("traverse bbox outside Gale crater");
 for (const v of stats.geojson_files) if (v.errors.length) errors.push(`${v.file}: ${v.errors.join("; ")}`);
 console.error(errors.length ? "VALIDATION ERRORS:\n" + errors.join("\n") : "validation ok");
