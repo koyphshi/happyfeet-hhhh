@@ -250,6 +250,7 @@
       <button id="routeGoalBtn" type="button">Choose destination</button>
       <button id="routeClearBtn" type="button">Clear</button>
       <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
+      <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
       <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
       <div id="routeStatus" aria-live="polite">Choose a start and destination on the map.</div>
     </div>
@@ -1881,7 +1882,12 @@
     const routeButtons = [document.getElementById("routeStartBtn"), document.getElementById("routeGoalBtn")];
     const maxSlopeSlider = document.getElementById("maxSlope");
     const maxSlopeValue = document.getElementById("maxSlopeValue");
+    const slopeMeaning = document.getElementById("slopeMeaning");
     const maxSlopeDeg = () => Number(maxSlopeSlider.value);
+    const updateSlopeMeaning = () => {
+      const risePer100m = Math.round(Math.tan(maxSlopeDeg() * Math.PI / 180) * 100);
+      slopeMeaning.textContent = `At ${maxSlopeDeg()}°, allow up to ${risePer100m} m elevation change per 100 m.`;
+    };
     function setRoutePickMode(mode) {
       routePickMode = mode;
       routeButtons[0].classList.toggle("on", mode === "start");
@@ -2133,13 +2139,13 @@
           if (request !== routeRequest) return;
         }
         routeGrid = grid;
-        routeRawPath = result?.path ?? null;
+        routeRawPath = result?.displayPath ?? result?.path ?? null;
         try { await drawUnwalkableOverlay(grid, () => request === routeRequest); }
         catch (error) { console.warn("Could not draw slope mask:", error); }
         if (request !== routeRequest) return;
         if (!result) { routeStatus.textContent = "No walkable route found at this slope limit."; return; }
-        drawRouteLine(grid, result.path);
-        routeStatus.textContent = `${result.path.length.toLocaleString()} points · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
+        drawRouteLine(grid, routeRawPath);
+        routeStatus.textContent = `${routeRawPath.length.toLocaleString()} samples · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
       } catch (error) {
         if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
       }
@@ -2152,6 +2158,7 @@
     let slopeDebounce;
     maxSlopeSlider.addEventListener("input", () => {
       maxSlopeValue.textContent = `${maxSlopeDeg()}°`;
+      updateSlopeMeaning();
       clearTimeout(slopeDebounce);
       slopeDebounce = setTimeout(() => { if (routeStart && routeGoal) computeTerrainRoute(); }, 250);
     });

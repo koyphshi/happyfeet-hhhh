@@ -296,7 +296,34 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
       for (let at = id; at !== undefined; at = parent.get(at)) anchors.push(at);
       anchors.reverse();
       const ids = [];
-      for (let i = 1; i < anchors.length; i++) ids.push(...segment(anchors[i - 1], anchors[i]).line.slice(ids.length ? 1 : 0));
+      const displayPath = [];
+      for (let i = 1; i < anchors.length; i++) {
+        const from = anchors[i - 1], to = anchors[i], line = segment(from, to).line;
+        ids.push(...line.slice(ids.length ? 1 : 0));
+        const ax = from % width, ay = Math.floor(from / width);
+        let bx = to % width;
+        const by = Math.floor(to / width);
+        if (grid.wrapX && Math.abs(bx - ax) > width / 2) bx += bx < ax ? width : -width;
+        const dx = bx - ax, dy = by - ay, length2 = dx * dx + dy * dy;
+        const a = pos(ax, ay), b = pos(to % width, by);
+        let dLon = b.lon - a.lon;
+        if (dLon > Math.PI) dLon -= 2 * Math.PI;
+        else if (dLon < -Math.PI) dLon += 2 * Math.PI;
+        for (let k = displayPath.length ? 1 : 0; k < line.length; k++) {
+          const cell = line[k];
+          let cx = cell % width;
+          if (grid.wrapX && Math.abs(cx - ax) > width / 2) cx += cx < ax ? width : -width;
+          const cy = Math.floor(cell / width);
+          const t = length2 ? Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy) / length2)) : 0;
+          const ll = pos(ax, ay);
+          displayPath.push({
+            x: cx, y: cy,
+            lon: (ll.lon + dLon * t) / radians,
+            lat: (a.lat + (b.lat - a.lat) * t) / radians,
+            elevationM: heightAt(cell),
+          });
+        }
+      }
       if (!ids.length) ids.push(startId);
       let horizontalDistanceM = 0;
       const path = ids.map((at, i) => {
@@ -305,7 +332,8 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
         const ll = pos(x, y);
         return { x, y, lon: ll.lon / radians, lat: ll.lat / radians, elevationM: heightAt(at) };
       });
-      return { path, horizontalDistanceM, terrainDistanceM: currentCost };
+      if (!displayPath.length) displayPath.push(path[0]);
+      return { path, displayPath, horizontalDistanceM, terrainDistanceM: currentCost };
     }
     closed.add(id);
     const x = id % width, y = Math.floor(id / width);
