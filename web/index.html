@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mars · CesiumJS</title>
+  <link rel="stylesheet" href="./node_modules/cesium/Build/Cesium/Widgets/widgets.css" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    #cesiumContainer { position: absolute; inset: 0; }
+    #panel {
+      position: absolute; top: 12px; left: 12px; z-index: 5; width: 250px; padding: 10px 12px;
+      background: rgba(15, 15, 15, 0.82); color: #eee; border-radius: 8px;
+      font: 13px/1.4 system-ui, sans-serif;
+    }
+    #panel h1 { font-size: 14px; margin: 0 0 6px; }
+    #panel label { display: block; margin: 4px 0; }
+    #panel button { margin: 2px 4px 2px 0; padding: 3px 8px; cursor: pointer; }
+    #panel .hint { color: #aaa; font-size: 12px; margin-top: 6px; }
+    #status { margin-top: 8px; color: #f0b27a; min-height: 1.4em; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <div id="panel">
+    <h1>Mars</h1>
+    <div id="layerList"></div>
+    <div>Fly to (approximate centres):</div>
+    <div id="places"></div>
+    <div class="hint">Left-drag: rotate · wheel: zoom · right-drag: tilt</div>
+    <div id="status"></div>
+  </div>
+
+  <!-- CESIUM_BASE_URL must be set before Cesium.js loads; it tells Cesium where its workers and assets live. -->
+  <script>window.CESIUM_BASE_URL = "./node_modules/cesium/Build/Cesium/";</script>
+  <script src="./node_modules/cesium/Build/Cesium/Cesium.js"></script>
+  <script>
+    (async () => {
+      // ------------------------------------------------------------------ settings
+      // Optional: paste a Cesium ion access token to use the Cesium Mars 3D tileset
+      // (global imagery + terrain, with Gale and Jezero craters in higher detail).
+      // Leave empty to use free NASA Trek imagery on a smooth Mars-shaped globe (no relief).
+      const ION_TOKEN = "";
+      const CESIUM_MARS_ASSET_ID = 3644333;
+
+      // NASA Trek Viking colour mosaic, fetched through serve.mjs at /trek/ (same origin).
+      // The max zoom is a cautious guess: if tiles above it don't exist Cesium falls back
+      // to the coarser tile, so the worst case is a blurrier picture, never a gap.
+      const VIKING_URL =
+        "/trek/Mars/EQ/Viking_MDIM21_ClrMosaic_global_232m/1.0.0/{Style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg";
+      const VIKING_MAX_LEVEL = 7;
+
+      const PLACES = [
+        { name: "Olympus Mons", lon: -133.8, lat: 18.65, height: 1_300_000 },
+        { name: "Valles Marineris", lon: -59.0, lat: -14.0, height: 3_500_000 },
+        { name: "Gale crater", lon: 137.8, lat: -5.4, height: 400_000 },
+        { name: "Jezero crater", lon: 77.6, lat: 18.4, height: 250_000 },
+      ];
+
+      // ------------------------------------------------------------------ Mars instead of Earth
+      const MARS = Cesium.Ellipsoid.MARS;
+      Cesium.Ellipsoid.default = MARS; // must happen before the Viewer is created
+
+      const useIon = ION_TOKEN.trim() !== "";
+      const viewerOptions = {
+        baseLayer: false,        // no Earth imagery
+        baseLayerPicker: false,  // its choices are all Earth layers
+        geocoder: false,         // Earth place names
+        sceneModePicker: false,  // 2D / Columbus view
+        timeline: false,
+        animation: false,
+        infoBox: false,
+        selectionIndicator: false,
+        skyAtmosphere: false,    // the blue haze is Earth's
+      };
+      if (useIon) viewerOptions.globe = false; // the Cesium Mars tileset replaces the globe
+
+      const viewer = new Cesium.Viewer("cesiumContainer", viewerOptions);
+      viewer.scene.moon.show = false; // Earth's Moon
+      viewer.scene.sun.show = false;  // Sun position is computed for Earth, not Mars
+
+      const home = Cesium.Cartesian3.fromDegrees(-60, 10, 14_000_000, MARS);
+      viewer.camera.setView({ destination: home });
+
+      const statusEl = document.getElementById("status");
+      const layerList = document.getElementById("layerList");
+
+      // ------------------------------------------------------------------ surface
+      if (useIon) {
+        try {
+          Cesium.Ion.defaultAccessToken = ION_TOKEN.trim();
+          const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(CESIUM_MARS_ASSET_ID);
+          viewer.scene.primitives.add(tileset);
+          layerList.textContent = "Cesium Mars 3D tileset (Cesium ion)";
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent = "Could not load the Cesium Mars tileset. Check the token and that the asset is in your Cesium ion account.";
+        }
+      } else {
+        const globe = viewer.scene.globe;
+        globe.showGroundAtmosphere = false;
+        globe.enableLighting = false; // lighting uses Earth's sun direction, so leave it off
+        globe.baseColor = Cesium.Color.fromCssColorString("#5b3a29"); // shown until tiles arrive
+
+        const provider = new Cesium.WebMapTileServiceImageryProvider({
+          url: VIKING_URL,
+          layer: "Viking_MDIM21_ClrMosaic_global_232m",
+          style: "default",
+          tileMatrixSetID: "default028mm",
+          format: "image/jpeg",
+          tilingScheme: new Cesium.GeographicTilingScheme({ ellipsoid: MARS }),
+          minimumLevel: 0,
+          maximumLevel: VIKING_MAX_LEVEL,
+          credit: "Imagery: Viking MDIM 2.1 colorized mosaic, NASA/JPL/USGS, via NASA Trek",
+        });
+
+        let failed = 0;
+        provider.errorEvent.addEventListener((err) => {
+          failed += 1;
+          console.warn("Imagery tile failed:", err.message);
+          if (failed >= 3) {
+            statusEl.textContent = "Some imagery tiles failed to load. Press F12 and look at the Console and Network tabs.";
+          }
+        });
+
+        const layer = viewer.imageryLayers.addImageryProvider(provider);
+
+        // Add more layers here later: create a provider, add it, push a checkbox like this one.
+        const label = document.createElement("label");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = true;
+        box.addEventListener("change", () => { layer.show = box.checked; });
+        label.append(box, " Viking colour mosaic (232 m)");
+        layerList.append(label);
+      }
+
+      // ------------------------------------------------------------------ fly-to buttons
+      const places = document.getElementById("places");
+      for (const p of PLACES) {
+        const b = document.createElement("button");
+        b.textContent = p.name;
+        b.addEventListener("click", () => {
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.height, MARS),
+            duration: 3,
+          });
+        });
+        places.append(b);
+      }
+      const reset = document.createElement("button");
+      reset.textContent = "Whole planet";
+      reset.addEventListener("click", () => viewer.camera.flyTo({ destination: home, duration: 2 }));
+      places.append(reset);
+    })();
+  </script>
+</body>
+</html>
