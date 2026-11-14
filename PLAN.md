@@ -59,7 +59,7 @@ locations load, labelled with their real data resolution.
 | AI | **No inference at runtime.** Any classification is precomputed offline into a raster and shipped as a layer | No second deployment to break when a judge clicks the link. |
 | Auth / multi-user | Simulated crew on a timer. Real second client via `?room=` URL. **No accounts, no fingerprinting** | Login is a rules violation, not just a time sink. |
 | UI structure | **One planning screen** with layer presets. No mode switcher. | Modes multiply state and testing for one click each. |
-| Scenes | Three: **Map/Plan** (globe + imagery layers), **Walk** (POV panoramas), **VR HUD** (separate Three.js WebXR scene, P3) | Imagery layers attach to the Globe; the ion 3D tileset is `globe:false`. They cannot be merged. CesiumJS has **no WebXR support**, so VR cannot be Cesium. |
+| Scenes | Three: **Map/Plan** (globe + imagery layers), **Walk** (POV panoramas), **VR HUD** (separate Three.js WebXR scene, **P0 #7 — must ship**, §11) | Imagery layers attach to the Globe; the ion 3D tileset is `globe:false`. They cannot be merged. CesiumJS has **no WebXR support**, so VR cannot be Cesium. |
 
 ### Cut list — do not build these
 
@@ -95,6 +95,26 @@ labelled "modelled" in the UI. We never parse RAD from PDS.
 Gale and Jezero have metre-scale data. Everywhere else gets MOLA ~463 m and THEMIS ~100 m,
 which **cannot** support obstacle avoidance for a walking human. Those sites display a
 **"coarse data — not walk-scale"** badge. A missing tile (404) is the tier indicator.
+
+### Views and legends
+
+The astronaut switches views like the Google Maps layer button. A **view** is a preset of
+`{layers on, opacity, basemap dimmed or off, legend}`. It is one state change on the layer panel, not a
+mode: the person can still tweak any layer afterwards.
+
+| View | What it shows |
+|---|---|
+| **Satellite** | Gale optical only |
+| **Terrain** | MOLA colour relief + slope surface |
+| **Thermal** | THEMIS thermal; thermal inertia if the P2 pick ships |
+| **Hazard** | Slope-cost traversability + comms blackout + no-go mask over dimmed optical |
+| **Science** | OMEGA/CRISM hydrous detections + target markers over optical |
+
+- **Heatmap-only** is a "basemap off" toggle on any view, so a layer can be read on its own.
+- **Every layer has a legend.** For our two derived rasters we choose the colour ramp, so the legend is exact
+  (slope in degrees, cost in seconds, blackout in seconds). For remote layers the legend comes from the
+  service's own metadata; if we cannot find one, label it "relative / service colour scale". No invented
+  numbers on a legend.
 
 ---
 
@@ -194,10 +214,12 @@ Facts, not decisions. Each can invalidate downstream work; do them before buildi
 - Demo route renders with all shipped layers and visible provenance chips.
 - Route bends around a no-go zone and a long comms blackout; short dropouts are ignored.
 - Survival panel shows reserve-at-return and refuses an infeasible route.
-- **If P1 #7–8 shipped:** the comparison card shows Foot / Foot + rover / Rover (concept) for the demo
+- **If P1 #8–9 shipped:** the comparison card shows Foot / Foot + rover / Rover (concept) for the demo
   target; a route failing the reserve for *either* crew member is refused and names who; one of the 7 slides
   is that card. **If not:** the deck says profiles and crew are parameters of the router but not exposed,
   and claims nothing more.
+- **VR HUD:** the public link opens in the Quest 3 browser and enters VR; the same link on a laptop with no
+  headset shows the same scene with mouse-look; a Quest capture or screenshot is on a slide.
 - 7-slide deck (PDF, public link) matches the running app.
 - References list is complete; both submission checkboxes ticked; SI field honest.
 
@@ -218,27 +240,34 @@ A P2 that half-exists is worse than a P2 that doesn't, because it steals hours f
 | 4 | Route planner: A\* with **human suit-mobility** cost + slope hard mask | Route visibly bends around a no-go zone |
 | 5 | ETA + resource budget + 20% reserve check | Infeasible route is refused, not drawn |
 | 6 | Comms LOS layer + blackout term in routing | Long blackout is avoided; 3 m dropout is ignored |
+| 7 | **VR HUD (minimal)** — separate Three.js WebXR scene reading `route.json` | Public link enters VR in the Quest 3 browser and shows terrain patch, route, waypoints and floating O₂ / battery / ETA / blackout panels; the same link works on a laptop without a headset |
 
 **P0 architecture rule (no new P0 features):** write #4–#5 against a `MobilityProfile` argument and a
-`crew: Member[]` array from the first commit. P0 ships Foot × 2 hardcoded; P1 #7–8 are then config and UI,
+`crew: Member[]` array from the first commit. P0 ships Foot × 2 hardcoded; P1 #8–9 are then config and UI,
 not a refactor. Retrofitting this after P0 is how the rover answer gets cut.
+
+**P0 #7 is a parallel track, not a step after #6.** It needs the `route.json` contract, not the planner.
+Freeze the schema first (~30 min, §11), hand-write a fixture `route.json`, and build the scene against it;
+swap in the real export when #4–6 emit it. If one person is doing everything, #7 starts the moment #1–6
+pass and goes ahead of all P1. Minimum scope is ~4 h (§11); the 360° panorama is a stretch inside it.
 
 ### P1 — only after all P0 green
 
 | # | Feature | Cost | Note |
 |---|---|---|---|
-| 7 | **Mobility profile comparison** — Foot / Foot + rover cache / Rover (concept) for the selected target | 1.5 h | Same `planRoute()`, three parameter sets. Test: one target → three rows, rover row labelled "concept vehicle", infeasible rows kept with reason. Aim for the 17:00 submission. |
-| 8 | **Pair mode** — per-member budgets, shared `tool_kg`, science-stops count; partner shows live O₂/battery | 2 h | Replaces the old "simulated crew" row: the partner *is* the simulated crew. Test: make one member infeasible → route refused, member named. |
-| 9 | POV panorama viewer at waypoints | 2 h | Brief explicitly asks for this |
-| 10 | Atmosphere sol slider (live MSL/REMS) | 1 h | Measured, never "forecast" |
-| 11 | Local solar time + sol clock | 30 min | From longitude + mission sol |
-| 12 | HUD overlay (2D CSS, visor framing) | 1 h | Cheap version of the HUD ask |
-| 13 | Layer presets (Terrain / Thermal / Hazards) | 1 h | Replaces the three-mode idea |
-| 14 | **Real peer broadcasting** via public MQTT-over-WebSocket broker + `?room=` | 2–3 h | **First P1 item to drop.** If shipped, the partner in #8 can be a real second client. Random room UUID. Falls back to simulation. |
+| 8 | **Mobility profile comparison** — Foot / Foot + rover cache / Rover (concept) for the selected target | 1.5 h | Same `planRoute()`, three parameter sets. Test: one target → three rows, rover row labelled "concept vehicle", infeasible rows kept with reason. Aim for the 17:00 submission. |
+| 9 | **Pair mode** — per-member budgets, shared `tool_kg`, science-stops count; partner shows live O₂/battery | 2 h | Replaces the old "simulated crew" row: the partner *is* the simulated crew. Test: make one member infeasible → route refused, member named. |
+| 10 | **View selector** (Satellite / Terrain / Thermal / Hazard / Science) with a legend per layer | 1.5 h | See §4. Replaces the three-mode idea. Test: each view toggles the right layers, shows a legend, and "basemap off" isolates the layer. |
+| 11 | POV panorama viewer at waypoints | 2 h | Brief explicitly asks for this |
+| 12 | Atmosphere sol slider (live MSL/REMS) | 1 h | Measured, never "forecast" |
+| 13 | Local solar time + sol clock | 30 min | From longitude + mission sol |
+| 14 | **Real peer broadcasting** via public MQTT-over-WebSocket broker + `?room=` | 2–3 h | **First P1 item to drop.** If shipped, the partner in #9 can be a real second client. Random room UUID. Falls back to simulation. |
+
+*Dropped: the 2D CSS HUD overlay. The VR scene's laptop preview is the HUD, and DOM panels cannot be reused inside VR anyway.*
 
 ### P2 — pick **one**, Sunday morning, only if P1 green
 
-Thermal inertia proxy (20 min, cheapest) · precomputed terrain-classification raster ·
+Thermal inertia proxy (20 min, cheapest; gives the Thermal view a quantitative layer, not just grayscale imagery) · precomputed terrain-classification raster ·
 base-siting suitability score · area-of-interest search + save explored points ·
 ion 3D walk mode (needs a working token).
 
@@ -247,10 +276,7 @@ before it can be slotted anywhere.*
 
 ### P3 — stretch, or deck-only
 
-**VR HUD** (Three.js WebXR, separate scene, 4–6 h) · rover commanding mock.
-
-**VR gate:** starts only if P0 and P1 pass and ≥4 h remain. If it doesn't ship, one screenshot of it
-still earns the slide. Do not let it touch the Cesium app.
+Rover commanding mock. (VR HUD is no longer here: it is P0 #7.)
 
 ---
 
@@ -284,14 +310,24 @@ resolution you need*, you don't download the product.
 
 ---
 
-## 11. VR — what it actually is
+## 11. VR HUD — must ship
 
 CesiumJS has **no WebXR support** (roadmap, no timeline). So:
 
-- **VR HUD is a separate Three.js WebXR scene**, opened from a link, running in the **Quest 3 browser**
-  — not Quest Link, which adds a PC, a cable and a PCVR runtime for no benefit.
-- It consumes `route.json` exported by the planner: local terrain patch (a few hundred metres),
-  route polyline, waypoint markers, floating HUD panels (O₂, battery, ETA, blackout warning),
-  360° panorama at waypoints.
-- It is a **third renderer over the same data**, which is exactly what the `planRoute()` seam buys us.
-- P3, gated, and it never touches the Cesium app.
+- **Separate Three.js WebXR scene**, opened from a link in the **Quest 3 browser** — not Quest Link, which
+  adds a PC, a cable and a PCVR runtime for no benefit. Static page; same public-link rules as everything else.
+- **It must work without a headset.** Judges will open the link on a laptop. "Enter VR" appears only where
+  `immersive-vr` is supported; otherwise the same scene runs with mouse-look. That laptop view is also the HUD
+  demo for anyone without a Quest, which is why the 2D CSS HUD was dropped.
+- **Consumes `route.json`.** Minimum fields: `profile`, `crew[]` (reserve per member), `path[]` as
+  lon/lat/elevation, `waypoints[]`, `blackout[]` segments, `eta_s`, and a local `terrain` height grid (a few
+  hundred metres, cut from the DEM corridor). **Freeze this schema before anyone builds against it.**
+- **Ships with a committed demo `route.json`.** "Open in VR" in the planner hands over the live route through
+  same-origin storage and falls back to the committed one, so the VR scene never depends on a fetch at judge
+  time.
+- **Minimum scope (~4 h):** terrain patch, route line, waypoint markers, four floating panels (O₂, battery,
+  ETA, blackout warning). **Stretch inside it:** 360° panorama at waypoints.
+- **HUD panels are canvas textures on planes, not DOM.** DOM overlays do not carry into an immersive VR
+  session, so the CSS HUD could never have been reused.
+- **A third renderer over the same data**, which is what the `planRoute()` seam buys us. It never touches
+  the Cesium app; the only shared thing is `route.json`. Add Three.js to References.
