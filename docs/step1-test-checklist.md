@@ -13,9 +13,9 @@ planet to finish painting (max 10 s) before flying, and shows "Loading Mars tile
 
 ## How to run
 
-1. `cd D:\mars\web`
-2. If `node_modules\cesium` is missing or `package.json` has no `cesium`: `npm install cesium`
-3. Run `start-viewer.bat` (or `node serve.mjs`). It opens http://localhost:8080
+1. Windows: open the project folder. Linux: from the project root run `./start-viewer.sh` (first run installs npm dependencies).
+2. If Cesium is missing, run `npm install` in the `web` folder.
+3. Windows: run `start-viewer.bat`. Linux: run `./start-viewer.sh`. Both serve http://localhost:8080.
 4. Open the browser console (F12) and keep it visible while testing.
 
 ## Tests
@@ -23,21 +23,26 @@ planet to finish painting (max 10 s) before flying, and shows "Loading Mars tile
 | # | Do | Expect |
 |---|---|---|
 | 1 | Load the page | A reddish globe, not a blue Earth. No "Cesium did not load" message. |
-| 2 | Wait about 6 seconds | The camera flies on its own to Gale and ends looking straight down at about 20 km altitude. The readout shows lon ~137.4, lat ~-4.6. |
+| 2 | Wait for the initial flight | The camera selects the Gale boxwork target, highlights its marker, opens its info card, and ends looking straight down at about 18 km altitude. |
 | 3 | At Gale | Sharp high-resolution imagery (the Gale HiRISE mosaic) fills the view, no grey or empty squares inside it. |
 | 4 | Untick "Gale HiRISE mosaic" | Imagery drops to the coarser Viking colours. Tick it again and it returns. |
 | 5 | Tick "MOLA + HRSC colour relief", drag its opacity slider | A rainbow elevation layer fades in and out over the imagery. Repeat for "MOLA colour relief". |
-| 6 | Click "Whole planet", then "Gale crater" | Smooth flights, no tile errors in the console. |
-| 7 | Click "Jezero crater" | Only the global layers show (no Gale mosaic there). This is expected. |
+| 6 | Zoom and drag around Mars, then select a mission spot | Globe navigation remains available and selecting the spot flies to its marker. |
+| 7 | Inspect a spot outside Gale, such as Perseverance | Only the global layers show (no Gale mosaic there). This is expected. |
 | 8 | Zoom out and look at the whole planet | Slightly flattened sphere (poles ~20 km closer than the equator). You will not see it by eye; this checks nothing crashes. |
 | 9 | Look at the bottom of the window | Credits line shows the Viking and HiRISE source credits. Do not hide it. |
+| 10 | Select a mission spot from the list, then click its map marker | The camera zooms to it and an anchored stats card shows coordinates, MOLA elevation, distance from Gale, HiRISE coverage, and a source link. Marker labels appear only for the selected spot. |
+| 11 | Select the Gale boxwork target | The card identifies it as an approximate regional target rather than an exact rover position. |
+| 12 | Search for “Gale”, choose a category, and select a tag | The list and visible map markers filter together; the match count updates. |
+| 13 | Select a Gale boxwork panorama | A regular NASA/JPL boxwork close-up appears on the card with its own photo credit link; Sol, site, drive, heading, category, tags, panorama source, and placeholder street-view button are also shown. |
+| 14 | Search/filter for “Panorama” and select several adjacent Gale panorama markers | Eight Curiosity Navcam panoramas appear along one ~1.5 km traverse cluster (sites 115–119); each uses the nearby Sol 4636 boxwork close-up and has its own NASA panorama source link and VR placeholder button. |
 
 ## If something fails
 
 | Symptom | Likely cause | Try |
 |---|---|---|
 | "Cesium did not load" | `node_modules/cesium` missing | `npm install cesium` in `web/` |
-| Brown/empty globe for a long time | Opened the HTML without `serve.mjs`, so tiles come straight from slow Trek | Use `start-viewer.bat`. The proxy is used automatically; `?direct` forces direct Trek requests |
+| Brown/empty globe for a long time | Opened the HTML without `serve.mjs`, so tiles come straight from slow Trek | Use `start-viewer.bat` or `./start-viewer.sh`. The proxy is used automatically; `?direct` forces direct Trek requests |
 | Brown/empty globe, console shows 404 | A layer name or zoom limit is wrong | Copy the failing URL into the address bar and tell me which dataset it is |
 | Gale imagery blurry at 20 km | Tiles stop at zoom 16 (about 0.6 m/px) | Expected; see below |
 | Page works with `?proxy` but not without | Trek does not send CORS headers for that layer | Report it. It changes the hosting plan, because a static site cannot proxy |
