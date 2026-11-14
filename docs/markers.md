@@ -47,3 +47,11 @@ When adding a panorama spot, use a NASA waypoint for the same site/drive as its 
 - [NASA Curiosity studies nodules on boxwork formations (Sol 4636 MAHLI mosaic)](https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/)
 - [PDS Analyst's Notebook — MSL (Curiosity)](https://an.rsl.wustl.edu/msl) — source of the Target Summary science targets export (`data/raw/curiosity/MSL-Science-targets.csv`); see `docs/curiosity-data.md`
 - [MSL Rover PLACES bundle (PDS Imaging Node, JPL)](https://planetarydata.jpl.nasa.gov/img/data/msl/msl_places/) — source of `localized_pos.csv` v42.0 (mission traverse/localized rover positions); see `docs/curiosity-data.md`
+- [NASA NSSDC · Viking](https://nssdc.gsfc.nasa.gov/planetary/viking.html) — reference landing coordinates for the Viking 1/2 spots (planetocentric)
+- [MER mission overview (MER Analyst's Notebook help)](https://an.rsl.wustl.edu/help/Content/About%20the%20mission/MER/MER%20mission.htm) — Spirit / Opportunity landing-site coordinates (planetocentric)
+- [NASA Science · Mars Phoenix](https://science.nasa.gov/mission/mars-phoenix) — Phoenix landing site: Vastitas Borealis (68.219 N, 234.251 E)
+- [NASA Science · InSight](https://science.nasa.gov/mission/insight/) — InSight landing site: Elysium Planitia (4.502 N, 135.623 E)
+- [ESA · Schiaparelli crash site](https://www.esa.int/Science_Exploration/Human_and_Robotic_Exploration/Exploration/ExoMars/Schiaparelli_crash_site_in_colour) — Schiaparelli EDM crash coordinates (Meridiani Planum)
+- [HiRISE · ESP_039308_1915 (Beagle 2)](https://www.uahirise.org/ESP_039308_1915) — Beagle 2 lander identification and coordinates
+- [HiRISE · ESP_069665_2055 (Tianwen-1/Zhurong)](https://www.uahirise.org/ESP_069665_2055) — Zhurong rover/lander position
+- [NASA JPL · Mars 3 lander](https://www.jpl.nasa.gov/news/nasa-mars-orbiter-images-may-show-1971-soviet-lander) — Mars 3 soft landing: Ptolemaeus crater, Dec 1971
