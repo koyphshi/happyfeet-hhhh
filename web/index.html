@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mars · step 1 · globe with Gale imagery</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="./node_modules/cesium/Build/Cesium/Widgets/widgets.css" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    #cesiumContainer { position: absolute; inset: 0; }
+    #panel {
+      position: absolute; top: 12px; left: 12px; z-index: 5; width: 290px; max-height: calc(100% - 60px);
+      overflow: auto; padding: 10px 12px; background: rgba(15, 15, 15, 0.86); color: #eee;
+      border-radius: 8px; font: 13px/1.4 system-ui, sans-serif;
+    }
+    #panel h1 { font-size: 14px; margin: 0 0 8px; }
+    .layer { margin: 0 0 9px; padding-bottom: 8px; border-bottom: 1px solid #333; }
+    .layer label { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+    .layer input[type=range] { width: 100%; margin: 4px 0 0; }
+    .layer .note { color: #aaa; font-size: 11.5px; margin-top: 2px; }
+    .sub { margin: 6px 0 3px; color: #bbb; }
+    #places button { margin: 2px 4px 2px 0; padding: 3px 8px; cursor: pointer; }
+    #readout { margin-top: 8px; color: #9fd3ff; font: 12px ui-monospace, Consolas, monospace; }
+    #status { margin-top: 6px; color: #f0b27a; min-height: 1.4em; font-size: 12px; }
+    .hint { color: #888; font-size: 11.5px; margin-top: 6px; }
+    #view button, #cache button { margin: 2px 4px 2px 0; padding: 3px 8px; cursor: pointer; }
+    #view button.on { background: #2f6fb3; color: #fff; border-color: #2f6fb3; }
+    #tiltRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    #tiltRow input { flex: 1; }
+    #readout, #scale .dist { white-space: pre; }
+    #cacheInfo { color: #aaa; font-size: 11.5px; }
+    /* scale bar, bottom right, above the credits */
+    #scale {
+      position: absolute; right: 16px; bottom: 34px; z-index: 5; padding: 5px 8px 4px;
+      background: rgba(15, 15, 15, 0.78); color: #eee; border-radius: 6px;
+      font: 12px ui-monospace, Consolas, monospace; text-align: center; pointer-events: none;
+    }
+    #scaleBar { height: 6px; margin: 3px auto 0; border: 2px solid #eee; border-top: none; }
+    #scale .dist { color: #9fd3ff; margin-top: 4px; font-size: 11.5px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <div id="panel">
+    <h1>Mars · Gale crater</h1>
+    <div id="layers"></div>
+    <div class="sub">Fly to</div>
+    <div id="places"></div>
+    <div class="sub">View</div>
+    <div id="view">
+      <button id="btnTop" class="on">Top-down</button>
+      <button id="btnTilt">Tilted 60°</button>
+      <div id="tiltRow">
+        <span>Tilt</span><input id="tilt" type="range" min="0" max="60" step="1" value="0" />
+        <span id="tiltVal">0°</span>
+      </div>
+    </div>
+    <div id="readout"></div>
+    <div id="status"></div>
+    <div class="sub">Tile cache</div>
+    <div id="cache"><span id="cacheInfo">…</span> <button id="btnClear">Clear</button></div>
+    <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 60°) · touch: two-finger drag up/down to tilt</div>
+  </div>
+  <div id="scale">
+    <div id="scaleLabel">–</div>
+    <div id="scaleBar" style="width:100px"></div>
+    <div class="dist" id="scaleDist"></div>
+  </div>
+
+  <!-- CESIUM_BASE_URL must be set before Cesium.js loads: it tells Cesium where its workers live. -->
+  <script>window.CESIUM_BASE_URL = "./node_modules/cesium/Build/Cesium/";</script>
+  <script src="./node_modules/cesium/Build/Cesium/Cesium.js"></script>
+  <script>
+  (async function () {
+    const statusEl = document.getElementById("status");
+    // Double-clicking index.html opens it as file://, where Chrome blocks Cesium's web workers
+    // and data files. Nothing can render that way, so say so instead of showing a broken globe.
+    if (location.protocol === "file:") {
+      statusEl.style.color = "#ff8a80";
+      statusEl.style.fontSize = "13px";
+      statusEl.innerHTML =
+        "<b>This page can't run as a file.</b><br>Close this tab and double-click " +
+        "<code>start-viewer.bat</code> in D:\\mars (or run <code>node serve.mjs</code> in " +
+        "the web folder). It opens <code>http://localhost:8080</code> for you.";
+      return;
+    }
+    if (typeof Cesium === "undefined") {
+      statusEl.textContent =
+        "Cesium did not load. In the web folder run:  npm install cesium  and reload.";
+      return;
+    }
+
+    // ---------------------------------------------------------------- tile source
+    // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
+    // (start-viewer.bat) we go through its /trek proxy, which caches tiles on disk.
+    // ?direct forces direct Trek requests; any other static server falls back to direct too.
+    // Browser-side tile cache (tile-sw.js): survives browser restarts and works in ?direct mode.
+    // Wait (briefly) until it controls the page, otherwise the first tiles would bypass it.
+    const SW_OK = "serviceWorker" in navigator && window.isSecureContext;
+    if (SW_OK) {
+      try {
+        await navigator.serviceWorker.register("./tile-sw.js");
+        if (!navigator.serviceWorker.controller) {
+          await Promise.race([
+            new Promise((r) => navigator.serviceWorker.addEventListener("controllerchange", r, { once: true })),
+            new Promise((r) => setTimeout(r, 2000)),
+          ]);
+        }
+      } catch (err) {
+        console.warn("Tile cache service worker not available:", err);
+      }
+    }
+
+    const USE_PROXY = !new URLSearchParams(location.search).has("direct") &&
+      (await fetch("./__proxy", { cache: "no-store" }).then((r) => r.ok).catch(() => false));
+    const TILE_BASE = USE_PROXY ? "/trek" : "https://trek.nasa.gov/tiles";
+
+    // ---------------------------------------------------------------- Mars, not Earth
+    const MARS = Cesium.Ellipsoid.MARS;       // IAU 2000: 3396190 / 3396190 / 3376200 m
+    Cesium.Ellipsoid.default = MARS;          // before anything else is created
+
+    // Trek's tile grid: 256 px tiles, 2 x 1 tiles at level 0, row 0 at the north.
+    const marsTiling = () =>
+      new Cesium.GeographicTilingScheme({
+        ellipsoid: MARS,
+        numberOfLevelZeroTilesX: 2,
+        numberOfLevelZeroTilesY: 1,
+      });
+
+    // ---------------------------------------------------------------- layers
+    // maxLevel values were checked against Trek on 2026-11-14 (the next level returns 404).
+    // Gale only has tiles inside its bounding box, so the layer is limited to it.
+    const LAYERS = [
+      {
+        name: "Viking colour mosaic",
+        dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m", ext: "jpg", maxLevel: 7,
+        bounds: null, show: true, alpha: 1,
+        note: "Global · 232 m/px · Viking Orbiter",
+        credit: "Viking MDIM 2.1 colorized mosaic: NASA/JPL/USGS, via NASA Trek",
+      },
+      {
+        name: "MOLA + HRSC colour relief",
+        dataset: "Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw", ext: "jpg", maxLevel: 8,
+        bounds: null, show: false, alpha: 0.7,
+        note: "Global · 200 m/px · Mars Global Surveyor MOLA + Mars Express HRSC",
+        credit: "MOLA/HRSC blended elevation: NASA, DLR, USGS, via NASA Trek",
+      },
+      {
+        name: "MOLA colour relief",
+        dataset: "Mars_MGS_MOLA_ClrShade_merge_global_463m", ext: "jpg", maxLevel: 7,
+        bounds: null, show: false, alpha: 0.7,
+        note: "Global · 463 m/px · Mars Global Surveyor MOLA",
+        credit: "MOLA colorized shaded relief: NASA/GSFC, via NASA Trek",
+      },
+      {
+        name: "Gale HiRISE mosaic",
+        dataset: "curiosity_hirise_mosaic", ext: "png", maxLevel: 16,
+        bounds: [137.1224669, -4.9254743, 137.7298129, -4.2489588], show: true, alpha: 1,
+        // Below level 8 a single tile covers far more than Gale, and Cesium would stretch it
+        // into a grey smear over the Viking colours. Start at 8 (~4 tiles over the box).
+        minLevel: 8,
+        note: "Gale only (about 36 × 40 km) · ~0.6 m/px at the deepest tile level · Mars Reconnaissance Orbiter HiRISE",
+        credit: "HiRISE mosaic of Gale: NASA/JPL/University of Arizona/USGS, via NASA Trek",
+      },
+    ];
+
+    function makeProvider(l) {
+      const rect = l.bounds
+        ? Cesium.Rectangle.fromDegrees(...l.bounds)
+        : Cesium.Rectangle.fromDegrees(-180, -90, 180, 90);
+      return new Cesium.UrlTemplateImageryProvider({
+        url: `${TILE_BASE}/Mars/EQ/${l.dataset}/1.0.0/default/default028mm/{z}/{y}/{x}.${l.ext}`,
+        tilingScheme: marsTiling(),
+        rectangle: rect,
+        minimumLevel: l.minLevel ?? 0,
+        maximumLevel: l.maxLevel,
+        tileWidth: 256,
+        tileHeight: 256,
+        credit: l.credit,
+      });
+    }
+
+    // ---------------------------------------------------------------- viewer
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      globe: new Cesium.Globe(MARS),
+      mapProjection: new Cesium.GeographicProjection(MARS),
+      baseLayer: false,         // no Earth imagery
+      baseLayerPicker: false,
+      geocoder: false,          // Earth place names
+      homeButton: false,
+      sceneModePicker: false,
+      navigationHelpButton: false,
+      fullscreenButton: false,
+      timeline: false,
+      animation: false,
+      infoBox: false,
+      selectionIndicator: false,
+      skyAtmosphere: false,     // the blue haze is Earth's
+    });
+    // Cesium only creates the Moon/Sun for an Earth globe, so these can be undefined here.
+    if (viewer.scene.moon) viewer.scene.moon.show = false;
+    if (viewer.scene.sun) viewer.scene.sun.show = false;   // sun position is Earth's, not Mars's
+    const globe = viewer.scene.globe;
+    globe.showGroundAtmosphere = false;
+    globe.enableLighting = false;
+    globe.baseColor = Cesium.Color.fromCssColorString("#5b3a29");
+    viewer.scene.screenSpaceCameraController.minimumZoomDistance = 50;
+    // Keep more decoded tiles in memory (default 100) so panning back and forth doesn't refetch.
+    globe.tileCacheSize = 1000;
+
+    // ---------------------------------------------------------------- add layers + panel rows
+    let failed = 0;
+    const layersEl = document.getElementById("layers");
+    for (const l of LAYERS) {
+      const provider = makeProvider(l);
+      provider.errorEvent.addEventListener((err) => {
+        failed += 1;
+        console.warn(`Tile failed [${l.dataset}]:`, err && err.message);
+        statusEl.textContent =
+          `${failed} tile request(s) failed. Open the Console (F12). ` +
+          (USE_PROXY ? "NASA Trek may be slow or down; reload to retry."
+                     : "Start the page with start-viewer.bat so tiles go through the caching proxy.");
+      });
+      const layer = viewer.imageryLayers.addImageryProvider(provider);
+      layer.show = l.show;
+      layer.alpha = l.alpha;
+
+      const row = document.createElement("div");
+      row.className = "layer";
+      const label = document.createElement("label");
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = l.show;
+      box.addEventListener("change", () => { layer.show = box.checked; });
+      label.append(box, document.createTextNode(l.name));
+      const slider = document.createElement("input");
+      slider.type = "range"; slider.min = "0"; slider.max = "1"; slider.step = "0.05"; slider.value = String(l.alpha);
+      slider.title = "Opacity";
+      slider.addEventListener("input", () => { layer.alpha = Number(slider.value); });
+      const note = document.createElement("div");
+      note.className = "note";
+      note.textContent = l.note;
+      row.append(label, slider, note);
+      layersEl.append(row);
+    }
+
+    // ---------------------------------------------------------------- camera
+    const GALE = { lon: 137.44, lat: -4.59 };   // Bradbury Landing area, inside the HiRISE mosaic
+    const HOME = Cesium.Cartesian3.fromDegrees(-60, 10, 14_000_000, MARS);
+    viewer.camera.setView({ destination: HOME });
+
+    // Tilt = angle away from looking straight down (0° = top-down, MAX_TILT = most oblique allowed).
+    // Note: there is no 3D terrain yet, so a tilted view shows the flat imagery in perspective.
+    const MAX_TILT = 60;
+    let tiltDeg = 0;
+    const currentTilt = () => 90 + Cesium.Math.toDegrees(viewer.camera.pitch);
+    const pitchFor = (deg) => Cesium.Math.toRadians(-90 + deg);
+
+    // Look at (lon, lat) on the surface from `range` metres away at the current tilt.
+    function fly(lon, lat, range, seconds) {
+      const target = Cesium.Cartesian3.fromDegrees(lon, lat, 0, MARS);
+      viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(target, 0), {
+        offset: new Cesium.HeadingPitchRange(0, pitchFor(tiltDeg), range),
+        duration: seconds ?? 3,
+      });
+    }
+
+    // Surface point at a screen position, or undefined if that pixel shows sky.
+    function surfaceAt(x, y) {
+      return viewer.camera.pickEllipsoid(new Cesium.Cartesian2(x, y), MARS);
+    }
+    function viewCentre() {
+      const c = viewer.scene.canvas;
+      return surfaceAt(c.clientWidth / 2, c.clientHeight / 2) ??
+        MARS.scaleToGeodeticSurface(viewer.camera.positionWC);   // fallback: point under camera
+    }
+
+    const tiltSlider = document.getElementById("tilt");
+    const tiltVal = document.getElementById("tiltVal");
+    const btnTop = document.getElementById("btnTop");
+    const btnTilt = document.getElementById("btnTilt");
+    function showTilt(deg) {
+      tiltSlider.value = String(deg);
+      tiltVal.textContent = `${deg}°`;
+      btnTop.classList.toggle("on", deg === 0);
+      btnTilt.classList.toggle("on", deg === 60);
+    }
+    // Re-aim the camera around the point in the middle of the screen, keeping the distance.
+    function setTilt(deg, seconds) {
+      tiltDeg = deg;
+      showTilt(deg);
+      const target = viewCentre();
+      const range = Cesium.Cartesian3.distance(viewer.camera.positionWC, target);
+      viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(target, 0), {
+        offset: new Cesium.HeadingPitchRange(viewer.camera.heading, pitchFor(deg), range),
+        duration: seconds ?? 1,
+      });
+    }
+    btnTop.addEventListener("click", () => setTilt(0));
+    btnTilt.addEventListener("click", () => setTilt(60));
+    tiltSlider.addEventListener("input", () => { tiltVal.textContent = `${tiltSlider.value}°`; });
+    tiltSlider.addEventListener("change", () => setTilt(Number(tiltSlider.value), 0.6));
+
+    const PLACES = [
+      { name: "Gale landing area", go: () => fly(GALE.lon, GALE.lat, 20_000) },
+      { name: "Gale crater", go: () => fly(137.8, -5.4, 400_000) },
+      { name: "Jezero crater", go: () => fly(77.6, 18.4, 250_000) },
+      { name: "Olympus Mons", go: () => fly(-133.8, 18.65, 1_300_000) },
+      { name: "Valles Marineris", go: () => fly(-59.0, -14.0, 3_500_000) },
+      { name: "Whole planet", go: () => fly(-60, 10, 14_000_000, 2) },
+    ];
+    const placesEl = document.getElementById("places");
+    for (const p of PLACES) {
+      const b = document.createElement("button");
+      b.textContent = p.name;
+      b.addEventListener("click", p.go);
+      placesEl.append(b);
+    }
+
+    // ---------------------------------------------------------------- distances
+    const fmtDist = (m) =>
+      m >= 100_000 ? `${Math.round(m / 1000).toLocaleString()} km`
+      : m >= 1000 ? `${(m / 1000).toFixed(m >= 10_000 ? 0 : 1)} km`
+      : `${Math.round(m)} m`;
+    // Distance along Mars's surface (not straight through it) between two surface points.
+    const geodesic = new Cesium.EllipsoidGeodesic(undefined, undefined, MARS);
+    function surfaceDistance(a, b) {
+      geodesic.setEndPoints(MARS.cartesianToCartographic(a), MARS.cartesianToCartographic(b));
+      return geodesic.surfaceDistance;
+    }
+
+    const readout = document.getElementById("readout");
+    const scaleLabel = document.getElementById("scaleLabel");
+    const scaleBar = document.getElementById("scaleBar");
+    const scaleDist = document.getElementById("scaleDist");
+    const MAX_BAR_PX = 140;
+
+    function updateMetrics() {
+      const cam = viewer.camera;
+      const c = cam.positionCartographic;
+      const tiltNow = Math.round(90 + Cesium.Math.toDegrees(cam.pitch));
+      readout.textContent =
+        `lon ${Cesium.Math.toDegrees(c.longitude).toFixed(3)}  lat ${Cesium.Math.toDegrees(c.latitude).toFixed(3)}\n` +
+        `altitude ${fmtDist(c.height)}  tilt ${tiltNow}°`;
+
+      // Scale bar: measure 1 pixel near the bottom-middle of the screen (closest ground when
+      // tilted), then round the bar to a 1/2/5 x 10^n length.
+      const canvas = viewer.scene.canvas;
+      const x = canvas.clientWidth / 2, y = canvas.clientHeight - 60;
+      const p1 = surfaceAt(x, y), p2 = surfaceAt(x + 1, y);
+      if (p1 && p2) {
+        const perPx = surfaceDistance(p1, p2);
+        const raw = perPx * MAX_BAR_PX;
+        const pow = 10 ** Math.floor(Math.log10(raw));
+        const nice = [5, 2, 1].map((k) => k * pow).find((v) => v <= raw);
+        scaleBar.style.width = `${Math.max(1, nice / perPx)}px`;
+        scaleLabel.textContent = fmtDist(nice);
+      } else {
+        scaleBar.style.width = "0px";
+        scaleLabel.textContent = "–";
+      }
+
+      // How far away is what you're looking at: camera -> centre of screen (straight line),
+      // and how wide the view is across the middle of the screen (along the surface).
+      const centre = surfaceAt(canvas.clientWidth / 2, canvas.clientHeight / 2);
+      const left = surfaceAt(0, canvas.clientHeight / 2);
+      const right = surfaceAt(canvas.clientWidth - 1, canvas.clientHeight / 2);
+      scaleDist.textContent =
+        (centre ? `to centre ${fmtDist(Cesium.Cartesian3.distance(cam.positionWC, centre))}` : "to centre –") +
+        (left && right ? `\nview width ${fmtDist(surfaceDistance(left, right))}` : "");
+    }
+    viewer.camera.percentageChanged = 0.001;
+    viewer.camera.changed.addEventListener(updateMetrics);
+    viewer.camera.moveEnd.addEventListener(updateMetrics);
+    // keep the slider in sync after the user tilts by hand
+    viewer.camera.moveEnd.addEventListener(() => {
+      tiltDeg = Math.min(MAX_TILT, Math.max(0, Math.round(currentTilt())));
+      showTilt(tiltDeg);
+    });
+
+    // ---------------------------------------------------------------- hand tilt
+    // Mouse: hold BOTH left and right buttons and drag up/down. Cesium has no two-button chord,
+    // so while both are down we switch Cesium's own mouse handling off and tilt ourselves.
+    // Touch: Cesium's two-finger gesture already tilts (drag both fingers up/down); the clamp
+    // below keeps it, and every other way of tilting, at MAX_TILT or less.
+    const ssc = viewer.scene.screenSpaceCameraController;
+    const canvasEl = viewer.scene.canvas;
+    let chord = null; // { y, tilt } while both buttons are held
+
+    // Rotate the camera around the point in the middle of the screen to `deg`, instantly.
+    function tiltNow(deg) {
+      const target = viewCentre();
+      const range = Cesium.Cartesian3.distance(viewer.camera.positionWC, target);
+      viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(viewer.camera.heading, pitchFor(deg), range));
+      viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY); // release so normal controls work again
+    }
+
+    // Pressing a second button while the first is held fires pointermove (not pointerdown),
+    // so the chord can start from either event.
+    function maybeStartChord(e) {
+      if (chord || e.pointerType !== "mouse" || (e.buttons & 3) !== 3) return false;
+      chord = { y: e.clientY, tilt: currentTilt() };
+      ssc.enableInputs = false;
+      try { canvasEl.setPointerCapture(e.pointerId); } catch {}
+      return true;
+    }
+    canvasEl.addEventListener("pointerdown", maybeStartChord);
+    canvasEl.addEventListener("pointermove", (e) => {
+      if (maybeStartChord(e) || !chord) return;
+      if ((e.buttons & 3) !== 3) return endChord();
+      // drag up = tilt toward the horizon, 0.3° per pixel
+      const deg = Math.min(MAX_TILT, Math.max(0, chord.tilt + (chord.y - e.clientY) * 0.3));
+      tiltNow(deg);
+      tiltDeg = Math.round(deg);
+      showTilt(tiltDeg);
+    });
+    function endChord() {
+      if (!chord) return;
+      chord = null;
+      ssc.enableInputs = true;
+    }
+    canvasEl.addEventListener("pointerup", (e) => { if ((e.buttons & 3) !== 3) endChord(); });
+    canvasEl.addEventListener("pointercancel", endChord);
+    canvasEl.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    // Hard limit: whatever tilted the camera (touch, Ctrl+drag, middle-drag), pull it back to MAX_TILT.
+    viewer.scene.preRender.addEventListener(() => {
+      if (currentTilt() > MAX_TILT + 0.5) tiltNow(MAX_TILT);
+    });
+    window.addEventListener("resize", updateMetrics);
+    updateMetrics();
+
+    // ---------------------------------------------------------------- cache info
+    const cacheInfo = document.getElementById("cacheInfo");
+    async function updateCacheInfo() {
+      if (!SW_OK || !window.caches) { cacheInfo.textContent = "browser cache off (needs http://localhost)"; return; }
+      try {
+        const n = (await (await caches.open("mars-tiles-v1")).keys()).length;
+        const est = navigator.storage?.estimate ? await navigator.storage.estimate() : null;
+        cacheInfo.textContent = `${n.toLocaleString()} tiles` +
+          (est ? ` · ${(est.usage / 1e6).toFixed(1)} MB` : "") + (USE_PROXY ? " · + disk cache" : "");
+      } catch { cacheInfo.textContent = "unavailable"; }
+    }
+    document.getElementById("btnClear").addEventListener("click", async () => {
+      await caches.delete("mars-tiles-v1").catch(() => {});
+      updateCacheInfo();
+    });
+    setInterval(updateCacheInfo, 5000);
+    updateCacheInfo();
+
+    // Tile loading progress, because Trek can take several seconds per tile.
+    globe.tileLoadProgressEvent.addEventListener((queued) => {
+      if (failed) return;
+      statusEl.textContent = queued > 0
+        ? `Loading Mars tiles… ${queued} left${USE_PROXY ? "" : " (direct from NASA Trek, slow)"}`
+        : "";
+    });
+
+    // Acceptance test for step 1: the page flies to Gale on its own, but only once the whole
+    // planet has painted (or after 10 s). Flying earlier cancels the global tiles and leaves a
+    // bare brown ball.
+    let flown = false;
+    const goGale = () => { if (!flown) { flown = true; fly(GALE.lon, GALE.lat, 20_000, 5); } };
+    const onLoaded = (queued) => {
+      if (queued === 0 && globe.tilesLoaded) {
+        globe.tileLoadProgressEvent.removeEventListener(onLoaded);
+        setTimeout(goGale, 1500);
+      }
+    };
+    globe.tileLoadProgressEvent.addEventListener(onLoaded);
+    setTimeout(goGale, 10_000);
+  })();
+  </script>
+</body>
+</html>
