@@ -23,7 +23,7 @@ planet to finish painting (max 10 s) before flying, and shows "Loading Mars tile
 | # | Do | Expect |
 |---|---|---|
 | 1 | Load the page | A reddish globe, not a blue Earth. No "Cesium did not load" message. |
-| 2 | Wait for the initial flight | The camera selects the Gale boxwork target, highlights its marker, opens its info card, and ends looking straight down at about 18 km altitude. |
+| 2 | Wait for the initial flight | The camera arrives at a regional view of Gale, away from individual POI pins. No spot is selected, no marker label is activated, and no info card opens. |
 | 3 | At Gale | Sharp high-resolution imagery (the Gale HiRISE mosaic) fills the view, no grey or empty squares inside it. |
 | 4 | Untick "Gale HiRISE mosaic" | Imagery drops to the coarser Viking colours. Tick it again and it returns. |
 | 5 | Tick "MOLA + HRSC colour relief", drag its opacity slider | A rainbow elevation layer fades in and out over the imagery. Repeat for "MOLA colour relief". |
