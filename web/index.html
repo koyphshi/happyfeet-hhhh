@@ -27,6 +27,9 @@
     #spotControls { display: flex; align-items: center; justify-content: space-between; }
     #spotToggle { padding: 2px 7px; font-size: 11px; cursor: pointer; background: #242424; color: #ccc; border: 1px solid #444; border-radius: 4px; }
     #spotToggle.on { color: #ffe0a0; border-color: #8c6b2e; }
+    #roadControls { margin: 0 0 8px; }
+    #roadToggle { padding: 2px 7px; font-size: 11px; cursor: pointer; background: #242424; color: #ccc; border: 1px solid #444; border-radius: 4px; }
+    #roadToggle.on { color: #ffe0a0; border-color: #8c6b2e; }
     #spotFilters { display: grid; gap: 5px; margin: 3px 0 6px; }
     #spotSearch, #spotCategory { min-width: 0; padding: 4px 6px; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px; font: 12px system-ui, sans-serif; }
     #spotTagFilters, #spotTags { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -170,6 +173,7 @@
     <div id="layers"></div>
     <div class="hint" style="margin:0 0 8px">Click the map to read every layer's pixel at that spot.</div>
     <div id="spotControls"><div class="sub">Mission spots</div><button id="spotToggle" type="button" aria-pressed="true">Markers on</button></div>
+    <div id="roadControls"><div class="sub">Curiosity traverse · PLACES</div><button id="roadToggle" type="button" aria-pressed="false">Rover road off</button></div>
     <div id="spotFilters">
       <input id="spotSearch" type="search" placeholder="Search spots, missions, tags…" aria-label="Search mission spots" />
       <select id="spotCategory" aria-label="Filter spots by category"><option value="">All categories</option></select>
@@ -955,6 +959,56 @@
     applySpotFilters();
     spotToggle.addEventListener("click", () => setSpotsVisible(!spotsVisible));
     setSpotsVisible(true);
+
+    // Rover road: Curiosity's localized traverse (PLACES data, see docs/curiosity-data.md).
+    // Loaded lazily on first toggle-on; stays hidden until the user asks for it.
+    const roadToggle = document.getElementById("roadToggle");
+    let traverseEntity = null;
+    let traverseLoading = null;
+    async function loadTraverse() {
+      const r = await fetch("./public/data/curiosity/curiosity_traverse.geojson");
+      if (!r.ok) throw new Error(`traverse fetch failed (${r.status})`);
+      const gj = await r.json();
+      const line = gj.features.find((f) => f.geometry?.type === "LineString");
+      if (!line || line.geometry.coordinates.length < 2) throw new Error("traverse LineString missing");
+      const flat = line.geometry.coordinates.flatMap(([lon, lat]) => [lon, lat]);
+      traverseEntity = viewer.entities.add({
+        id: "curiosity-traverse",
+        name: "Curiosity localized traverse (PLACES)",
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArray(flat),
+          width: 4,
+          material: Cesium.Color.fromCssColorString("#ffd54f"),
+          clampToGround: true,
+          arcType: Cesium.ArcType.GEODESIC,
+        },
+      });
+    }
+    async function setTraverseVisible(show) {
+      roadToggle.setAttribute("aria-pressed", String(show));
+      roadToggle.classList.toggle("on", show);
+      if (!show) {
+        if (traverseEntity) traverseEntity.show = false;
+        roadToggle.textContent = "Rover road off";
+        return;
+      }
+      try {
+        if (!traverseEntity) {
+          roadToggle.textContent = "Rover road: loading…";
+          traverseLoading = traverseLoading ?? loadTraverse();
+          await traverseLoading;
+        }
+        traverseEntity.show = true;
+        roadToggle.textContent = "Rover road on";
+      } catch (err) {
+        console.error("Rover road failed to load", err);
+        roadToggle.textContent = "Rover road: failed to load";
+        roadToggle.classList.remove("on");
+        roadToggle.setAttribute("aria-pressed", "false");
+      }
+    }
+    roadToggle.addEventListener("click", () =>
+      setTraverseVisible(!(traverseEntity && traverseEntity.show)));
     spotVrButton.addEventListener("click", () => {
       statusEl.textContent = "Street-view mode is planned for this spot but is not available yet.";
     });
