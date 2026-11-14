@@ -376,7 +376,7 @@ async function loadTerrain() {
   console.log("MOLA terrain ready (finer detail is fetched as you zoom in).");
 }
 
-// /terrain/{z}/{x}/{y}  ->  65x65 little-endian float32 heights, row 0 = north edge.
+// /terrain/{z}/{x}/{y}  ->  65x65 little-endian float32 heights, row 0 = north edge (67x67 with ?b=1).
 // Same tiling as the imagery: geographic, 2 x 1 tiles at level 0.
 // 202 = this tile's data is being fetched, ask again shortly.
 function serveTerrain(url, res) {
@@ -413,18 +413,23 @@ function serveTerrain(url, res) {
   const dLon = 360 / nx, dLat = 180 / ny;
   const west = -180 + x * dLon, north = 90 - y * dLat;
 
+  // ?b=1 adds a one-sample border on every side ((TILE_N + 2)^2 heights), so the page can
+  // compute surface normals at tile edges that match the neighbouring tile's.
+  const border = url.searchParams.get("b") === "1" ? 1 : 0;
+  const n = TILE_N + 2 * border, step = dLat / (TILE_N - 1);
+
   const dem = demFor(z);
-  const missing = dem.missing(...dem.rows(north, north - dLat));
+  const missing = dem.missing(...dem.rows(north + border * step, north - dLat - border * step));
   if (missing.length) {
     for (const i of missing) dem.ensureChunk(i).catch(() => {});
     res.writeHead(202, { "Content-Type": "text/plain", "Cache-Control": "no-store", "Retry-After": "1" });
     return res.end(`fetching ${missing.length} chunk(s)`);
   }
 
-  const out = new Float32Array(TILE_N * TILE_N);
-  for (let r = 0; r < TILE_N; r++) {
-    const lat = north - (r / (TILE_N - 1)) * dLat;
-    for (let c = 0; c < TILE_N; c++) out[r * TILE_N + c] = dem.height(lat, west + (c / (TILE_N - 1)) * dLon);
+  const out = new Float32Array(n * n);
+  for (let r = 0; r < n; r++) {
+    const lat = Math.max(-90, Math.min(90, north - ((r - border) / (TILE_N - 1)) * dLat));
+    for (let c = 0; c < n; c++) out[r * n + c] = dem.height(lat, west + ((c - border) / (TILE_N - 1)) * dLon);
   }
   res.writeHead(200, {
     "Content-Type": "application/octet-stream",

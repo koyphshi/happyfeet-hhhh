@@ -114,6 +114,29 @@
       vertical-align: -1px;
     }
     #probe .lvl { color: #777; font-size: 10.5px; margin-left: 4px; }
+    #probe .row.sect { margin-top: 4px; padding-top: 4px; border-top: 1px solid #333; }
+    #sunRow, #shadeRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    #shadeMode {
+      flex: 1; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px;
+      font: 12.5px system-ui, sans-serif; padding: 3px 5px;
+    }
+    #shadeRow input[type=range] { flex: 1; }
+    #shadeNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
+    /* Mars clock, top right: local solar time at the view centre */
+    #clock {
+      position: absolute; top: 12px; right: 12px; z-index: 5; padding: 7px 12px 8px;
+      background: rgba(15, 15, 15, 0.82); color: #eee; border-radius: 8px; text-align: right;
+      font: 12px/1.35 ui-monospace, Consolas, monospace; pointer-events: none; min-width: 170px;
+    }
+    #clockTime { font-size: 26px; line-height: 1.1; color: #ffd27f; letter-spacing: 0.02em; }
+    #clockSub { color: #bbb; font-size: 11px; }
+    #clockWhere { color: #9fd3ff; margin-top: 3px; }
+    #clockSun { color: #ccc; }
+    @media (max-width: 640px) {
+      #clock { top: auto; bottom: 90px; right: 8px; min-width: 0; }
+      #clockTime { font-size: 20px; }
+    }
+    #marsTime { margin-top: 4px; color: #ffd27f; font: 12px ui-monospace, Consolas, monospace; white-space: pre; }
     #marker {
       position: absolute; z-index: 6; width: 10px; height: 10px; margin: -6px 0 0 -6px;
       border: 2px solid #ffd54f; border-radius: 50%; pointer-events: none;
@@ -154,12 +177,34 @@
       </div>
       <div id="terrainNote" class="note"></div>
     </div>
+    <div class="sub">Sun &amp; Mars time</div>
+    <div id="sunRow">
+      <span>Shading</span>
+      <select id="shadeMode" title="How the terrain is lit">
+        <option value="sun">Real sun (day / night)</option>
+        <option value="hill">Hillshade (light from NW)</option>
+        <option value="off">Off (flat imagery)</option>
+      </select>
+    </div>
+    <div id="shadeRow">
+      <span>Strength</span>
+      <input id="shadeStrength" type="range" min="0.1" max="1" step="0.05" value="0.7" title="How dark shadows and the night side get" />
+      <span id="shadeVal">70%</span>
+    </div>
+    <div id="shadeNote"></div>
+    <div id="marsTime"></div>
     <div id="readout"></div>
     <div id="ground"></div>
     <div id="status"></div>
     <div class="sub">Tile cache</div>
     <div id="cache"><span id="cacheInfo">…</span> <button id="btnClear">Clear</button></div>
     <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 60°) · touch: two-finger drag up/down to tilt</div>
+  </div>
+  <div id="clock">
+    <div id="clockTime">--:--:--</div>
+    <div id="clockSub">local solar time</div>
+    <div id="clockWhere"></div>
+    <div id="clockSun"></div>
   </div>
   <div id="marker" hidden></div>
   <div id="probe" hidden></div>
@@ -298,10 +343,13 @@
       infoBox: false,
       selectionIndicator: false,
       skyAtmosphere: false,     // the blue haze is Earth's
+      // Cesium only builds its star skybox for an Earth ellipsoid, so ask for it explicitly.
+      // It is the Tycho-2 star catalogue: real stars, though oriented to Earth's axis, not Mars's.
+      skyBox: Cesium.SkyBox.createEarthSkyBox(),
     });
     // Cesium only creates the Moon/Sun for an Earth globe, so these can be undefined here.
     if (viewer.scene.moon) viewer.scene.moon.show = false;
-    if (viewer.scene.sun) viewer.scene.sun.show = false;   // sun position is Earth's, not Mars's
+    if (viewer.scene.sun) viewer.scene.sun.show = false;   // Cesium's sun is placed for Earth; Mars's own is drawn below
     const globe = viewer.scene.globe;
     globe.showGroundAtmosphere = false;
     globe.enableLighting = false;
@@ -332,7 +380,7 @@
       }
       terrainTiles.set(key, { loading: true });
       const retry = (ms) => terrainTiles.set(key, { retryAt: performance.now() + ms, at: performance.now() });
-      fetch(`/terrain/${key}?v=2`)
+      fetch(`/terrain/${key}?v=3&b=1`)
         .then(async (r) => {
           if (r.status === 200) terrainTiles.set(key, { data: new Float32Array(await r.arrayBuffer()), at: performance.now() });
           else retry(r.status === 202 ? 1000 : 5000); // 202 = server is fetching this area
@@ -340,19 +388,141 @@
         .catch(() => retry(5000));
       return undefined;
     }
-    const molaTerrain = new Cesium.CustomHeightmapTerrainProvider({
+    // Tiles are built as quantized meshes with per-vertex surface normals, so the globe can
+    // shade relief from the sun (Cesium only does terrain lighting when the terrain has
+    // normals). The server sends each tile with a one-sample border, so normals along a tile
+    // edge come from the same heights as the neighbouring tile's and the shading has no seams.
+    const TILE_B = TILE_N + 2;
+    const CELLS = TILE_N - 1;
+    const tileScheme = marsTiling();
+    const levelZeroError = Cesium.TerrainProvider.getEstimatedLevelZeroGeometricErrorForAHeightmap(
+      MARS, TILE_N, tileScheme.getNumberOfXTilesAtLevel(0));
+    const terrainOccluder = new Cesium.EllipsoidalOccluder(MARS);
+    const MAX_EXAG = 10; // the slider's top: horizon culling is computed for the tallest it can get
+    // Slopes in 1.85 km/px MOLA are gentle; like the z-factor of a shaded-relief map, steepen
+    // them for lighting only (geometry is unchanged) so craters and scarps read clearly.
+    const SHADE_Z = 4;
+    const TRI_INDICES = (() => {
+      const idx = new Uint16Array(CELLS * CELLS * 6);
+      let k = 0;
+      for (let r = 0; r < CELLS; r++) {
+        for (let c = 0; c < CELLS; c++) {
+          const nw = r * TILE_N + c, ne = nw + 1, sw = nw + TILE_N, se = sw + 1;
+          idx[k++] = nw; idx[k++] = sw; idx[k++] = ne;
+          idx[k++] = ne; idx[k++] = sw; idx[k++] = se;
+        }
+      }
+      return idx;
+    })();
+    const EDGES = (() => {
+      const w = [], s = [], e = [], n = [];
+      for (let i = 0; i < TILE_N; i++) {
+        w.push(i * TILE_N); e.push(i * TILE_N + CELLS);
+        n.push(i); s.push(CELLS * TILE_N + i);
+      }
+      return { w, s, e, n };
+    })();
+
+    // An older serve.mjs ignores ?b=1 and sends plain 65 x 65 tiles: repeat the edge samples.
+    function withBorder(g) {
+      if (g.length === TILE_B * TILE_B) return g;
+      const out = new Float32Array(TILE_B * TILE_B);
+      for (let r = 0; r < TILE_B; r++) {
+        const sr = Math.min(TILE_N - 1, Math.max(0, r - 1));
+        for (let c = 0; c < TILE_B; c++) out[r * TILE_B + c] = g[sr * TILE_N + Math.min(TILE_N - 1, Math.max(0, c - 1))];
+      }
+      return out;
+    }
+
+    function buildTerrainData(grid, x, y, level) {
+      grid = withBorder(grid);
+      const rect = tileScheme.tileXYToRectangle(x, y, level);
+      const dLon = rect.width / CELLS, dLat = rect.height / CELLS;
+      const R = MARS.maximumRadius;
+      const H = (r, c) => grid[(r + 1) * TILE_B + (c + 1)]; // vertex (r, c), row 0 = north
+      let minH = Infinity, maxH = -Infinity;
+      for (let r = 0; r < TILE_N; r++) for (let c = 0; c < TILE_N; c++) {
+        const h = H(r, c);
+        if (h < minH) minH = h;
+        if (h > maxH) maxH = h;
+      }
+      const span = maxH - minH || 1;
+      const nV = TILE_N * TILE_N;
+      const qv = new Uint16Array(nV * 3);
+      const normals = new Uint8Array(nV * 2);
+      const positions = new Array(nV), tall = new Array(nV);
+      const carto = new Cesium.Cartographic();
+      const up = new Cesium.Cartesian3(), nrm = new Cesium.Cartesian3(), oct = new Cesium.Cartesian2();
+      for (let r = 0; r < TILE_N; r++) {
+        const lat = rect.north - r * dLat;
+        const sinLat = Math.sin(lat), cosLat = Math.cos(lat);
+        const dy = dLat * R, dx = dLon * R * Math.max(cosLat, 0.01);
+        for (let c = 0; c < TILE_N; c++) {
+          const i = r * TILE_N + c;
+          const lon = rect.west + c * dLon;
+          const sinLon = Math.sin(lon), cosLon = Math.cos(lon);
+          const h = H(r, c);
+          qv[i] = Math.round((c / CELLS) * 32767);
+          qv[nV + i] = Math.round((1 - r / CELLS) * 32767);
+          qv[2 * nV + i] = Math.round(((h - minH) / span) * 32767);
+          carto.longitude = lon; carto.latitude = lat; carto.height = h;
+          positions[i] = MARS.cartographicToCartesian(carto);
+          carto.height = h > 0 ? h * MAX_EXAG : h;
+          tall[i] = MARS.cartographicToCartesian(carto);
+          // Slope from central differences (the border supplies the outer neighbours).
+          const gx = (SHADE_Z * (grid[(r + 1) * TILE_B + c + 2] - grid[(r + 1) * TILE_B + c])) / (2 * dx);
+          const gy = (SHADE_Z * (grid[r * TILE_B + c + 1] - grid[(r + 2) * TILE_B + c + 1])) / (2 * dy);
+          // up - gx * east - gy * north, in Mars-fixed coordinates
+          MARS.geodeticSurfaceNormalCartographic(carto, up);
+          nrm.x = up.x + gx * sinLon + gy * sinLat * cosLon;
+          nrm.y = up.y - gx * cosLon + gy * sinLat * sinLon;
+          nrm.z = up.z - gy * cosLat;
+          Cesium.Cartesian3.normalize(nrm, nrm);
+          Cesium.AttributeCompression.octEncode(nrm, oct);
+          normals[2 * i] = oct.x; normals[2 * i + 1] = oct.y;
+        }
+      }
+      const sphere = Cesium.BoundingSphere.fromPoints(positions);
+      const horizon = terrainOccluder.computeHorizonCullingPointPossiblyUnderEllipsoid(
+        sphere.center, tall, minH < 0 ? minH * MAX_EXAG : minH);
+      const skirt = (levelZeroError / (1 << level)) * 5;
+      return new Cesium.QuantizedMeshTerrainData({
+        quantizedVertices: qv,
+        indices: TRI_INDICES,
+        encodedNormals: normals,
+        minimumHeight: minH,
+        maximumHeight: maxH,
+        boundingSphere: sphere,
+        orientedBoundingBox: Cesium.OrientedBoundingBox.fromRectangle(rect, minH, maxH, MARS),
+        horizonOcclusionPoint: horizon,
+        westIndices: EDGES.w, southIndices: EDGES.s, eastIndices: EDGES.e, northIndices: EDGES.n,
+        westSkirtHeight: skirt, southSkirtHeight: skirt, eastSkirtHeight: skirt, northSkirtHeight: skirt,
+        childTileMask: 15,
+      });
+    }
+
+    const molaTerrain = {
+      tilingScheme: tileScheme,
       ellipsoid: MARS,
-      tilingScheme: marsTiling(),
-      width: TILE_N,
-      height: TILE_N,
-      credit: "MOLA elevation: NASA/GSFC MGS MOLA team, via NASA PDS",
-      callback: terrainTile,
-    });
+      hasWaterMask: false,
+      hasVertexNormals: true,
+      availability: undefined,
+      errorEvent: new Cesium.Event(),
+      credit: new Cesium.Credit("MOLA elevation: NASA/GSFC MGS MOLA team, via NASA PDS"),
+      getLevelMaximumGeometricError: (level) => levelZeroError / (1 << level),
+      getTileDataAvailable: () => undefined,
+      loadTileDataAvailability: () => undefined,
+      requestTileGeometry(x, y, level) {
+        const p = terrainTile(x, y, level);
+        return p && p.then((grid) => buildTerrainData(grid, x, y, level));
+      },
+    };
     const reliefBox = document.getElementById("relief");
     const exagSlider = document.getElementById("exag");
     const exagVal = document.getElementById("exagVal");
     const terrainNote = document.getElementById("terrainNote");
     let terrainReady = false;
+    let onReliefChange = () => {}; // set once the shading controls exist
 
     function applyRelief() {
       const on = terrainReady && reliefBox.checked;
@@ -361,6 +531,7 @@
       viewer.scene.verticalExaggeration = on ? Number(exagSlider.value) : 1;
       exagVal.textContent = `×${exagSlider.value}`;
       exagSlider.disabled = !on;
+      onReliefChange();
     }
     reliefBox.addEventListener("change", applyRelief);
     exagSlider.addEventListener("input", applyRelief);
@@ -870,6 +1041,198 @@
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     updateMetrics();
 
+    // ---------------------------------------------------------------- Mars time and the sun
+    // Mars24 algorithm (Allison & McEwen 2000; NASA GISS Mars24): from the current UTC time,
+    // Coordinated Mars Time (MTC, mean solar time at 0° longitude), the sol number, the season
+    // (Ls) and the equation of time, which give local times and the subsolar point.
+    // Longitudes are east-positive, like the map.
+    const TT_MINUS_UTC = 69.184; // seconds: 37 leap seconds + 32.184
+    const mod = (a, n) => ((a % n) + n) % n;
+    const rad = Cesium.Math.toRadians, deg = Cesium.Math.toDegrees;
+    const sinD = (d) => Math.sin(rad(d)), cosD = (d) => Math.cos(rad(d));
+    const PBS_TERMS = [[0.0071, 2.2353, 49.409], [0.0057, 2.7543, 168.173], [0.0039, 1.1177, 191.837],
+      [0.0037, 15.7866, 21.736], [0.0021, 2.1354, 15.704], [0.0020, 2.4694, 95.528],
+      [0.0018, 32.8493, 49.095]];
+    function marsClock(date = new Date()) {
+      const jdTT = date.getTime() / 86400000 + 2440587.5 + TT_MINUS_UTC / 86400;
+      const dt = jdTT - 2451545.0;                    // days since J2000 (TT)
+      const M = 19.3871 + 0.52402073 * dt;            // mean anomaly
+      const aFMS = 270.3871 + 0.524038496 * dt;       // fictitious mean sun
+      const pbs = PBS_TERMS.reduce((s, [A, tau, phi]) => s + A * cosD((0.985626 * dt) / tau + phi), 0);
+      const vMinusM = (10.691 + 3.0e-7 * dt) * sinD(M) + 0.623 * sinD(2 * M) + 0.050 * sinD(3 * M) +
+        0.005 * sinD(4 * M) + 0.0005 * sinD(5 * M) + pbs;  // equation of centre
+      const Ls = mod(aFMS + vMinusM, 360);                  // solar longitude (season)
+      const eot = 2.861 * sinD(2 * Ls) - 0.071 * sinD(4 * Ls) + 0.002 * sinD(6 * Ls) - vMinusM; // degrees
+      const msd = (jdTT - 2405522.0028779) / 1.0274912517; // Mars Sol Date
+      const mtc = mod(24 * msd, 24);                        // hours
+      const decl = deg(Math.asin(0.42565 * sinD(Ls))) + 0.25 * sinD(Ls); // subsolar latitude
+      const subLon = mod(180 - 15 * mtc - eot + 180, 360) - 180;        // where it is local noon
+      return { Ls, eot, msd, mtc, decl, subLon };
+    }
+    const fmtHours = (h) => {
+      const s = Math.floor(mod(h, 24) * 3600);
+      return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((v) => String(v).padStart(2, "0")).join(":");
+    };
+    const FLIP = { spring: "autumn", summer: "winter", autumn: "spring", winter: "summer" };
+    function season(Ls, lat) {
+      const north = ["spring", "summer", "autumn", "winter"][Math.floor(Ls / 90) % 4];
+      return lat === undefined || lat >= 0 ? `northern ${north}` : `southern ${FLIP[north]}`;
+    }
+    // Local true/mean solar time and the sun's height above the horizon at a point.
+    function localSolar(clk, lat, lon) {
+      const lmst = mod(clk.mtc + lon / 15, 24);
+      const ltst = mod(lmst + clk.eot / 15, 24);
+      const H = (ltst - 12) * 15; // hour angle
+      const elev = deg(Math.asin(sinD(clk.decl) * sinD(lat) + cosD(clk.decl) * cosD(lat) * cosD(H)));
+      return { lmst, ltst, elev };
+    }
+    const sunWord = (e) => (e > 0 ? "day" : e > -6 ? "twilight" : "night");
+    const fmtLatLon = (lat, lon) =>
+      `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(2)}°${lon >= 0 ? "E" : "W"}`;
+
+    // Sun direction in Mars's body-fixed frame (the frame the globe is drawn in).
+    const sunDir = new Cesium.Cartesian3(1, 0, 0);
+    function updateSunDir(clk) {
+      const d = rad(clk.decl), l = rad(clk.subLon);
+      Cesium.Cartesian3.fromElements(Math.cos(d) * Math.cos(l), Math.cos(d) * Math.sin(l), Math.sin(d), sunDir);
+      Cesium.Cartesian3.normalize(sunDir, sunDir);
+    }
+
+    // Light the globe from that direction. With 3D relief on, the terrain tiles carry surface
+    // normals, so each slope is lit by its angle to the light (smooth Lambert shading: a soft
+    // terminator and crater walls that brighten or darken with the time of day). Without
+    // relief, Cesium falls back to plain day/night shading, faded out when the camera is close.
+    const sunLight = new Cesium.DirectionalLight({ direction: new Cesium.Cartesian3(-1, 0, 0), intensity: 1.0 });
+    viewer.scene.light = sunLight;
+    globe.lightingFadeOutDistance = 6_000_000;   // flat globe only: no shading closer than this
+    globe.lightingFadeInDistance = 9_000_000;    // flat globe only: full shading farther than this
+
+    // The sun itself: a glow sprite kept a fixed distance from the camera in the sun's
+    // direction, so it sits in the right place in the sky. It is depth-tested, so the planet
+    // (and tall terrain when tilted) hides it.
+    function sunSprite() {
+      const c = document.createElement("canvas");
+      c.width = c.height = 128;
+      const g = c.getContext("2d");
+      const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, "rgba(255,255,255,1)");
+      grad.addColorStop(0.12, "rgba(255,252,235,1)");
+      grad.addColorStop(0.22, "rgba(255,226,160,0.55)");
+      grad.addColorStop(0.5, "rgba(255,190,110,0.15)");
+      grad.addColorStop(1, "rgba(255,170,90,0)");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 128, 128);
+      return c;
+    }
+    const sunPrims = viewer.scene.primitives.add(new Cesium.BillboardCollection());
+    const sunBillboard = sunPrims.add({ image: sunSprite(), width: 90, height: 90, position: new Cesium.Cartesian3() });
+    const SUN_DIST = 40 * MARS.maximumRadius; // far enough that parallax is negligible
+    const sunPos = new Cesium.Cartesian3();
+    viewer.scene.preRender.addEventListener(() => {
+      Cesium.Cartesian3.multiplyByScalar(sunDir, SUN_DIST, sunPos);
+      sunBillboard.position = Cesium.Cartesian3.add(viewer.camera.positionWC, sunPos, sunPos);
+    });
+
+    // Shading modes: the real sun for this moment, a fixed hillshade light (from the north-west,
+    // 45 degrees up, as on shaded-relief maps) that shows the terrain everywhere, or none at all.
+    const shadeMode = document.getElementById("shadeMode");
+    const shadeStrength = document.getElementById("shadeStrength");
+    const shadeVal = document.getElementById("shadeVal");
+    const shadeNote = document.getElementById("shadeNote");
+    const SHADE_KEY = "mars-shading-v1";
+    try {
+      const saved = JSON.parse(localStorage.getItem(SHADE_KEY) || "null");
+      if (saved && [...shadeMode.options].some((o) => o.value === saved.mode)) shadeMode.value = saved.mode;
+      if (saved && Number.isFinite(saved.strength)) shadeStrength.value = saved.strength;
+    } catch { /* storage blocked: defaults */ }
+
+    const hillDir = new Cesium.Cartesian3();
+    function updateHillDir() {
+      // light from azimuth 315 (NW), 45 degrees above the horizon at the view centre
+      const enu = Cesium.Transforms.eastNorthUpToFixedFrame(viewCentre(), MARS);
+      const a = rad(315), e = rad(45);
+      const local = new Cesium.Cartesian3(Math.sin(a) * Math.cos(e), Math.cos(a) * Math.cos(e), Math.sin(e));
+      Cesium.Matrix4.multiplyByPointAsVector(enu, local, hillDir);
+      Cesium.Cartesian3.normalize(hillDir, hillDir);
+    }
+    function applyLightDir() {
+      Cesium.Cartesian3.negate(shadeMode.value === "hill" ? hillDir : sunDir, sunLight.direction);
+    }
+    function applyShading() {
+      const mode = shadeMode.value;
+      const k = Number(shadeStrength.value);
+      globe.enableLighting = mode !== "off";
+      sunBillboard.show = mode === "sun";
+      // brightness = clamp(cos(angle to light) * multiplier + darkness): darkness is the floor
+      // for slopes facing away from the light and for the night side.
+      // Flat ground stays below white so slopes facing the light can still brighten.
+      globe.vertexShadowDarkness = 1 - 0.85 * k;
+      globe.lambertDiffuseMultiplier = (1 - globe.vertexShadowDarkness) * (mode === "hill" ? 1 : 1.1);
+      shadeVal.textContent = `${Math.round(k * 100)}%`;
+      shadeStrength.disabled = mode === "off";
+      if (mode === "hill") updateHillDir();
+      applyLightDir();
+      const relief = globe.terrainProvider === molaTerrain;
+      shadeNote.textContent = mode === "off" ? "No shading: imagery at full brightness."
+        : !relief ? "Turn on 3D relief to shade slopes, not just day and night."
+        : mode === "sun" ? "Slopes lit by the sun at this moment; the night side stays dim."
+        : "Fixed light for reading the terrain; ignores the time of day.";
+      try { localStorage.setItem(SHADE_KEY, JSON.stringify({ mode, strength: k })); } catch { /* ignore */ }
+    }
+    shadeMode.addEventListener("change", applyShading);
+    shadeStrength.addEventListener("input", applyShading);
+    onReliefChange = applyShading;
+    applyShading();
+    viewer.camera.moveEnd.addEventListener(() => {
+      if (shadeMode.value === "hill") { updateHillDir(); applyLightDir(); }
+    });
+
+    // Clock tick: sun position, lighting, the panel's time readout (for the view centre) and
+    // the clicked point's times.
+    const marsTimeEl = document.getElementById("marsTime");
+    let clock = marsClock();
+    function updateMarsTime() {
+      clock = marsClock();
+      updateSunDir(clock);
+      applyLightDir();
+      const c = MARS.cartesianToCartographic(viewCentre());
+      const lat = deg(c.latitude), lon = deg(c.longitude);
+      const loc = localSolar(clock, lat, lon);
+      marsTimeEl.textContent =
+        `Sol ${Math.floor(clock.msd).toLocaleString()}  MTC ${fmtHours(clock.mtc)}\n` +
+        `Ls ${clock.Ls.toFixed(1)}° · ${season(clock.Ls)}\n` +
+        `view centre ${fmtLatLon(lat, lon)}\n` +
+        `  local ${fmtHours(loc.ltst)}  (mean ${fmtHours(loc.lmst)})\n` +
+        `  sun ${loc.elev.toFixed(1)}° · ${sunWord(loc.elev)}`;
+      if (probe) refreshProbeTime();
+    }
+    setInterval(updateMarsTime, 1000);
+
+    // Top-right clock: Mars local true solar time at the view centre, following the real
+    // (Earth UTC) time and wherever you look. Refreshed every second and while the view moves.
+    const clockTimeEl = document.getElementById("clockTime");
+    const clockSubEl = document.getElementById("clockSub");
+    const clockWhereEl = document.getElementById("clockWhere");
+    const clockSunEl = document.getElementById("clockSun");
+    let clockAt = 0;
+    function updateClock() {
+      clockAt = performance.now();
+      const clk = marsClock();
+      const c = MARS.cartesianToCartographic(viewCentre());
+      if (!c) return;
+      const lat = deg(c.latitude), lon = deg(c.longitude);
+      const loc = localSolar(clk, lat, lon);
+      const set = (el, t) => { if (el.textContent !== t) el.textContent = t; };
+      set(clockTimeEl, fmtHours(loc.ltst));
+      set(clockSubEl, `local solar time \u00b7 Sol ${Math.floor(clk.msd).toLocaleString()}`);
+      set(clockWhereEl, fmtLatLon(lat, lon));
+      set(clockSunEl, `sun ${loc.elev.toFixed(1)}\u00b0 \u00b7 ${sunWord(loc.elev)} \u00b7 ${season(clk.Ls, lat)}`);
+    }
+    setInterval(updateClock, 1000);
+    viewer.camera.changed.addEventListener(() => { if (performance.now() - clockAt > 150) updateClock(); });
+    viewer.camera.moveEnd.addEventListener(updateClock);
+    viewer.camera.moveEnd.addEventListener(updateMarsTime);
+
     // ---------------------------------------------------------------- click a point: pixel values
     // Click the map: a box pinned above that spot lists "layer name: value" for every layer in
     // the stack (hidden ones greyed). Values are the 8-bit pixel of the Trek tile under the
@@ -941,14 +1304,14 @@
       const ns = probe.lat >= 0 ? "N" : "S", ew = probe.lon >= 0 ? "E" : "W";
       where.textContent = `${Math.abs(probe.lat).toFixed(4)}°${ns}  ${Math.abs(probe.lon).toFixed(4)}°${ew}`;
       const copy = button("copy", "Copy these values as text", () => {
-        const text = [where.textContent, ...probe.lines.map((l) => `${l.name}: ${l.text}`)].join("\n");
+        const text = [where.textContent, ...[...probe.place, ...probe.lines].map((l) => `${l.name}: ${l.text}`)].join("\n");
         navigator.clipboard?.writeText(text).then(() => { copy.textContent = "copied"; }, () => {});
       });
       top.append(where, copy, button("✕", "Close", closeProbe));
       probeEl.append(top);
-      for (const l of probe.lines) {
+      for (const l of [...probe.place, ...probe.lines]) {
         const row = document.createElement("div");
-        row.className = "row" + (l.off ? " off" : "");
+        row.className = "row" + (l.off ? " off" : "") + (l.sect ? " sect" : "");
         const k = document.createElement("span");
         k.className = "k";
         k.textContent = l.name;
@@ -988,6 +1351,23 @@
     }
     viewer.scene.postRender.addEventListener(placeProbe);
 
+    // Latitude / longitude and Mars local time at the clicked point (refreshed every second).
+    function placeLines(lat, lon) {
+      const loc = localSolar(clock, lat, lon);
+      return [
+        { name: "Latitude", text: `${lat.toFixed(5)}°` },
+        { name: "Longitude", text: `${lon.toFixed(5)}°  (${mod(lon, 360).toFixed(3)}°E)` },
+        { name: "Local solar time", text: fmtHours(loc.ltst) },
+        { name: "Local mean time", text: fmtHours(loc.lmst) },
+        { name: "Sun elevation", text: `${loc.elev.toFixed(1)}° · ${sunWord(loc.elev)}` },
+        { name: "Season", text: `Ls ${clock.Ls.toFixed(1)}° · ${season(clock.Ls, lat)}` },
+      ];
+    }
+    function refreshProbeTime() {
+      probe.place = placeLines(probe.lat, probe.lon);
+      renderProbe();
+    }
+
     function closeProbe() {
       probe = null;
       probeEl.hidden = markerEl.hidden = true;
@@ -1003,9 +1383,10 @@
       const me = (probe = {
         world, lat, lon,
         surface: Cesium.Cartesian3.fromDegrees(lon, lat, 0, MARS),
+        place: placeLines(lat, lon),
         lines: [],
       });
-      const elev = { name: "MOLA elevation", text: "…" };
+      const elev = { name: "MOLA elevation", text: "…", sect: true };
       me.lines.push(elev);
       // top of the stack first, the same order as the panel
       const jobs = [...active].reverse().map((e) => {
@@ -1022,6 +1403,9 @@
       renderProbe();
       for (const j of jobs) j.then(() => { if (probe === me) renderProbe(); });
     }
+
+    updateMarsTime();
+    updateClock();
 
     // A click (press + release without dragging) probes; dragging still pans the globe.
     const clicker = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
