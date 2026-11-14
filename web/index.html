@@ -28,6 +28,11 @@
     #view button.on { background: #2f6fb3; color: #fff; border-color: #2f6fb3; }
     #tiltRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
     #tiltRow input { flex: 1; }
+    #reliefRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    #reliefRow label { white-space: nowrap; }
+    #reliefRow input[type=range] { flex: 1; }
+    #terrainNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
+    #ground { color: #c9e7a7; font: 12px ui-monospace, Consolas, monospace; min-height: 1.3em; }
     #readout, #scale .dist { white-space: pre; }
     #cacheInfo { color: #aaa; font-size: 11.5px; }
     /* scale bar, bottom right, above the credits */
@@ -38,13 +43,100 @@
     }
     #scaleBar { height: 6px; margin: 3px auto 0; border: 2px solid #eee; border-top: none; }
     #scale .dist { color: #9fd3ff; margin-top: 4px; font-size: 11.5px; text-align: left; }
+
+    /* active layer rows */
+    .layer .head { display: flex; align-items: center; gap: 4px; }
+    .layer .head label { flex: 1; min-width: 0; }
+    .layer .head label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .layer .head button {
+      padding: 0 5px; font-size: 11px; line-height: 17px; cursor: pointer; background: #2a2a2a;
+      color: #ccc; border: 1px solid #444; border-radius: 3px;
+    }
+    .layer .head button:hover { background: #3a3a3a; color: #fff; }
+    .layer .note.err { color: #ff8a80; }
+
+    /* layer picker: category dropdown + search box + results list */
+    #picker { margin: 2px 0 10px; }
+    #pickRow { display: flex; gap: 4px; }
+    #layerCat, #layerSearch {
+      background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px;
+      font: 12.5px system-ui, sans-serif; padding: 4px 6px;
+    }
+    #layerCat { width: 104px; }
+    #layerSearch { flex: 1; min-width: 0; }
+    #layerSearch:focus, #layerCat:focus { outline: 1px solid #2f6fb3; border-color: #2f6fb3; }
+    #pickOpts { display: flex; justify-content: space-between; color: #aaa; font-size: 11.5px; margin-top: 3px; }
+    #pickOpts label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+    #results {
+      max-height: 280px; overflow: auto; margin-top: 4px; background: #181818;
+      border: 1px solid #3a3a3a; border-radius: 4px;
+    }
+    #results .grp {
+      position: sticky; top: 0; padding: 3px 7px; background: #262626; color: #9fd3ff;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    #results .item { padding: 4px 7px; cursor: pointer; border-top: 1px solid #222; }
+    #results .item:hover, #results .item.hl { background: #23384f; }
+    #results .item.added { opacity: 0.5; cursor: default; }
+    #results .item .t { font-size: 12.5px; }
+    #results .item .m { color: #999; font-size: 11px; }
+    #results .item .badge {
+      display: inline-block; padding: 0 4px; margin-left: 4px; border-radius: 3px; font-size: 10px;
+      background: #2e4a2e; color: #b6e3a8; vertical-align: 1px;
+    }
+    #results .item .badge.reg { background: #4a3a22; color: #f0c98a; }
+    #results .empty { padding: 8px; color: #999; font-size: 12px; }
+
+    /* click-a-point readout, pinned above the clicked spot */
+    #probe {
+      position: absolute; z-index: 6; transform: translate(-50%, calc(-100% - 12px)); min-width: 220px;
+      max-width: 460px; padding: 7px 9px 8px; background: rgba(12, 12, 12, 0.92); color: #eee;
+      border: 1px solid #555; border-radius: 6px; font: 12px/1.45 ui-monospace, Consolas, monospace;
+      pointer-events: auto; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+    #probe::after { /* pointer to the spot */
+      content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -6px;
+      border: 6px solid transparent; border-bottom: 0; border-top-color: #555;
+    }
+    #probe .top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: #9fd3ff; }
+    #probe .top span { flex: 1; }
+    #probe .top button {
+      padding: 0 5px; font-size: 11px; cursor: pointer; background: #2a2a2a; color: #ccc;
+      border: 1px solid #444; border-radius: 3px;
+    }
+    #probe .row { display: flex; gap: 6px; align-items: baseline; }
+    #probe .row .k { color: #bbb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    #probe .row .k::after { content: ":"; }
+    #probe .row .v { color: #fff; margin-left: auto; text-align: right; white-space: nowrap; }
+    #probe .row.off .k, #probe .row.off .v { color: #777; }
+    #probe .sw {
+      display: inline-block; width: 10px; height: 10px; margin-right: 4px; border: 1px solid #888;
+      vertical-align: -1px;
+    }
+    #probe .lvl { color: #777; font-size: 10.5px; margin-left: 4px; }
+    #marker {
+      position: absolute; z-index: 6; width: 10px; height: 10px; margin: -6px 0 0 -6px;
+      border: 2px solid #ffd54f; border-radius: 50%; pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
   <div id="panel">
     <h1>Mars · Gale crater</h1>
+    <div id="picker">
+      <div id="pickRow">
+        <select id="layerCat" title="Category"><option value="">All types</option></select>
+        <input id="layerSearch" type="search" placeholder="Add layer: albedo, DEM, THEMIS…" autocomplete="off" spellcheck="false" />
+      </div>
+      <div id="pickOpts">
+        <label><input id="globalOnly" type="checkbox" checked /> Global only</label>
+        <span id="pickCount"></span>
+      </div>
+      <div id="results" hidden></div>
+    </div>
     <div id="layers"></div>
+    <div class="hint" style="margin:0 0 8px">Click the map to read every layer's pixel at that spot.</div>
     <div class="sub">Fly to</div>
     <div id="places"></div>
     <div class="sub">View</div>
@@ -55,13 +147,22 @@
         <span>Tilt</span><input id="tilt" type="range" min="0" max="60" step="1" value="0" />
         <span id="tiltVal">0°</span>
       </div>
+      <div id="reliefRow" class="tiltRow">
+        <label><input id="relief" type="checkbox" checked /> 3D relief</label>
+        <input id="exag" type="range" min="1" max="10" step="0.5" value="2" title="Height exaggeration" />
+        <span id="exagVal">×2</span>
+      </div>
+      <div id="terrainNote" class="note"></div>
     </div>
     <div id="readout"></div>
+    <div id="ground"></div>
     <div id="status"></div>
     <div class="sub">Tile cache</div>
     <div id="cache"><span id="cacheInfo">…</span> <button id="btnClear">Clear</button></div>
     <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 60°) · touch: two-finger drag up/down to tilt</div>
   </div>
+  <div id="marker" hidden></div>
+  <div id="probe" hidden></div>
   <div id="scale">
     <div id="scaleLabel">–</div>
     <div id="scaleBar" style="width:100px"></div>
@@ -209,41 +310,364 @@
     // Keep more decoded tiles in memory (default 100) so panning back and forth doesn't refetch.
     globe.tileCacheSize = 1000;
 
-    // ---------------------------------------------------------------- add layers + panel rows
-    let failed = 0;
+    // ---------------------------------------------------------------- terrain (3D relief)
+    // Heights come from serve.mjs (/terrain/z/x/y): MOLA elevation, ~1.85 km/px, metres above
+    // the Mars areoid ("sea level"). Same 2 x 1 geographic tiling as the imagery, so they line up.
+    // Without serve.mjs, or while it is still downloading MOLA, the globe stays flat.
+    const flatTerrain = new Cesium.EllipsoidTerrainProvider({ ellipsoid: MARS, tilingScheme: marsTiling() });
+    const TILE_N = 65;
+    // Level of detail: the server only has a coarse global grid up front and fetches finer MOLA
+    // data on demand. Until a tile is ready we return undefined ("try again later"); Cesium
+    // keeps drawing the coarser parent tile, upsampled, and re-asks only while the tile is
+    // still on screen. No request is held open, so terrain never blocks imagery downloads.
+    const terrainTiles = new Map(); // "z/x/y" -> { data } | { loading } | { retryAt }
+    function terrainTile(x, y, level) {
+      const key = `${level}/${x}/${y}`;
+      const s = terrainTiles.get(key);
+      const now = performance.now();
+      if (s?.data) { terrainTiles.delete(key); return Promise.resolve(s.data); }
+      if (s && (s.loading || now < s.retryAt)) return undefined;
+      if (terrainTiles.size > 3000) { // forget tiles Cesium stopped asking for
+        for (const [k, v] of terrainTiles) if (!v.loading && now - (v.at ?? 0) > 30_000) terrainTiles.delete(k);
+      }
+      terrainTiles.set(key, { loading: true });
+      const retry = (ms) => terrainTiles.set(key, { retryAt: performance.now() + ms, at: performance.now() });
+      fetch(`/terrain/${key}?v=2`)
+        .then(async (r) => {
+          if (r.status === 200) terrainTiles.set(key, { data: new Float32Array(await r.arrayBuffer()), at: performance.now() });
+          else retry(r.status === 202 ? 1000 : 5000); // 202 = server is fetching this area
+        })
+        .catch(() => retry(5000));
+      return undefined;
+    }
+    const molaTerrain = new Cesium.CustomHeightmapTerrainProvider({
+      ellipsoid: MARS,
+      tilingScheme: marsTiling(),
+      width: TILE_N,
+      height: TILE_N,
+      credit: "MOLA elevation: NASA/GSFC MGS MOLA team, via NASA PDS",
+      callback: terrainTile,
+    });
+    const reliefBox = document.getElementById("relief");
+    const exagSlider = document.getElementById("exag");
+    const exagVal = document.getElementById("exagVal");
+    const terrainNote = document.getElementById("terrainNote");
+    let terrainReady = false;
+
+    function applyRelief() {
+      const on = terrainReady && reliefBox.checked;
+      const want = on ? molaTerrain : flatTerrain;
+      if (globe.terrainProvider !== want) globe.terrainProvider = want;
+      viewer.scene.verticalExaggeration = on ? Number(exagSlider.value) : 1;
+      exagVal.textContent = `×${exagSlider.value}`;
+      exagSlider.disabled = !on;
+    }
+    reliefBox.addEventListener("change", applyRelief);
+    exagSlider.addEventListener("input", applyRelief);
+
+    async function waitForTerrain() {
+      if (!USE_PROXY) {
+        terrainNote.textContent = "Relief needs start-viewer.bat (local server).";
+        reliefBox.disabled = true;
+        return;
+      }
+      for (;;) {
+        const s = await fetch("./terrain/status", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+        if (s?.ready) break;
+        if (s?.error) { terrainNote.textContent = `Relief unavailable: ${s.error}`; reliefBox.disabled = true; return; }
+        terrainNote.textContent = `Loading global elevation… ${Math.round((s?.progress ?? 0) * 100)}%`;
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      terrainReady = true;
+      terrainNote.textContent = "MOLA elevation · detail sharpens as you zoom in (down to ~1.85 km/px)";
+      applyRelief();
+    }
+    applyRelief();
+    waitForTerrain();
+
+    // ---------------------------------------------------------------- layer manager
+    // `active` is the draw order, bottom first. The panel lists it top first, like a layer stack.
+    // A layer definition: { dataset, name, ext, maxLevel, minLevel?, bounds, note, credit,
+    // show, alpha }. Layers picked from the Trek catalog get theirs from the layer's
+    // WMTSCapabilities.xml. The stack is remembered in this browser.
+    const STORE_KEY = "mars-layers-v1";
+    const active = []; // { def, layer, errors }
     const layersEl = document.getElementById("layers");
-    for (const l of LAYERS) {
-      const provider = makeProvider(l);
+    let failed = 0;
+
+    function addLayer(def, { save = true } = {}) {
+      const provider = makeProvider(def);
+      const entry = { def, layer: null, errors: 0 };
       provider.errorEvent.addEventListener((err) => {
+        // Regional and sparse layers have holes: a 404 is "no tile here", not a failure.
+        if (err?.error?.statusCode === 404) return;
+        entry.errors += 1;
         failed += 1;
-        console.warn(`Tile failed [${l.dataset}]:`, err && err.message);
+        console.warn(`Tile failed [${def.dataset}]:`, err && err.message);
         statusEl.textContent =
           `${failed} tile request(s) failed. Open the Console (F12). ` +
           (USE_PROXY ? "NASA Trek may be slow or down; reload to retry."
                      : "Start the page with start-viewer.bat so tiles go through the caching proxy.");
       });
-      const layer = viewer.imageryLayers.addImageryProvider(provider);
-      layer.show = l.show;
-      layer.alpha = l.alpha;
-
-      const row = document.createElement("div");
-      row.className = "layer";
-      const label = document.createElement("label");
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = l.show;
-      box.addEventListener("change", () => { layer.show = box.checked; });
-      label.append(box, document.createTextNode(l.name));
-      const slider = document.createElement("input");
-      slider.type = "range"; slider.min = "0"; slider.max = "1"; slider.step = "0.05"; slider.value = String(l.alpha);
-      slider.title = "Opacity";
-      slider.addEventListener("input", () => { layer.alpha = Number(slider.value); });
-      const note = document.createElement("div");
-      note.className = "note";
-      note.textContent = l.note;
-      row.append(label, slider, note);
-      layersEl.append(row);
+      entry.layer = viewer.imageryLayers.addImageryProvider(provider);
+      entry.layer.show = def.show;
+      entry.layer.alpha = def.alpha;
+      active.push(entry);
+      renderLayers();
+      if (save) saveLayers();
+      return entry;
     }
+
+    function removeLayer(entry) {
+      viewer.imageryLayers.remove(entry.layer, true);
+      active.splice(active.indexOf(entry), 1);
+      renderLayers();
+      saveLayers();
+      renderResults();
+    }
+
+    // dir +1 = towards the top of the stack (drawn over the others)
+    function moveLayer(entry, dir) {
+      const i = active.indexOf(entry), j = i + dir;
+      if (j < 0 || j >= active.length) return;
+      if (dir > 0) viewer.imageryLayers.raise(entry.layer); else viewer.imageryLayers.lower(entry.layer);
+      [active[i], active[j]] = [active[j], active[i]];
+      renderLayers();
+      saveLayers();
+    }
+
+    function saveLayers() {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(active.map((e) => ({
+          ...e.def, show: e.layer.show, alpha: e.layer.alpha,
+        }))));
+      } catch {}
+    }
+
+    function button(text, title, onClick) {
+      const b = document.createElement("button");
+      b.textContent = text;
+      b.title = title;
+      b.addEventListener("click", onClick);
+      return b;
+    }
+
+    function renderLayers() {
+      layersEl.replaceChildren();
+      for (let k = active.length - 1; k >= 0; k--) {
+        const entry = active[k], { def, layer } = entry;
+        const row = document.createElement("div");
+        row.className = "layer";
+        const head = document.createElement("div");
+        head.className = "head";
+        const label = document.createElement("label");
+        label.title = def.name;
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = layer.show;
+        box.addEventListener("change", () => { layer.show = box.checked; saveLayers(); });
+        const name = document.createElement("span");
+        name.textContent = def.name;
+        label.append(box, name);
+        const up = button("▲", "Draw above the layer over it", () => moveLayer(entry, +1));
+        const down = button("▼", "Draw below the layer under it", () => moveLayer(entry, -1));
+        up.disabled = k === active.length - 1;
+        down.disabled = k === 0;
+        head.append(label, up, down, button("✕", "Remove layer", () => removeLayer(entry)));
+        const slider = document.createElement("input");
+        slider.type = "range"; slider.min = "0"; slider.max = "1"; slider.step = "0.05";
+        slider.value = String(layer.alpha);
+        slider.title = "Opacity";
+        slider.addEventListener("input", () => { layer.alpha = Number(slider.value); });
+        slider.addEventListener("change", saveLayers);
+        const note = document.createElement("div");
+        note.className = "note";
+        note.textContent = def.note;
+        row.append(head, slider, note);
+        layersEl.append(row);
+      }
+    }
+
+    // First visit (or unreadable storage): the built-in stack. Otherwise what was there last time.
+    let stored = null;
+    try { stored = JSON.parse(localStorage.getItem(STORE_KEY)); } catch {}
+    const startDefs = Array.isArray(stored) && stored.every((d) => d && d.dataset && d.ext)
+      ? stored : LAYERS;
+    for (const d of startDefs) addLayer({ ...d }, { save: false });
+
+    // ---------------------------------------------------------------- Trek layer catalog
+    // serve.mjs /catalog lists every Trek Mars product (minus vector-only ones). Picking one
+    // reads its WMTSCapabilities.xml for tile format, extent and deepest level, then adds it.
+    const catSel = document.getElementById("layerCat");
+    const searchEl = document.getElementById("layerSearch");
+    const globalOnly = document.getElementById("globalOnly");
+    const resultsEl = document.getElementById("results");
+    const pickCount = document.getElementById("pickCount");
+    let catalog = null;          // array, or null while loading / unavailable
+    let catalogMsg = "Loading the Trek layer list…";
+    let shown = [];              // items currently in the results list
+    let hl = -1;                 // keyboard-highlighted index into `shown`
+
+    async function loadCatalog() {
+      if (!USE_PROXY) {
+        catalogMsg = "Layer search needs start-viewer.bat (local server).";
+        return renderResults();
+      }
+      try {
+        const r = await fetch("./catalog");
+        if (!r.ok) throw new Error(await r.text());
+        catalog = await r.json();
+        const cats = [...new Set(catalog.map((c) => c.cat))].sort();
+        for (const c of cats) catSel.add(new Option(c, c));
+      } catch (err) {
+        catalogMsg = `Could not load the layer list: ${err.message}`;
+      }
+      renderResults();
+    }
+
+    const isActive = (id) => active.some((e) => e.def.dataset === id);
+
+    function matches(item, words) {
+      const hay = `${item.title} ${item.id} ${item.cat} ${item.sub} ${item.mission} ${item.instrument}`.toLowerCase();
+      return words.every((w) => hay.includes(w));
+    }
+
+    function renderResults() {
+      resultsEl.replaceChildren();
+      shown = [];
+      if (!catalog) {
+        pickCount.textContent = "";
+        const p = document.createElement("div");
+        p.className = "empty";
+        p.textContent = catalogMsg;
+        resultsEl.append(p);
+        return;
+      }
+      const words = searchEl.value.toLowerCase().split(/\s+/).filter(Boolean);
+      shown = catalog
+        .filter((c) => (!globalOnly.checked || c.global) && (!catSel.value || c.cat === catSel.value) && matches(c, words))
+        .sort((a, b) => a.cat.localeCompare(b.cat) || b.global - a.global || a.title.localeCompare(b.title));
+      pickCount.textContent = `${shown.length} layer${shown.length === 1 ? "" : "s"}`;
+      if (hl >= shown.length) hl = shown.length - 1;
+      if (!shown.length) {
+        const p = document.createElement("div");
+        p.className = "empty";
+        p.textContent = globalOnly.checked ? "No global layer matches. Untick “Global only” to search regional ones too." : "Nothing matches.";
+        resultsEl.append(p);
+        return;
+      }
+      let group = null;
+      shown.forEach((item, i) => {
+        if (item.cat !== group) {
+          group = item.cat;
+          const g = document.createElement("div");
+          g.className = "grp";
+          g.textContent = group;
+          resultsEl.append(g);
+        }
+        const el = document.createElement("div");
+        el.className = "item" + (i === hl ? " hl" : "") + (isActive(item.id) ? " added" : "");
+        el.title = item.desc || item.title;
+        const t = document.createElement("div");
+        t.className = "t";
+        t.textContent = item.title;
+        const badge = document.createElement("span");
+        badge.className = item.global ? "badge" : "badge reg";
+        badge.textContent = item.global ? "global" : "regional";
+        t.append(badge);
+        const m = document.createElement("div");
+        m.className = "m";
+        m.textContent = isActive(item.id) ? "already on the map"
+          : [item.sub, item.mission, item.instrument].filter(Boolean).join(" · ") || item.id;
+        el.append(t, m);
+        el.addEventListener("mousedown", (e) => { e.preventDefault(); pick(item, el); });
+        resultsEl.append(el);
+        item._el = el;
+      });
+    }
+
+    function setHighlight(i) {
+      shown[hl]?._el?.classList.remove("hl");
+      hl = Math.max(0, Math.min(shown.length - 1, i));
+      const el = shown[hl]?._el;
+      if (el) { el.classList.add("hl"); el.scrollIntoView({ block: "nearest" }); }
+    }
+
+    // Tile format, extent and number of zoom levels from the layer's WMTS capabilities.
+    async function layerDefFromCatalog(item) {
+      const url = `${TILE_BASE}/Mars/EQ/${item.id}/1.0.0/WMTSCapabilities.xml`;
+      const r = await fetch(url);
+      const text = await r.text();
+      if (!r.ok || !text.includes("<Capabilities")) throw new Error("Trek has no tiles for this layer");
+      const xml = new DOMParser().parseFromString(text, "application/xml");
+      const all = (name) => [...xml.getElementsByTagNameNS("*", name)];
+      const format = all("Format")[0]?.textContent.trim() ?? "image/png";
+      // only the real matrix definitions have a ScaleDenominator (TileMatrixSetLimits also say TileMatrix)
+      const levels = all("TileMatrix").filter((m) => m.getElementsByTagNameNS("*", "ScaleDenominator").length);
+      if (!levels.length) throw new Error("no zoom levels in the capabilities");
+      const box = all("WGS84BoundingBox")[0] ?? all("BoundingBox")[0];
+      const corner = (n) => box?.getElementsByTagNameNS("*", n)[0]?.textContent.trim().split(/\s+/).map(Number);
+      const lo = corner("LowerCorner"), hi = corner("UpperCorner");
+      let bounds = lo && hi && [lo[0], lo[1], hi[0], hi[1]].every(Number.isFinite) ? [lo[0], lo[1], hi[0], hi[1]] : item.bbox;
+      const global = bounds[0] >= -180.5 && bounds[2] <= 180.5 && bounds[2] - bounds[0] >= 350 && bounds[1] <= -60 && bounds[3] >= 60;
+      // Start a regional layer at the level where one tile is about the size of its area,
+      // otherwise Cesium stretches a near-empty top-level tile across a huge region.
+      const span = Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1], 1e-6);
+      const minLevel = global ? 0 : Math.max(0, Math.min(levels.length - 1, Math.floor(Math.log2(180 / span))));
+      if (global && bounds[3] - bounds[1] >= 170) bounds = null; // truly whole-planet: no clip needed
+      const maxLevel = levels.length - 1;
+      const mpp = ((Math.PI * MARS.maximumRadius) / (256 * 2 ** maxLevel));
+      return {
+        dataset: item.id,
+        name: item.title,
+        ext: /png/.test(format) ? "png" : "jpg",
+        maxLevel,
+        minLevel,
+        bounds,
+        show: true,
+        alpha: 1,
+        note: `${global ? "Global" : "Regional"} · ~${mpp >= 1000 ? `${(mpp / 1000).toFixed(1)} km` : `${Math.round(mpp)} m`}/px at deepest level` +
+          ([item.mission, item.instrument].filter(Boolean).length ? ` · ${[item.mission, item.instrument].filter(Boolean).join(" ")}` : ""),
+        credit: `${item.title}: via NASA Trek`,
+      };
+    }
+
+    async function pick(item, el) {
+      if (isActive(item.id) || item._busy) return;
+      item._busy = true;
+      const m = el?.querySelector(".m");
+      if (m) m.textContent = "reading layer info…";
+      try {
+        const def = await layerDefFromCatalog(item);
+        addLayer(def);
+        if (def.bounds) { // regional: show where it is
+          const [w, s, e, n] = def.bounds;
+          viewer.camera.flyTo({ destination: Cesium.Rectangle.fromDegrees(w, s, e, n), duration: 2 });
+        }
+        renderResults();
+      } catch (err) {
+        if (m) { m.textContent = `can't add: ${err.message}`; m.style.color = "#ff8a80"; }
+      } finally {
+        item._busy = false;
+      }
+    }
+
+    const openResults = () => { resultsEl.hidden = false; renderResults(); };
+    searchEl.addEventListener("focus", openResults);
+    searchEl.addEventListener("input", () => { hl = -1; openResults(); });
+    catSel.addEventListener("change", () => { hl = -1; openResults(); searchEl.focus(); });
+    globalOnly.addEventListener("change", () => { hl = -1; openResults(); searchEl.focus(); });
+    searchEl.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); resultsEl.hidden = false; setHighlight(hl + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight(hl - 1); }
+      else if (e.key === "Enter" && shown[hl]) { e.preventDefault(); pick(shown[hl], shown[hl]._el); }
+      else if (e.key === "Escape") { resultsEl.hidden = true; searchEl.blur(); }
+    });
+    // close when clicking anywhere outside the picker
+    document.addEventListener("mousedown", (e) => {
+      if (!document.getElementById("picker").contains(e.target)) resultsEl.hidden = true;
+    });
+    loadCatalog();
 
     // ---------------------------------------------------------------- camera
     const GALE = { lon: 137.44, lat: -4.59 };   // Bradbury Landing area, inside the HiRISE mosaic
@@ -267,8 +691,11 @@
     }
 
     // Surface point at a screen position, or undefined if that pixel shows sky.
+    // With relief on, this hits the actual terrain; otherwise (or off the loaded tiles) the ellipsoid.
     function surfaceAt(x, y) {
-      return viewer.camera.pickEllipsoid(new Cesium.Cartesian2(x, y), MARS);
+      const pos = new Cesium.Cartesian2(x, y);
+      return globe.pick(viewer.camera.getPickRay(pos), viewer.scene) ??
+        viewer.camera.pickEllipsoid(pos, MARS);
     }
     function viewCentre() {
       const c = viewer.scene.canvas;
@@ -429,7 +856,177 @@
       if (currentTilt() > MAX_TILT + 0.5) tiltNow(MAX_TILT);
     });
     window.addEventListener("resize", updateMetrics);
+
+    // Elevation of the ground under the mouse (MOLA, metres above the areoid). Picked positions
+    // are drawn exaggerated, so divide the exaggeration back out.
+    const groundEl = document.getElementById("ground");
+    const hover = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    hover.setInputAction((m) => {
+      if (!terrainReady || !reliefBox.checked) { groundEl.textContent = ""; return; }
+      const p = globe.pick(viewer.camera.getPickRay(m.endPosition), viewer.scene);
+      if (!p) { groundEl.textContent = ""; return; }
+      const h = MARS.cartesianToCartographic(p).height / viewer.scene.verticalExaggeration;
+      groundEl.textContent = `ground under cursor ${Math.round(h).toLocaleString()} m`;
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     updateMetrics();
+
+    // ---------------------------------------------------------------- click a point: pixel values
+    // Click the map: a box pinned above that spot lists "layer name: value" for every layer in
+    // the stack (hidden ones greyed). Values are the 8-bit pixel of the Trek tile under the
+    // point, at the detail level you are viewing (or the layer's deepest, if shallower):
+    // grey layers (albedo, hillshade, THEMIS…) give 0-255, colour layers give RGB + hex.
+    // Trek tiles are display images, so these are brightness/colour, not calibrated units; the
+    // first line is real elevation in metres from the MOLA data behind 3D relief.
+    const probeEl = document.getElementById("probe");
+    const markerEl = document.getElementById("marker");
+    const occluder = new Cesium.EllipsoidalOccluder(MARS, Cesium.Cartesian3.ZERO);
+    let probe = null; // { world, surface, lat, lon, lines }
+    const tilePixels = new Map(); // tile url -> Promise<ImageData | null>, last ~60 kept
+
+    function tileImage(url) {
+      if (tilePixels.has(url)) return tilePixels.get(url);
+      const job = fetch(url)
+        .then((r) => (r.ok && (r.headers.get("content-type") ?? "").startsWith("image/") ? r.blob() : null))
+        .then(async (blob) => {
+          if (!blob) return null;
+          const bmp = await createImageBitmap(blob);
+          const c = new OffscreenCanvas(bmp.width, bmp.height);
+          const g = c.getContext("2d", { willReadFrequently: true });
+          g.drawImage(bmp, 0, 0);
+          return g.getImageData(0, 0, bmp.width, bmp.height);
+        })
+        .catch(() => null);
+      tilePixels.set(url, job);
+      if (tilePixels.size > 60) tilePixels.delete(tilePixels.keys().next().value);
+      return job;
+    }
+
+    // Trek level whose pixels are about the size of one screen pixel here.
+    function levelForView(metresPerScreenPx) {
+      const levelZeroMpp = (Math.PI * MARS.maximumRadius) / 256; // 180° over 256 px
+      return Math.max(0, Math.ceil(Math.log2(levelZeroMpp / Math.max(metresPerScreenPx, 0.01))));
+    }
+
+    // { text, rgb?, level } for one layer at lat/lon, trying shallower levels if a tile is missing.
+    async function samplePixel(def, lat, lon, wantLevel) {
+      if (def.bounds) {
+        const [w, s, e, n] = def.bounds;
+        if (lon < w || lon > e || lat < s || lat > n) return { text: "outside coverage" };
+      }
+      const minL = def.minLevel ?? 0;
+      for (let z = Math.max(minL, Math.min(def.maxLevel, wantLevel)); z >= minL; z--) {
+        const deg = 180 / 2 ** z; // tile size in degrees
+        const fx = (lon + 180) / deg, fy = (90 - lat) / deg;
+        const col = Math.min(2 ** (z + 1) - 1, Math.floor(fx)), row = Math.min(2 ** z - 1, Math.floor(fy));
+        const img = await tileImage(`${TILE_BASE}/Mars/EQ/${def.dataset}/1.0.0/default/default028mm/${z}/${row}/${col}.${def.ext}`);
+        if (!img) continue;
+        const px = Math.min(img.width - 1, Math.floor((fx - col) * img.width));
+        const py = Math.min(img.height - 1, Math.floor((fy - row) * img.height));
+        const i = (py * img.width + px) * 4;
+        const [r, g, b, a] = img.data.slice(i, i + 4);
+        if (a === 0) return { text: "no data", level: z };
+        if (r === g && g === b) return { text: `${r} / 255`, rgb: [r, g, b], level: z };
+        const hex = "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+        return { text: `RGB ${r}, ${g}, ${b}  ${hex}`, rgb: [r, g, b], level: z };
+      }
+      return { text: "no data" };
+    }
+
+    function renderProbe() {
+      if (!probe) return;
+      probeEl.replaceChildren();
+      const top = document.createElement("div");
+      top.className = "top";
+      const where = document.createElement("span");
+      const ns = probe.lat >= 0 ? "N" : "S", ew = probe.lon >= 0 ? "E" : "W";
+      where.textContent = `${Math.abs(probe.lat).toFixed(4)}°${ns}  ${Math.abs(probe.lon).toFixed(4)}°${ew}`;
+      const copy = button("copy", "Copy these values as text", () => {
+        const text = [where.textContent, ...probe.lines.map((l) => `${l.name}: ${l.text}`)].join("\n");
+        navigator.clipboard?.writeText(text).then(() => { copy.textContent = "copied"; }, () => {});
+      });
+      top.append(where, copy, button("✕", "Close", closeProbe));
+      probeEl.append(top);
+      for (const l of probe.lines) {
+        const row = document.createElement("div");
+        row.className = "row" + (l.off ? " off" : "");
+        const k = document.createElement("span");
+        k.className = "k";
+        k.textContent = l.name;
+        const v = document.createElement("span");
+        v.className = "v";
+        if (l.rgb) {
+          const sw = document.createElement("span");
+          sw.className = "sw";
+          sw.style.background = `rgb(${l.rgb.join(",")})`;
+          v.append(sw);
+        }
+        v.append(document.createTextNode(l.text));
+        if (l.level !== undefined) {
+          const lv = document.createElement("span");
+          lv.className = "lvl";
+          lv.textContent = `z${l.level}`;
+          lv.title = `Read from tile level ${l.level}`;
+          v.append(lv);
+        }
+        row.append(k, v);
+        probeEl.append(row);
+      }
+      placeProbe();
+    }
+
+    // Keep the box over the clicked spot while the camera moves; hide it behind the planet.
+    const screenPos = new Cesium.Cartesian2();
+    function placeProbe() {
+      if (!probe) return;
+      occluder.cameraPosition = viewer.camera.positionWC;
+      const p = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, probe.world, screenPos);
+      const visible = p && occluder.isPointVisible(probe.surface);
+      probeEl.hidden = markerEl.hidden = !visible;
+      if (!visible) return;
+      probeEl.style.left = markerEl.style.left = `${p.x}px`;
+      probeEl.style.top = markerEl.style.top = `${p.y}px`;
+    }
+    viewer.scene.postRender.addEventListener(placeProbe);
+
+    function closeProbe() {
+      probe = null;
+      probeEl.hidden = markerEl.hidden = true;
+    }
+
+    async function openProbe(screen) {
+      const world = surfaceAt(screen.x, screen.y);
+      if (!world) return closeProbe();
+      const carto = MARS.cartesianToCartographic(world);
+      const lat = Cesium.Math.toDegrees(carto.latitude), lon = Cesium.Math.toDegrees(carto.longitude);
+      const next = surfaceAt(screen.x + 1, screen.y);
+      const wantLevel = levelForView(next ? surfaceDistance(world, next) : 1000);
+      const me = (probe = {
+        world, lat, lon,
+        surface: Cesium.Cartesian3.fromDegrees(lon, lat, 0, MARS),
+        lines: [],
+      });
+      const elev = { name: "MOLA elevation", text: "…" };
+      me.lines.push(elev);
+      // top of the stack first, the same order as the panel
+      const jobs = [...active].reverse().map((e) => {
+        const line = { name: e.def.name, text: "…", off: !e.layer.show };
+        me.lines.push(line);
+        return samplePixel(e.def, lat, lon, wantLevel).then((s) => Object.assign(line, s));
+      });
+      if (USE_PROXY) {
+        jobs.push(fetch(`./terrain/point?lat=${lat}&lon=${lon}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((j) => { elev.text = `${j.height.toLocaleString()} m`; elev.level = undefined; elev.res = j.ppd; })
+          .catch(() => { elev.text = "unavailable"; }));
+      } else elev.text = "needs local server";
+      renderProbe();
+      for (const j of jobs) j.then(() => { if (probe === me) renderProbe(); });
+    }
+
+    // A click (press + release without dragging) probes; dragging still pans the globe.
+    const clicker = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    clicker.setInputAction((e) => openProbe(e.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && probe) closeProbe(); });
 
     // ---------------------------------------------------------------- cache info
     const cacheInfo = document.getElementById("cacheInfo");
