@@ -4,6 +4,29 @@ const TILE_CELLS = 64;
 const TILE_SAMPLES = TILE_CELLS + 1;
 const MARS_RADIUS_M = 3_396_190;
 
+function tileColumns(level) { return 2 ** (level + 1); }
+function tileRows(level) { return 2 ** level; }
+function lonTile(lon, level) {
+  const n = tileColumns(level), d = 360 / n;
+  let normalized = ((lon + 180) % 360 + 360) % 360;
+  return Math.min(n - 1, Math.floor(normalized / d));
+}
+function latTile(lat, level) {
+  const n = tileRows(level), d = 180 / n;
+  return Math.max(0, Math.min(n - 1, Math.floor((90 - lat) / d)));
+}
+
+export function estimateTerrainPatchCells(bounds, level = 6) {
+  const dLat = 180 / tileRows(level);
+  const westX = lonTile(bounds.west, level), eastX = lonTile(bounds.east - 1e-10, level);
+  const nx = bounds.west <= bounds.east
+    ? eastX - westX + 1
+    : tileColumns(level) - westX + eastX + 1;
+  const y0 = latTile(bounds.north, level);
+  const y1 = Math.max(0, Math.min(tileRows(level) - 1, Math.floor((90 - bounds.south - 1e-10) / dLat)));
+  return (nx * TILE_CELLS + 1) * ((y1 - y0 + 1) * TILE_CELLS + 1);
+}
+
 async function fetchHeightTile(z, x, y, signal) {
   for (let attempt = 0; attempt < 120; attempt++) {
     const response = await fetch(`/terrain/${z}/${x}/${y}`, { signal, cache: "force-cache" });
@@ -35,7 +58,7 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
     throw new RangeError("Expected Mars bounds; west > east is allowed across the longitude seam");
   if (!Number.isInteger(level) || level < 0 || level > 22) throw new RangeError("Invalid terrain level");
 
-  const tilesX = 2 ** (level + 1), tilesY = 2 ** level;
+  const tilesX = tileColumns(level), tilesY = tileRows(level);
   const tileLon = 360 / tilesX, tileLat = 180 / tilesY;
   const tileX = (lon) => Math.max(0, Math.min(tilesX - 1, Math.floor((lon + 180) / tileLon)));
   const x0 = tileX(west);
@@ -74,6 +97,50 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
   };
 }
 
+// Load only fine tiles touched by a coarse route and a one-tile buffer around it.
+// The returned sparse grid lets fine A* explore only this local corridor.
+export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles = 1, maxTiles = 256, signal } = {}) {
+  if (!coarsePath?.length) throw new RangeError("A coarse route is required");
+  if (!Number.isInteger(bufferTiles) || bufferTiles < 0) throw new RangeError("Invalid tile buffer");
+  const nx = tileColumns(level), ny = tileRows(level), keys = new Set();
+  for (const p of coarsePath) {
+    const cx = lonTile(p.lon, level), cy = latTile(p.lat, level);
+    for (let oy = -bufferTiles; oy <= bufferTiles; oy++) {
+      const y = cy + oy;
+      if (y < 0 || y >= ny) continue;
+      for (let ox = -bufferTiles; ox <= bufferTiles; ox++) {
+        const x = (cx + ox + nx) % nx;
+        keys.add(`${x},${y}`);
+      }
+    }
+  }
+  if (keys.size > maxTiles)
+    throw new RangeError(`Detailed route corridor needs ${keys.size} tiles (limit ${maxTiles})`);
+
+  const tiles = await Promise.all([...keys].map(async (key) => {
+    const [x, y] = key.split(",").map(Number);
+    return { x, y, data: await fetchHeightTile(level, x, y, signal) };
+  }));
+  const worldWidth = nx * TILE_CELLS, worldHeight = ny * TILE_CELLS;
+  const heights = new Map();
+  for (const { x, y, data } of tiles) {
+    for (let r = 0; r < TILE_SAMPLES; r++) {
+      const gy = y * TILE_CELLS + r;
+      for (let c = 0; c < TILE_SAMPLES; c++) {
+        const gx = (x * TILE_CELLS + c) % worldWidth;
+        heights.set(gy * worldWidth + gx, data[r * TILE_SAMPLES + c]);
+      }
+    }
+  }
+  return {
+    width: worldWidth, height: worldHeight + 1, heights, wrapX: true,
+    westDeg: -180, northDeg: 90,
+    lonStepDeg: 360 / worldWidth, latStepDeg: -180 / worldHeight,
+    level,
+    source: "NASA MGS MOLA numeric topography via PDS; sparse fine tile corridor",
+  };
+}
+
 export function lonLatToTerrainCell(grid, lonDeg, latDeg) {
   let lon = lonDeg;
   while (lon < grid.westDeg) lon += 360;
@@ -84,16 +151,21 @@ export function lonLatToTerrainCell(grid, lonDeg, latDeg) {
   return { x, y };
 }
 
-export function planTerrainRoute(grid, start, goal) {
+export function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity } = {}) {
+  if (!(maxSlopeDeg === Infinity || (Number.isFinite(maxSlopeDeg) && maxSlopeDeg >= 0 && maxSlopeDeg < 90)))
+    throw new RangeError("maxSlopeDeg must be between 0 and 90 degrees");
   const { width, height, heights, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
-  if (!(heights instanceof Float32Array) || heights.length !== width * height)
-    throw new TypeError("heights must be a Float32Array matching grid dimensions");
+  const sparse = heights instanceof Map;
+  if (!sparse && (!(heights instanceof Float32Array) || heights.length !== width * height))
+    throw new TypeError("heights must be a matching Float32Array or sparse Map");
   const inBounds = (p) => Number.isInteger(p.x) && Number.isInteger(p.y) &&
     p.x >= 0 && p.x < width && p.y >= 0 && p.y < height;
   if (!inBounds(start) || !inBounds(goal)) throw new RangeError("start/goal outside terrain patch");
 
   const index = (p) => p.y * width + p.x;
   const startId = index(start), goalId = index(goal);
+  const heightAt = (id) => sparse ? heights.get(id) : heights[id];
+  if (heightAt(startId) === undefined || heightAt(goalId) === undefined) return null;
   const radians = Math.PI / 180;
   const pos = (x, y) => ({
     lat: (northDeg + y * latStepDeg) * radians,
@@ -101,11 +173,23 @@ export function planTerrainRoute(grid, start, goal) {
   });
   const horizontal = (x0, y0, x1, y1) => {
     const a = pos(x0, y0), b = pos(x1, y1), midLat = (a.lat + b.lat) / 2;
-    const east = (b.lon - a.lon) * MARS_RADIUS_M * Math.cos(midLat);
+    let dLon = b.lon - a.lon;
+    if (dLon > Math.PI) dLon -= 2 * Math.PI;
+    else if (dLon < -Math.PI) dLon += 2 * Math.PI;
+    const east = dLon * MARS_RADIUS_M * Math.cos(midLat);
     const north = (b.lat - a.lat) * MARS_RADIUS_M;
     return Math.hypot(east, north);
   };
-  const heuristic = (p) => horizontal(p.x, p.y, goal.x, goal.y);
+  const maxSlopeRatio = Math.tan(maxSlopeDeg * radians);
+  const heuristic = (p) => {
+    const a = pos(p.x, p.y), b = pos(goal.x, goal.y);
+    let dLon = b.lon - a.lon;
+    if (dLon > Math.PI) dLon -= 2 * Math.PI;
+    else if (dLon < -Math.PI) dLon += 2 * Math.PI;
+    const dLat = b.lat - a.lat;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat) * Math.cos(b.lat) * Math.sin(dLon / 2) ** 2;
+    return 2 * MARS_RADIUS_M * Math.asin(Math.sqrt(Math.min(1, h)));
+  };
   const g = new Map([[startId, 0]]), parent = new Map(), closed = new Set();
 
   // Binary min-heap, ordered by estimated total terrain distance.
@@ -148,18 +232,26 @@ export function planTerrainRoute(grid, start, goal) {
           horizontalDistanceM += horizontal(px, py, x, y);
         }
         const ll = pos(x, y);
-        return { x, y, lon: ll.lon / radians, lat: ll.lat / radians, elevationM: heights[at] };
+        return { x, y, lon: ll.lon / radians, lat: ll.lat / radians, elevationM: heightAt(at) };
       });
       return { path, horizontalDistanceM, terrainDistanceM: currentCost };
     }
     closed.add(id);
-    const x = id % width, y = Math.floor(id / width), here = heights[id];
+    const x = id % width, y = Math.floor(id / width), here = heightAt(id);
     for (const [ox, oy] of moves) {
-      const nx = x + ox, ny = y + oy;
-      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+      let nx = x + ox;
+      const ny = y + oy;
+      if (grid.wrapX) nx = (nx + width) % width;
+      else if (nx < 0 || nx >= width) continue;
+      if (ny < 0 || ny >= height) continue;
       const next = ny * width + nx;
       if (closed.has(next)) continue;
-      const surfaceStep = Math.hypot(horizontal(x, y, nx, ny), heights[next] - here);
+      const nextHeight = heightAt(next);
+      if (nextHeight === undefined) continue;
+      const horizontalStep = horizontal(x, y, nx, ny);
+      const rise = Math.abs(nextHeight - here);
+      if (rise > horizontalStep * maxSlopeRatio) continue;
+      const surfaceStep = Math.hypot(horizontalStep, rise);
       const tentative = currentCost + surfaceStep;
       if (tentative >= (g.get(next) ?? Infinity)) continue;
       g.set(next, tentative); parent.set(next, id);
@@ -167,4 +259,84 @@ export function planTerrainRoute(grid, start, goal) {
     }
   }
   return null;
+}
+
+// Remove grid zig-zags only when a terrain-sampled shortcut respects the slope limit
+// and costs no more surface distance than the original path section.
+export function smoothTerrainPath(grid, path, maxSlopeDeg) {
+  if (path.length < 3) return path;
+  const { width, heights, wrapX, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
+  const sparse = heights instanceof Map;
+  const heightAt = (x, y) => {
+    if (wrapX) x = (x + width) % width;
+    if (x < 0 || x >= width || y < 0 || y >= grid.height) return undefined;
+    const id = y * width + x;
+    return sparse ? heights.get(id) : heights[id];
+  };
+  const radians = Math.PI / 180;
+  const horizontal = (a, b) => {
+    const latA = (northDeg + a.y * latStepDeg) * radians;
+    const latB = (northDeg + b.y * latStepDeg) * radians;
+    let dLon = (b.x - a.x) * lonStepDeg * radians;
+    if (dLon > Math.PI) dLon -= 2 * Math.PI;
+    else if (dLon < -Math.PI) dLon += 2 * Math.PI;
+    return Math.hypot(dLon * 3_396_190 * Math.cos((latA + latB) / 2),
+      (latB - latA) * 3_396_190);
+  };
+  const rasterLine = (a, b) => {
+    let x0 = a.x, y0 = a.y, x1 = b.x, y1 = b.y;
+    if (wrapX && Math.abs(x1 - x0) > width / 2) x1 += x1 < x0 ? width : -width;
+    const points = [], dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    const dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    for (;;) {
+      points.push({ x: wrapX ? (x0 + width) % width : x0, y: y0 });
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+    return points;
+  };
+  const segmentCost = (a, b) => {
+    const run = rasterLine(a, b);
+    let cost = 0;
+    for (let k = 1; k < run.length; k++) {
+      const prev = run[k - 1], next = run[k];
+      const h0 = heightAt(prev.x, prev.y), h1 = heightAt(next.x, next.y);
+      if (h0 === undefined || h1 === undefined) return null;
+      const d = horizontal(prev, next), rise = Math.abs(h1 - h0);
+      if (rise > d * Math.tan(maxSlopeDeg * radians)) return null;
+      cost += Math.hypot(d, rise);
+    }
+    return { cost, run };
+  };
+  const prefix = new Float64Array(path.length);
+  for (let i = 1; i < path.length; i++) {
+    const d = horizontal(path[i - 1], path[i]);
+    prefix[i] = prefix[i - 1] + Math.hypot(d, path[i].elevationM - path[i - 1].elevationM);
+  }
+
+  const output = [path[0]];
+  let i = 0;
+  while (i < path.length - 1) {
+    let chosen = i + 1, chosenRun = null;
+    const furthest = Math.min(path.length - 1, i + 16);
+    for (let j = furthest; j > i + 1; j--) {
+      const shortcut = segmentCost(path[i], path[j]);
+      if (shortcut && shortcut.cost <= prefix[j] - prefix[i] + 1e-3) {
+        chosen = j; chosenRun = shortcut.run; break;
+      }
+    }
+    if (chosenRun) {
+      for (let k = 1; k < chosenRun.length; k++) {
+        const p = chosenRun[k], elevationM = heightAt(p.x, p.y);
+        const lon = westDeg + p.x * lonStepDeg;
+        const lat = northDeg + p.y * latStepDeg;
+        output.push({ x: p.x, y: p.y, lon, lat, elevationM });
+      }
+    } else output.push(path[chosen]);
+    i = chosen;
+  }
+  return output;
 }
