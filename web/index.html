@@ -246,13 +246,15 @@
     <div id="ground"></div>
     <div id="routeControls">
       <div class="sub">Terrain route · MOLA</div>
-      <button id="routeStartBtn" type="button">Choose start</button>
-      <button id="routeGoalBtn" type="button">Choose destination</button>
+      <button id="routeAddBtn" type="button">Add waypoint</button>
+      <button id="routeUndoBtn" type="button">Undo last</button>
       <button id="routeClearBtn" type="button">Clear</button>
+      <div class="hint">Add points in order; the route visits each one.</div>
+      <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
       <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
       <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
       <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
-      <div id="routeStatus" aria-live="polite">Choose a start and destination on the map.</div>
+      <div id="routeStatus" aria-live="polite">Add at least two waypoints in travel order.</div>
     </div>
     <div id="status"></div>
     <div class="sub">Tile cache</div>
@@ -1874,12 +1876,13 @@
     // A click (press + release without dragging) probes; dragging still pans the globe.
     const clicker = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     let routePickMode = null;
-    let routeStart = null, routeGoal = null, routeGraphic = null, routeStartPin = null, routeGoalPin = null;
+    const routePoints = [], routePins = [];
+    let routeGraphic = null;
     let routeDisplayPath = null, routeRawPath = null, routeGrid = null;
     let unwalkableLayers = [];
     let routeRequest = 0;
     const routeStatus = document.getElementById("routeStatus");
-    const routeButtons = [document.getElementById("routeStartBtn"), document.getElementById("routeGoalBtn")];
+    const routeAddButton = document.getElementById("routeAddBtn");
     const maxSlopeSlider = document.getElementById("maxSlope");
     const maxSlopeValue = document.getElementById("maxSlopeValue");
     const slopeMeaning = document.getElementById("slopeMeaning");
@@ -1890,17 +1893,15 @@
     };
     function setRoutePickMode(mode) {
       routePickMode = mode;
-      routeButtons[0].classList.toggle("on", mode === "start");
-      routeButtons[1].classList.toggle("on", mode === "goal");
-      routeStatus.textContent = mode === "start" ? "Click the map to set the start." :
-        mode === "goal" ? "Click the map to set the destination." : "Choose a start and destination on the map.";
+      routeAddButton.classList.toggle("on", mode === "waypoint");
+      routeStatus.textContent = mode === "waypoint" ? `Click the map to add waypoint ${routePoints.length + 1}.` :
+        routePoints.length < 2 ? "Add at least two waypoints in travel order." : "";
     }
     function clearRouteGraphics() {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
-      if (routeStartPin) viewer.entities.remove(routeStartPin);
-      if (routeGoalPin) viewer.entities.remove(routeGoalPin);
       routeGraphic = routeDisplayPath = routeRawPath = routeGrid = null;
-      routeStartPin = routeGoalPin = null;
+      for (const pin of routePins) viewer.entities.remove(pin);
+      routePins.length = 0;
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
     }
@@ -1923,15 +1924,28 @@
       });
     }
     function syncRoutePins() {
-      if (routeStartPin) viewer.entities.remove(routeStartPin);
-      if (routeGoalPin) viewer.entities.remove(routeGoalPin);
-      routeStartPin = routeStart ? makeRoutePin(routeStart, Cesium.Color.LIME, "S") : null;
-      routeGoalPin = routeGoal ? makeRoutePin(routeGoal, Cesium.Color.ORANGE, "E") : null;
+      for (const pin of routePins) viewer.entities.remove(pin);
+      routePins.length = 0;
+      const list = document.getElementById("routeWaypointList");
+      list.replaceChildren();
+      routePoints.forEach((point, index) => {
+        const isFirst = index === 0, isLast = index === routePoints.length - 1;
+        const color = isFirst ? Cesium.Color.LIME : isLast ? Cesium.Color.ORANGE : Cesium.Color.YELLOW;
+        routePins.push(makeRoutePin(point, color, String(index + 1)));
+        const item = document.createElement("li");
+        item.style.cssText = "color:#ccc;font-size:11px;margin:2px 0";
+        item.append(`${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}° `);
+        const remove = document.createElement("button");
+        remove.type = "button"; remove.textContent = "×"; remove.title = `Remove waypoint ${index + 1}`;
+        remove.dataset.waypointIndex = String(index);
+        item.append(remove); list.append(item);
+      });
       placeRoutePins();
     }
     function placeRoutePins() {
       occluder.cameraPosition = viewer.camera.positionWC;
-      for (const [point, pin] of [[routeStart, routeStartPin], [routeGoal, routeGoalPin]]) {
+      for (let i = 0; i < routePoints.length; i++) {
+        const point = routePoints[i], pin = routePins[i];
         if (!point || !pin) continue;
         const world = Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 0, MARS);
         pin.show = occluder.isPointVisible(world);
@@ -1947,6 +1961,7 @@
       const visualHeight = (elevationM) => (showRelief ? elevationM * viewer.scene.verticalExaggeration : 0) + 8;
       if (routeDisplayPath.length === 1) {
         const p = routeDisplayPath[0];
+        const routeStart = routePoints[0], routeGoal = routePoints.at(-1);
         let dLon = routeGoal.lon - routeStart.lon;
         if (dLon > 180) dLon -= 360;
         else if (dLon < -180) dLon += 360;
@@ -2075,8 +2090,9 @@
       throw new Error("MOLA terrain is still loading");
     }
     async function computeTerrainRoute() {
-      if (!routeStart || !routeGoal) return;
+      if (routePoints.length < 2) return;
       if (!USE_PROXY) { routeStatus.textContent = "Start the local viewer server to load MOLA heights."; return; }
+      const waypoints = routePoints.slice();
       const request = ++routeRequest;
       clearRouteGraphics();
       syncRoutePins();
@@ -2085,24 +2101,50 @@
         await waitForMola();
         if (request !== routeRequest) return;
         const pad = 0.12;
-        const lonA = routeStart.lon, lonB = routeGoal.lon;
-        const crossesSeam = Math.abs(lonA - lonB) > 180;
+        const longitudes = waypoints.map((p) => ((p.lon % 360) + 360) % 360).sort((a, b) => a - b);
+        let largestGap = -1, gapIndex = 0;
+        for (let i = 0; i < longitudes.length; i++) {
+          const next = i + 1 < longitudes.length ? longitudes[i + 1] : longitudes[0] + 360;
+          const gap = next - longitudes[i];
+          if (gap > largestGap) { largestGap = gap; gapIndex = i; }
+        }
+        let westUnwrapped = longitudes[(gapIndex + 1) % longitudes.length];
+        let eastUnwrapped = longitudes[gapIndex];
+        if (eastUnwrapped < westUnwrapped) eastUnwrapped += 360;
+        westUnwrapped -= pad; eastUnwrapped += pad;
+        let west = ((westUnwrapped + 180) % 360 + 360) % 360 - 180;
+        let east = ((eastUnwrapped + 180) % 360 + 360) % 360 - 180;
+        if (eastUnwrapped - westUnwrapped >= 359.999) { west = -180; east = 180; }
         const patchBounds = {
-          west: crossesSeam ? Math.max(lonA, lonB) - pad : Math.max(-180, Math.min(lonA, lonB) - pad),
-          east: crossesSeam ? Math.min(lonA, lonB) + pad : Math.min(180, Math.max(lonA, lonB) + pad),
-          south: Math.max(-90, Math.min(routeStart.lat, routeGoal.lat) - pad),
-          north: Math.min(90, Math.max(routeStart.lat, routeGoal.lat) + pad),
+          west, east,
+          south: Math.max(-90, Math.min(...waypoints.map((p) => p.lat)) - pad),
+          north: Math.min(90, Math.max(...waypoints.map((p) => p.lat)) + pad),
+        };
+        const planSequence = async (grid) => {
+          const combined = { path: [], displayPath: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
+          for (let i = 1; i < waypoints.length; i++) {
+            if (request !== routeRequest) return null;
+            const a = lonLatToTerrainCell(grid, waypoints[i - 1].lon, waypoints[i - 1].lat);
+            const b = lonLatToTerrainCell(grid, waypoints[i].lon, waypoints[i].lat);
+            const leg = a && b ? await planTerrainRoute(grid, a, b, {
+              maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
+            }) : null;
+            if (!leg) return null;
+            combined.path.push(...leg.path.slice(combined.path.length ? 1 : 0));
+            combined.displayPath.push(...leg.displayPath.slice(combined.displayPath.length ? 1 : 0));
+            combined.horizontalDistanceM += leg.horizontalDistanceM;
+            combined.terrainDistanceM += leg.terrainDistanceM;
+          }
+          return combined;
         };
         let grid, result, detail = "full local grid";
         if (estimateTerrainPatchCells(patchBounds, 6) > 120_000) {
-          routeStatus.textContent = "Finding a broad route, then refining the terrain corridor…";
+          routeStatus.textContent = `Finding a broad route through ${waypoints.length} waypoints, then refining…`;
           let coarseLevel = 4;
           while (coarseLevel > 0 && estimateTerrainPatchCells(patchBounds, coarseLevel) > 300_000) coarseLevel--;
           const coarseGrid = await loadTerrainPatch({ ...patchBounds, level: coarseLevel });
           if (request !== routeRequest) return;
-          const ca = lonLatToTerrainCell(coarseGrid, routeStart.lon, routeStart.lat);
-          const cb = lonLatToTerrainCell(coarseGrid, routeGoal.lon, routeGoal.lat);
-          const coarseResult = ca && cb ? await planTerrainRoute(coarseGrid, ca, cb, { maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest }) : null;
+          const coarseResult = await planSequence(coarseGrid);
           if (request !== routeRequest) return;
           grid = coarseGrid;
           result = coarseResult;
@@ -2111,9 +2153,7 @@
             routeStatus.textContent = "Loading detailed MOLA tiles along the route corridor…";
             const fineGrid = await loadTerrainCorridor(coarseResult.path, { level: 6, bufferTiles: 1 });
             if (request !== routeRequest) return;
-            const fa = lonLatToTerrainCell(fineGrid, routeStart.lon, routeStart.lat);
-            const fb = lonLatToTerrainCell(fineGrid, routeGoal.lon, routeGoal.lat);
-            const refined = fa && fb ? await planTerrainRoute(fineGrid, fa, fb, { maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest }) : null;
+            const refined = await planSequence(fineGrid);
             if (request !== routeRequest) return;
             if (refined) { grid = fineGrid; result = refined; detail = "refined MOLA z6 corridor"; }
             else { grid = fineGrid; result = null; detail = "no fine route within slope limit"; }
@@ -2133,9 +2173,7 @@
           }
           if (!grid) throw tooLarge || new Error("Could not load a terrain patch");
           if (request !== routeRequest) return;
-          const a = lonLatToTerrainCell(grid, routeStart.lon, routeStart.lat);
-          const b = lonLatToTerrainCell(grid, routeGoal.lon, routeGoal.lat);
-          result = a && b ? await planTerrainRoute(grid, a, b, { maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest }) : null;
+          result = await planSequence(grid);
           if (request !== routeRequest) return;
         }
         routeGrid = grid;
@@ -2150,17 +2188,31 @@
         if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
       }
     }
-    document.getElementById("routeStartBtn").addEventListener("click", () => setRoutePickMode("start"));
-    document.getElementById("routeGoalBtn").addEventListener("click", () => setRoutePickMode("goal"));
+    document.getElementById("routeAddBtn").addEventListener("click", () => setRoutePickMode("waypoint"));
+    document.getElementById("routeUndoBtn").addEventListener("click", () => {
+      if (!routePoints.length) return;
+      routeRequest++; routePoints.pop();
+      clearRouteGraphics(); syncRoutePins();
+      if (routePoints.length >= 2) computeTerrainRoute();
+      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+    });
+    document.getElementById("routeWaypointList").addEventListener("click", (event) => {
+      const index = Number(event.target.closest("button")?.dataset.waypointIndex);
+      if (!Number.isInteger(index) || index < 0 || index >= routePoints.length) return;
+      routeRequest++; routePoints.splice(index, 1);
+      clearRouteGraphics(); syncRoutePins();
+      if (routePoints.length >= 2) computeTerrainRoute();
+      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+    });
     document.getElementById("routeClearBtn").addEventListener("click", () => {
-      routeRequest++; routeStart = routeGoal = null; clearRouteGraphics(); setRoutePickMode(null);
+      routeRequest++; routePoints.length = 0; clearRouteGraphics(); syncRoutePins(); setRoutePickMode(null);
     });
     let slopeDebounce;
     maxSlopeSlider.addEventListener("input", () => {
       maxSlopeValue.textContent = `${maxSlopeDeg()}°`;
       updateSlopeMeaning();
       clearTimeout(slopeDebounce);
-      slopeDebounce = setTimeout(() => { if (routeStart && routeGoal) computeTerrainRoute(); }, 250);
+      slopeDebounce = setTimeout(() => { if (routePoints.length >= 2) computeTerrainRoute(); }, 250);
     });
     exagSlider.addEventListener("input", () => {
       if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath);
@@ -2170,7 +2222,7 @@
       syncRoutePins();
     });
     clicker.setInputAction((e) => {
-      if (routePickMode) {
+      if (routePickMode === "waypoint") {
         const world = surfaceAt(e.position.x, e.position.y);
         if (!world) { routeStatus.textContent = "Click a visible point on Mars."; return; }
         const c = MARS.cartesianToCartographic(world);
@@ -2186,12 +2238,12 @@
             world: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, Number.isFinite(snappedHeight) ? snappedHeight : 0, MARS),
           };
         }
-        if (routePickMode === "start") routeStart = point;
-        else routeGoal = point;
+        routeRequest++;
+        routePoints.push(point);
         syncRoutePins();
         setRoutePickMode(null);
-        if (routeStart && routeGoal) computeTerrainRoute();
-        else routeStatus.textContent = `${spot ? `Snapped to ${spot.name}. ` : ""}${routeStart ? "Start set. Choose a destination." : "Destination set. Choose a start."}`;
+        if (routePoints.length >= 2) computeTerrainRoute();
+        else routeStatus.textContent = `${spot ? `Snapped to ${spot.name}. ` : ""}Waypoint 1 set. Add another waypoint to route.`;
         return;
       }
       const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
