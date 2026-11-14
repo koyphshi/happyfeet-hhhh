@@ -52,7 +52,7 @@
       <button id="btnTop" class="on">Top-down</button>
       <button id="btnTilt">Tilted 60°</button>
       <div id="tiltRow">
-        <span>Tilt</span><input id="tilt" type="range" min="0" max="80" step="1" value="0" />
+        <span>Tilt</span><input id="tilt" type="range" min="0" max="60" step="1" value="0" />
         <span id="tiltVal">0°</span>
       </div>
     </div>
@@ -60,7 +60,7 @@
     <div id="status"></div>
     <div class="sub">Tile cache</div>
     <div id="cache"><span id="cacheInfo">…</span> <button id="btnClear">Clear</button></div>
-    <div class="hint">Left-drag: move · wheel / right-drag: zoom · Ctrl+drag or middle-drag: tilt &amp; turn</div>
+    <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 60°) · touch: two-finger drag up/down to tilt</div>
   </div>
   <div id="scale">
     <div id="scaleLabel">–</div>
@@ -250,9 +250,11 @@
     const HOME = Cesium.Cartesian3.fromDegrees(-60, 10, 14_000_000, MARS);
     viewer.camera.setView({ destination: HOME });
 
-    // Tilt = angle away from looking straight down (0° = top-down, 80° = almost horizon).
+    // Tilt = angle away from looking straight down (0° = top-down, MAX_TILT = most oblique allowed).
     // Note: there is no 3D terrain yet, so a tilted view shows the flat imagery in perspective.
+    const MAX_TILT = 60;
     let tiltDeg = 0;
+    const currentTilt = () => 90 + Cesium.Math.toDegrees(viewer.camera.pitch);
     const pitchFor = (deg) => Cesium.Math.toRadians(-90 + deg);
 
     // Look at (lon, lat) on the surface from `range` metres away at the current tilt.
@@ -371,10 +373,60 @@
     viewer.camera.percentageChanged = 0.001;
     viewer.camera.changed.addEventListener(updateMetrics);
     viewer.camera.moveEnd.addEventListener(updateMetrics);
-    // keep the slider in sync after the user tilts with Ctrl+drag
+    // keep the slider in sync after the user tilts by hand
     viewer.camera.moveEnd.addEventListener(() => {
-      tiltDeg = Math.min(80, Math.max(0, Math.round(90 + Cesium.Math.toDegrees(viewer.camera.pitch))));
+      tiltDeg = Math.min(MAX_TILT, Math.max(0, Math.round(currentTilt())));
       showTilt(tiltDeg);
+    });
+
+    // ---------------------------------------------------------------- hand tilt
+    // Mouse: hold BOTH left and right buttons and drag up/down. Cesium has no two-button chord,
+    // so while both are down we switch Cesium's own mouse handling off and tilt ourselves.
+    // Touch: Cesium's two-finger gesture already tilts (drag both fingers up/down); the clamp
+    // below keeps it, and every other way of tilting, at MAX_TILT or less.
+    const ssc = viewer.scene.screenSpaceCameraController;
+    const canvasEl = viewer.scene.canvas;
+    let chord = null; // { y, tilt } while both buttons are held
+
+    // Rotate the camera around the point in the middle of the screen to `deg`, instantly.
+    function tiltNow(deg) {
+      const target = viewCentre();
+      const range = Cesium.Cartesian3.distance(viewer.camera.positionWC, target);
+      viewer.camera.lookAt(target, new Cesium.HeadingPitchRange(viewer.camera.heading, pitchFor(deg), range));
+      viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY); // release so normal controls work again
+    }
+
+    // Pressing a second button while the first is held fires pointermove (not pointerdown),
+    // so the chord can start from either event.
+    function maybeStartChord(e) {
+      if (chord || e.pointerType !== "mouse" || (e.buttons & 3) !== 3) return false;
+      chord = { y: e.clientY, tilt: currentTilt() };
+      ssc.enableInputs = false;
+      try { canvasEl.setPointerCapture(e.pointerId); } catch {}
+      return true;
+    }
+    canvasEl.addEventListener("pointerdown", maybeStartChord);
+    canvasEl.addEventListener("pointermove", (e) => {
+      if (maybeStartChord(e) || !chord) return;
+      if ((e.buttons & 3) !== 3) return endChord();
+      // drag up = tilt toward the horizon, 0.3° per pixel
+      const deg = Math.min(MAX_TILT, Math.max(0, chord.tilt + (chord.y - e.clientY) * 0.3));
+      tiltNow(deg);
+      tiltDeg = Math.round(deg);
+      showTilt(tiltDeg);
+    });
+    function endChord() {
+      if (!chord) return;
+      chord = null;
+      ssc.enableInputs = true;
+    }
+    canvasEl.addEventListener("pointerup", (e) => { if ((e.buttons & 3) !== 3) endChord(); });
+    canvasEl.addEventListener("pointercancel", endChord);
+    canvasEl.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    // Hard limit: whatever tilted the camera (touch, Ctrl+drag, middle-drag), pull it back to MAX_TILT.
+    viewer.scene.preRender.addEventListener(() => {
+      if (currentTilt() > MAX_TILT + 0.5) tiltNow(MAX_TILT);
     });
     window.addEventListener("resize", updateMetrics);
     updateMetrics();

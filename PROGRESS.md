@@ -31,6 +31,7 @@ Last updated: Sat 14 Nov 2026, ~14:30 (Africa/Algiers)
 | 14:23 | pixelguy126 | Commit "claude did his thing": `docs/integrity-assertions.md` (Claude's rewrite of the integrity section as assertions) |
 | afternoon | Claude (Claude Code) | Fixed "planet not showing": Trek is 2–10 s/tile and the page flew away before the globe loaded. `serve.mjs` now has a disk tile cache + retry + warm-up; page auto-uses the proxy, waits for the globe before flying, shows load progress, HiRISE starts at level 8 (no grey smear). Verified in headless Chrome. `cesium` added to `web/package.json`. |
 | later | Claude (Claude Code) | Browser tile cache (`web/tile-sw.js` service worker, Cache Storage, with count/size + Clear button), 1000-tile in-memory cache, 30-day cache headers; scale bar + "to centre" / "view width" distances; tilted view (Top-down / Tilted 60° buttons + 0–80° slider). Checked in headless Chrome. Tilt shows flat imagery in perspective; no 3D terrain yet. |
+| later | Claude (Claude Code) | Hand tilt: hold left + right mouse buttons and drag up/down; two-finger touch drag; every tilt capped at 60°. Mouse chord + cap checked in headless Chrome; touch not tested on a real device. |
 
 ## Status by area
 
