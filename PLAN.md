@@ -67,7 +67,7 @@ Bevy rendering · MMGIS self-host · MEDA PDS bundles · MSL RAD parsing · GB-s
 float32 WMS layers · draping thematic rasters on the 3D tileset · login · AI inference services ·
 "anywhere on Mars" as a claim · rover *commanding* (tracking the real traverse is in) ·
 step counters · 3 UI modes · Quest Link · other robotic systems (scout drone, follower robot — one
-deck bullet as future work, no code)
+deck bullet as future work, no code) · invented vitals (heart rate, fatigue) · a CO₂ tank
 
 ---
 
@@ -88,7 +88,8 @@ Level 0 is 2×1 → `GeographicTilingScheme({ numberOfLevelZeroTilesX: 2 })`. Ro
 | 7 | **Derived (ours)** | Comms line-of-sight raster to a fixed lander relay | ~2 h |
 
 Radiation is **not** a layer: it is a modelled readout (~0.21 mGy/day surface, Hassler et al. 2014)
-labelled "modelled" in the UI. We never parse RAD from PDS.
+labelled "modelled" in the UI. We never parse RAD from PDS. It is readout-only and never enters the
+router (§6: ~70 µGy over an 8 h EVA, the same everywhere at walk scale).
 
 ### Resolution tiers
 
@@ -107,7 +108,7 @@ mode: the person can still tweak any layer afterwards.
 | **Satellite** | Gale optical only |
 | **Terrain** | MOLA colour relief + slope surface |
 | **Thermal** | THEMIS thermal; thermal inertia if the P2 pick ships |
-| **Hazard** | Slope-cost traversability + comms blackout + no-go mask over dimmed optical |
+| **Hazard** | Slope-cost traversability + comms blackout + time-to-safety + crew reports + no-go mask over dimmed optical |
 | **Science** | OMEGA/CRISM hydrous detections + target markers over optical |
 
 - **Heatmap-only** is a "basemap off" toggle on any view, so a layer can be read on its own.
@@ -129,9 +130,12 @@ comms(cell)  = max(0, blackout_seconds_along_segment − 60) · k
 cost         = t + comms
 ```
 
-- **Hard mask (impassable):** slope above suit mobility limit · rock abundance above threshold ·
-  no-data tiles · modelled dose over budget.
+- **Hard mask (impassable):** slope above suit mobility limit · DEM roughness above threshold ·
+  no-data tiles · crew-reported Avoid zones (§13) · walk-back time over the limit (§6).
+  Radiation dose is not here: it cannot tell routes apart (§6). There is no rock-abundance layer in §4, and
+  orbit cannot see rocks under ~1 m, so roughness is DEM-derived and flagged low-confidence (§12).
 - **Soft cost:** the two terms above, with `a`, `b` exposed as a single **"risk tolerance" slider**.
+  Crew-reported Slow zones multiply `t` (§13).
 - **60 s comms grace:** short dropouts are recoverable; longer ones mean loss of telemetry.
   At ~1.5 km/h a 3 m blackout costs ~7 s and is ignored by construction — no special case needed.
 - **Router:** A\* over the DEM grid, in `planRoute()`.
@@ -168,7 +172,13 @@ cost         = t + comms
 Parametric and transparent. Output is **% of budget consumed** plus **reserve at return** —
 never false-precision kilograms.
 
-- `v0`, suit mass, metabolic rate on flat/rough/slope, suit power draw, PLSS capacity.
+- **Three depleting consumables: O₂, cooling water, battery** — the same three Apollo walk-back planning used.
+  Each is a % of design capacity (design point: 8 h EVA at 1000 BTU/h average metabolic rate). O₂ and water
+  burn in proportion to metabolic rate; battery burns at a flat draw (proportionalities `ASSUMED`). The
+  **limiting consumable** is named in the UI.
+- **Metabolic rate** = f(speed, slope, load = suit mass + `tool_kg`, gravity 0.38 g). There is no accepted
+  closed form. Use a SEXTANT-style speed-by-slope table plus a load multiplier, and label every coefficient
+  `ASSUMED` (spike 6).
 - **Vehicle variant** for the rover profile: vehicle speed, trafficability slope limit, power draw,
   cabin consumables. Separate coefficient block, same output format.
   Anchor: NASA DRA 5.0 "commuter" architecture fields small pressurized rovers carrying a crew of two,
@@ -185,6 +195,34 @@ never false-precision kilograms.
     convention (`ASSUMED`) until we have a source for it.
 - **20% reserve is a hard routing constraint** (for each crew member), not a dashboard number. If no route meets it,
   the app says so and offers the shortest route that does.
+
+- **Walk-back constraint (new, core).** Real EVA planning limits how far crew can be from a safe haven if life
+  support fails. Apollo computed it from oxygen, sublimator feedwater and battery, then recalculated it during
+  the EVA from actual use. We do the same: a Dijkstra pass from the safe haven (hab, or the parked rover as
+  refuge) over the **same cost grid** gives a **time-to-safety raster**. A route is feasible only if the
+  walk-back time at every point is within `walkback_limit_s`. Default 60 min: NASA's Mars PLSS study sizes the
+  backup for 1 h on 4–8 h EVAs; a 2026 Mars suit-mass study suggests as little as 30 min (~1.8 km at 3.5 km/h).
+  The UI shows which one is in use. This is why foot reach is ~2 km, and why a parked rover as haven extends it.
+  The raster is also a heatmap layer ("time to safety, minutes") with an exact legend.
+- **Live tanks (simulated).** The route output carries a `timeline[]` with O₂ / water / battery % and walk-back
+  margin at every step. A playback scrubber moves the astronaut along the route and the gauges follow. They
+  are labelled "simulated" everywhere they appear.
+
+### What we model, read out, and leave out
+
+| Metric | Verdict | Basis |
+|---|---|---|
+| O₂ level | **Model** | Burn ∝ metabolic rate. NASA PLSS studies size O₂ and water as the depleting consumables. |
+| Cooling water | **Model** | Same. Absolute Mars water use is uncertain, so % only, `ASSUMED`. |
+| Battery | **Model** | Flat draw. xEMU batteries outlasted the 8 h design requirement in NASA chamber tests. |
+| Walk-back time + margin | **Model** | Apollo practice; slope-dependent version in TU Munich's V-SUIT (ICES 2018). |
+| Daylight remaining | **Model** | Geometry only: EVA must end before local sunset minus a margin (`ASSUMED`). Needs the P1 solar clock. |
+| Radiation dose | **Readout only** | GCR ~0.21 mGy/day at Gale (RAD, Hassler 2014) is ~70 µGy over 8 h and uniform at walk scale. RAD saw three solar particle events in its first Martian year at several times the quiet dose; we cannot forecast those, so it is a standing note. RAD measures aboard the rover, so a suited crew's dose differs. |
+| Ground / air temperature | **Readout only** | REMS record, historical. No threshold shown unless we find a sourced suit limit. |
+| CO₂ scrubber tank | **Leave out** | Rapid-cycle amine swingbeds are regenerative, so CO₂ removal is not an EVA-duration-limiting consumable. |
+| Heart rate, fatigue, vitals | **Leave out** | No validated route-level model found. Metabolic rate is the sourced proxy. |
+| Wind, dust loading, soil strength | **Leave out** | No walk-scale data and no routing effect we can source. Soil and rock hazards enter through crew reports (§13). |
+| Rock abundance | **Leave out as a layer** | HiRISE resolves boulders ≳1 m only, and §4 has no walk-scale rock layer. |
 
 Every coefficient lives in `docs/assumptions.md` with a source URL or an explicit `ASSUMED` label.
 An unsourced coefficient shown in the UI as if it were fact is a Validity failure.
@@ -205,6 +243,12 @@ Facts, not decisions. Each can invalidate downstream work; do them before buildi
 5. **Concept-vehicle parameters** — DRA 5.0 gives crew of two and ~100 km total range for the small
    pressurized rover (Munk et al., NTRS 20100017229; main report NASA/SP-2009-566). Find a source for speed,
    power draw and cabin consumables, or label them `ASSUMED`. Add DRA 5.0 to References either way. ~30 min.
+6. **Resource-model sources** — I only read excerpts of these, so read the primaries before quoting a number:
+   NASA Mars PLSS studies (NTRS 20260002884, 20260005204: 2/4/6/8 h EVAs, backup sized 0.5 h for a 2 h EVA and
+   1 h for 4–8 h); Mars suit-mass study (ICES-2026-127, NTRS 20260005410: 1000 BTU/h average, 30-min walk-back
+   suggestion); V-SUIT walk-back method (Olthoff, ICES 2018); Apollo 15 traverse-constraint paper (NASA ALSJ
+   19790073512); metabolic models (Kluis et al. 2022; Brown et al. 2018 on walking cost at 0.38 g; SEXTANT /
+   Marquez). Output: `docs/assumptions.md` rows, each with a URL or `ASSUMED`. All go in References. ~1 h.
 
 ---
 
@@ -214,7 +258,11 @@ Facts, not decisions. Each can invalidate downstream work; do them before buildi
 - Demo route renders with all shipped layers and visible provenance chips.
 - Route bends around a no-go zone and a long comms blackout; short dropouts are ignored.
 - Survival panel shows reserve-at-return and refuses an infeasible route.
-- **If P1 #8–9 shipped:** the comparison card shows Foot / Foot + rover / Rover (concept) for the demo
+- The route card explains itself (cost breakdown, straight-line baseline, a note per detour) and shows its
+  warnings plus the standing caveats (§12) on every route, feasible or not.
+- **If P1 #8–10 shipped:** the time-to-safety raster and walk-back margin are shown; a crew report added on
+  the route makes the planner bend around it and the Why panel cites that report.
+- **If P1 #11–12 shipped:** the comparison card shows Foot / Foot + rover / Rover (concept) for the demo
   target; a route failing the reserve for *either* crew member is refused and names who; one of the 7 slides
   is that card. **If not:** the deck says profiles and crew are parameters of the router but not exposed,
   and claims nothing more.
@@ -238,12 +286,12 @@ A P2 that half-exists is worse than a P2 that doesn't, because it steals hours f
 | 2 | Layer panel with opacity + provenance chips | Every layer shows dataset, mission, resolution, date |
 | 3 | POI markers: Viking 1 & 2, landing sites, waypoints, real rover traverse | Clicking a POI opens its detail card |
 | 4 | Route planner: A\* with **human suit-mobility** cost + slope hard mask | Route visibly bends around a no-go zone |
-| 5 | ETA + resource budget + 20% reserve check | Infeasible route is refused, not drawn |
+| 5 | **Route card:** ETA, consumables budget (O₂ / water / battery, per-step `timeline[]`), 20% reserve check, why-this-route basics (cost breakdown + straight-line baseline), warnings + standing caveats (§12) | Infeasible route is refused, not drawn; a feasible route shows its limiting consumable, why it detours, and at least the standing caveats |
 | 6 | Comms LOS layer + blackout term in routing | Long blackout is avoided; 3 m dropout is ignored |
-| 7 | **VR HUD (minimal)** — separate Three.js WebXR scene reading `route.json` | Public link enters VR in the Quest 3 browser and shows terrain patch, route, waypoints and floating O₂ / battery / ETA / blackout panels; the same link works on a laptop without a headset |
+| 7 | **VR HUD (minimal)** — separate Three.js WebXR scene reading `route.json` | Public link enters VR in the Quest 3 browser and shows terrain patch, route, waypoints and floating consumables / ETA / walk-back / warnings panels; the same link works on a laptop without a headset |
 
 **P0 architecture rule (no new P0 features):** write #4–#5 against a `MobilityProfile` argument and a
-`crew: Member[]` array from the first commit. P0 ships Foot × 2 hardcoded; P1 #8–9 are then config and UI,
+`crew: Member[]` array from the first commit. P0 ships Foot × 2 hardcoded; P1 #11–12 are then config and UI,
 not a refactor. Retrofitting this after P0 is how the rover answer gets cut.
 
 **P0 #7 is a parallel track, not a step after #6.** It needs the `route.json` contract, not the planner.
@@ -255,13 +303,19 @@ pass and goes ahead of all P1. Minimum scope is ~4 h (§11); the 360° panorama 
 
 | # | Feature | Cost | Note |
 |---|---|---|---|
-| 8 | **Mobility profile comparison** — Foot / Foot + rover cache / Rover (concept) for the selected target | 1.5 h | Same `planRoute()`, three parameter sets. Test: one target → three rows, rover row labelled "concept vehicle", infeasible rows kept with reason. Aim for the 17:00 submission. |
-| 9 | **Pair mode** — per-member budgets, shared `tool_kg`, science-stops count; partner shows live O₂/battery | 2 h | Replaces the old "simulated crew" row: the partner *is* the simulated crew. Test: make one member infeasible → route refused, member named. |
-| 10 | **View selector** (Satellite / Terrain / Thermal / Hazard / Science) with a legend per layer | 1.5 h | See §4. Replaces the three-mode idea. Test: each view toggles the right layers, shows a legend, and "basemap off" isolates the layer. |
-| 11 | POV panorama viewer at waypoints | 2 h | Brief explicitly asks for this |
-| 12 | Atmosphere sol slider (live MSL/REMS) | 1 h | Measured, never "forecast" |
-| 13 | Local solar time + sol clock | 30 min | From longitude + mission sol |
-| 14 | **Real peer broadcasting** via public MQTT-over-WebSocket broker + `?room=` | 2–3 h | **First P1 item to drop.** If shipped, the partner in #9 can be a real second client. Random room UUID. Falls back to simulation. |
+| 8 | **Time-to-safety raster + walk-back constraint** — Dijkstra from the haven over the same grid, Hazard-view layer, playback scrubber with live simulated tanks | 1.5 h | §6. Test: moving the haven changes the raster; a route point whose walk-back time exceeds the limit makes the route infeasible. |
+| 9 | **Crew field reports** — tap to add Avoid / Slow zones, instant re-plan, GeoJSON export/import | 2.5 h | §13. Test: add a rock field on the route → the route bends around it and the Why panel cites the report. |
+| 10 | **Why-this-route, full** — what-if variants shown as rejected dashed routes, along-route strip | 1.5 h | §12. The basic version is already in P0 #5. |
+| 11 | **Mobility profile comparison** — Foot / Foot + rover cache / Rover (concept) for the selected target | 1.5 h | Same `planRoute()`, three parameter sets. Test: one target → three rows, rover row labelled "concept vehicle", infeasible rows kept with reason. |
+| 12 | **Pair mode** — per-member budgets, shared `tool_kg`, science-stops count; partner shows live O₂/battery | 2 h | Replaces the old "simulated crew" row: the partner *is* the simulated crew. Test: make one member infeasible → route refused, member named. |
+| 13 | **View selector** (Satellite / Terrain / Thermal / Hazard / Science) with a legend per layer | 1.5 h | §4. Test: each view toggles the right layers, shows a legend, and "basemap off" isolates the layer. |
+| 14 | **Local solar time + daylight margin** — EVA start-time input, sunset warning | 1 h | From longitude + mission sol. Feeds the daylight warning in §12. |
+| 15 | POV panorama viewer at waypoints | 2 h | Brief explicitly asks for this |
+| 16 | Atmosphere sol slider (live MSL/REMS) | 1 h | Measured, never "forecast" |
+| 17 | **Real peer broadcasting** via public MQTT-over-WebSocket broker + `?room=` | 2–3 h | **First P1 item to drop.** If shipped, the partner in #12 can be a real second client and crew reports sync to them. Random room UUID. Falls back to simulation. |
+
+**Suggested cut line: after #14** (about 12 h of P1). #15–17 are bonus. The brief only says to *consider*
+point-of-view images; it asks for safety and route planning first.
 
 *Dropped: the 2D CSS HUD overlay. The VR scene's laptop preview is the HUD, and DOM panels cannot be reused inside VR anyway.*
 
@@ -320,14 +374,91 @@ CesiumJS has **no WebXR support** (roadmap, no timeline). So:
   `immersive-vr` is supported; otherwise the same scene runs with mouse-look. That laptop view is also the HUD
   demo for anyone without a Quest, which is why the 2D CSS HUD was dropped.
 - **Consumes `route.json`.** Minimum fields: `profile`, `crew[]` (reserve per member), `path[]` as
-  lon/lat/elevation, `waypoints[]`, `blackout[]` segments, `eta_s`, and a local `terrain` height grid (a few
+  lon/lat/elevation, `waypoints[]`, `blackout[]` segments, `eta_s`, `timeline[]` (O₂ / water / battery % and walk-back margin per step),
+  `warnings[]`, `reports[]`, and a local `terrain` height grid (a few
   hundred metres, cut from the DEM corridor). **Freeze this schema before anyone builds against it.**
 - **Ships with a committed demo `route.json`.** "Open in VR" in the planner hands over the live route through
   same-origin storage and falls back to the committed one, so the VR scene never depends on a fetch at judge
   time.
-- **Minimum scope (~4 h):** terrain patch, route line, waypoint markers, four floating panels (O₂, battery,
-  ETA, blackout warning). **Stretch inside it:** 360° panorama at waypoints.
+- **Minimum scope (~4 h):** terrain patch, route line, waypoint markers, four floating panels (consumables,
+  ETA, walk-back margin, warnings). **Stretch inside it:** 360° panorama at waypoints.
 - **HUD panels are canvas textures on planes, not DOM.** DOM overlays do not carry into an immersive VR
   session, so the CSS HUD could never have been reused.
 - **A third renderer over the same data**, which is what the `planRoute()` seam buys us. It never touches
   the Cesium app; the only shared thing is `route.json`. Add Three.js to References.
+
+---
+
+## 12. Explaining the route and declaring its limits
+
+Trust is the product. The route card must answer *why this route* and *what is still risky*. No AI is
+involved: every sentence is a template filled from planner output.
+
+### Why this route
+
+- **Cost breakdown:** a stacked bar of the route's seconds by term (flat travel, slope, roughness, comms, crew
+  slowdowns), with the limiting consumable named.
+- **Straight-line baseline**, always computed. "Straight line: 1.1 km, 14 min, but crosses 2 slope no-go cells and
+  6 min of blackout. Chosen: 1.4 km, 19 min, crosses none."
+- **Detour notes:** each place the route leaves the straight line gets one generated sentence. "Detour 180 m
+  west: avoids 22° slope (suit limit 15°)."
+- **Route coloured by dominant cost driver**, plus an along-route strip: elevation, slope, blackout, O₂ / water /
+  battery and walk-back margin against distance. Hovering moves a marker on the map and in VR. It is the same
+  strip as the consumables timeline (§6).
+- **What-if variants (P1 #10):** the same `planRoute()` rerun with one constraint relaxed at a time (ignore comms,
+  ignore crew reports, relax the slope limit). They appear only inside the Why panel, as dashed grey routes
+  labelled REJECTED with the reason. They are never offered as routes: infeasible still means refused.
+- **Code seam:** `planRoute()` also returns per-step cost components. `explain()` lives in its own file and
+  imports no Cesium.
+
+### Warnings — declared even when the route is feasible
+
+A feasible route is not a safe route. Warnings are rule-based, graded INFO / CAUTION / WARNING, shown in the
+route card, drawn on the map where they have a location (click to zoom), and exported in `route.json` so the
+VR HUD shows them. Every threshold is `ASSUMED` and listed in `docs/assumptions.md`.
+
+| Rule | Level | Example text |
+|---|---|---|
+| Reserve at return under 30% (but ≥ 20%) | CAUTION | "Reserve at return 24%: thin." |
+| Limiting consumable | INFO | "Water limits this EVA, not O₂." |
+| Walk-back margin under 15 min anywhere | CAUTION | "Walk-back margin is 9 min at waypoint 3." |
+| Max slope within 20% of the suit limit | CAUTION | "3 segments steeper than 12° (limit 15°)." |
+| Blackout remains on route (no alternative) | WARNING | "Blackout 4 min 10 s between waypoints 2 and 3." |
+| Dropouts under the 60 s grace | INFO | "5 dropouts, 38 s total, within grace: listed, not penalised." |
+| Ends within 45 min of sunset | CAUTION | "Return ends 30 min before sunset." |
+| Route passes within 30 m of an unverified crew report | CAUTION | "Passes 20 m from crew report #2." |
+| Pair: weakest member | INFO | "Crew B sets the pace." |
+| Concept rover profile | INFO | "Concept vehicle: parameters assumed." |
+
+**Standing caveats — shown on every route, not dismissible:**
+- "Orbital imagery resolves boulders of about 1 m and up. Smaller rocks, loose sand and soft ground are not on
+  this map." (HiRISE; Hood et al. 2022.)
+- "Atmosphere and temperature are past measurements, not forecasts."
+- "Solar particle events cannot be forecast here. Shelter procedure is not modelled."
+- "Consumable levels are simulated from assumed coefficients."
+
+---
+
+## 13. Crew field reports — the astronaut updates the map
+
+Orbit cannot see everything. HiRISE resolves boulders of roughly a metre and up; below that, and for soft
+ground, only someone standing there knows. Apollo 17's orange glass at Shorty Crater was not visible in
+remote-sensing data, and walk-back limits cut the time available there (NASA traverse-planning paper,
+NTRS 20090036808). So the map is not read-only.
+
+- **Add a report:** tap the map, drop a circle (radius slider, minimum one grid cell) or draw a polygon, pick a
+  type (Rock field · Soft ground · Drop or crater edge · Obstacle · Science note) and an effect: **Avoid** (hard
+  mask) or **Slow** (cost multiplier, `ASSUMED`). A Science note has no routing effect. Optional free-text note.
+  Timestamp is sol + local solar time; author is Crew A or B. No accounts.
+- **Re-plan immediately.** Reports are rasterised onto the grid and reach `planRoute()` through `costFn`, so the
+  seam is unchanged. The Why panel cites them ("Detour avoids crew report #2: rock field").
+- **Reports can only add risk.** They never lift a physics-based mask (slope, no-data). A wrong *Avoid* costs
+  time; a wrong *clear* costs a person. Deleting your own report is allowed.
+- **Visible as data, with provenance.** A "Crew reports" layer carries the same provenance chip as every other
+  layer: source crew field report · resolution as entered · time sol N · "unverified by orbit".
+- **Storage without a backend:** browser storage on the device plus GeoJSON export/import (a few KB). If P1 #17
+  ships, reports sync to the partner; otherwise the partner imports the file.
+- **Demo seed:** `public/reports/demo.geojson` ships 2–3 reports so the first load shows the feature working.
+  They are labelled **SIMULATED crew report (demo)**: we never present invented rocks as NASA data. A "clear
+  demo reports" button resets them.
+- **VR:** reports travel in `route.json` (`reports[]`) and are drawn as markers in the VR scene.
