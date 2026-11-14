@@ -500,6 +500,10 @@ server.listen(port, "127.0.0.1", () => {
   console.log(`Mars viewer running at ${url}  (Ctrl+C to stop)`);
   if (process.platform === "win32" && !process.argv.includes("--no-open")) {
     exec(`start "" "${url}"`);
+  } else if (process.platform === "linux" && !process.argv.includes("--no-open")) {
+    exec(`xdg-open "${url}"`, (err) => {
+      if (err) console.log(`Open ${url} in your browser.`);
+    });
   }
   warmCache().catch((err) => console.warn("Tile warm-up failed:", err.message));
   loadTerrain().catch((err) => {

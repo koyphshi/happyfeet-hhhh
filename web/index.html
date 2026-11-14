@@ -21,6 +21,34 @@
     .layer .note { color: #aaa; font-size: 11.5px; margin-top: 2px; }
     .sub { margin: 6px 0 3px; color: #bbb; }
     #places button { margin: 2px 4px 2px 0; padding: 3px 8px; cursor: pointer; }
+    #spots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 4px 0 8px; }
+    #spots button { min-width: 0; padding: 5px 6px; text-align: left; cursor: pointer; background: #242424; color: #ddd; border: 1px solid #444; border-radius: 4px; }
+    #spots button:hover, #spots button.active { border-color: #e8b85a; background: #332d20; }
+    #spotControls { display: flex; align-items: center; justify-content: space-between; }
+    #spotToggle { padding: 2px 7px; font-size: 11px; cursor: pointer; background: #242424; color: #ccc; border: 1px solid #444; border-radius: 4px; }
+    #spotToggle.on { color: #ffe0a0; border-color: #8c6b2e; }
+    #spotFilters { display: grid; gap: 5px; margin: 3px 0 6px; }
+    #spotSearch, #spotCategory { min-width: 0; padding: 4px 6px; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px; font: 12px system-ui, sans-serif; }
+    #spotTagFilters, #spotTags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .spotTagFilter, .spotTag { padding: 1px 6px; border: 1px solid #444; border-radius: 10px; color: #bbb; background: #252525; font-size: 10px; }
+    .spotTagFilter { cursor: pointer; }
+    .spotTagFilter.on { border-color: #a7864d; color: #ffe0a0; background: #332d20; }
+    #spotFilterCount { color: #888; font-size: 10px; text-align: right; }
+    .spotBadge { float: right; color: #f0d18e; font-size: 9px; }
+    #spotCard { position: absolute; z-index: 7; transform: translate(-50%, calc(-100% - 18px)); width: min(320px, calc(100vw - 24px));
+      padding: 9px 10px; border: 1px solid #75613a; border-radius: 7px; background: rgba(18, 18, 17, .95);
+      box-shadow: 0 5px 22px rgba(0, 0, 0, .65); color: #eee; pointer-events: auto; }
+    #spotCard[hidden] { display: none; }
+    #spotCard .spotHead { display: flex; align-items: center; gap: 6px; }
+    #spotCard h2 { flex: 1; font-size: 13px; margin: 0 0 3px; color: #ffe082; }
+    #spotCard .spotHead button { padding: 0 5px; cursor: pointer; color: #ccc; background: #242424; border: 1px solid #444; border-radius: 3px; }
+    #spotCard .spotType, #spotCard .spotNote { color: #bbb; font-size: 11.5px; }
+    #spotImage { display: block; width: 100%; max-height: 170px; margin-top: 7px; object-fit: cover; border-radius: 4px; background: #111; }
+    #spotImage[hidden], #spotImageCaption[hidden], #spotVrButton[hidden] { display: none; }
+    #spotImageCaption { margin-top: 2px; color: #888; font-size: 10px; }
+    #spotVrButton { margin-top: 7px; padding: 5px 8px; cursor: pointer; background: #332d20; color: #ffe0a0; border: 1px solid #927441; border-radius: 4px; }
+    #spotStats { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; margin-top: 6px; font: 11px ui-monospace, Consolas, monospace; }
+    #spotStats span:nth-child(odd) { color: #aaa; }
     #readout { margin-top: 8px; color: #9fd3ff; font: 12px ui-monospace, Consolas, monospace; }
     #status { margin-top: 6px; color: #f0b27a; min-height: 1.4em; font-size: 12px; }
     .hint { color: #888; font-size: 11.5px; margin-top: 6px; }
@@ -160,8 +188,14 @@
     </div>
     <div id="layers"></div>
     <div class="hint" style="margin:0 0 8px">Click the map to read every layer's pixel at that spot.</div>
-    <div class="sub">Fly to</div>
-    <div id="places"></div>
+    <div id="spotControls"><div class="sub">Mission spots</div><button id="spotToggle" type="button" aria-pressed="true">Markers on</button></div>
+    <div id="spotFilters">
+      <input id="spotSearch" type="search" placeholder="Search spots, missions, tags…" aria-label="Search mission spots" />
+      <select id="spotCategory" aria-label="Filter spots by category"><option value="">All categories</option></select>
+      <div id="spotTagFilters" aria-label="Filter spots by tags"></div>
+      <div id="spotFilterCount" aria-live="polite"></div>
+    </div>
+    <div id="spots"></div>
     <div class="sub">View</div>
     <div id="view">
       <button id="btnTop" class="on">Top-down</button>
@@ -208,6 +242,15 @@
   </div>
   <div id="marker" hidden></div>
   <div id="probe" hidden></div>
+  <section id="spotCard" hidden aria-live="polite">
+    <div class="spotHead"><h2 id="spotTitle"></h2><button id="spotClose" type="button" aria-label="Close spot details">×</button></div>
+    <div class="spotType" id="spotType"></div>
+    <div id="spotTags"></div>
+    <img id="spotImage" hidden alt="" />
+    <div id="spotImageCaption" hidden></div>
+    <div id="spotStats"></div><div class="spotNote" id="spotNote"></div>
+    <button id="spotVrButton" type="button" hidden>Open street view</button>
+  </section>
   <div id="scale">
     <div id="scaleLabel">–</div>
     <div id="scaleBar" style="width:100px"></div>
@@ -227,8 +270,8 @@
       statusEl.style.fontSize = "13px";
       statusEl.innerHTML =
         "<b>This page can't run as a file.</b><br>Close this tab and double-click " +
-        "<code>start-viewer.bat</code> in D:\\mars (or run <code>node serve.mjs</code> in " +
-        "the web folder). It opens <code>http://localhost:8080</code> for you.";
+        "<code>start-viewer.bat</code> on Windows or run <code>./start-viewer.sh</code> on Linux " +
+        "from the project folder. It serves <code>http://localhost:8080</code>.";
       return;
     }
     if (typeof Cesium === "undefined") {
@@ -861,6 +904,19 @@
       });
     }
 
+    // Spot selection is a destination flight: center the pin under a top-down camera.
+    // flyToBoundingSphere leaves the camera in a target-relative orbit frame, which makes
+    // subsequent navigation feel like orbiting a POI instead of exploring the planet.
+    function flyToSpot(lon, lat, range) {
+      tiltDeg = 0;
+      showTilt(0);
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(lon, lat, range, MARS),
+        orientation: { heading: viewer.camera.heading, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 },
+        duration: 2.5,
+      });
+    }
+
     // Surface point at a screen position, or undefined if that pixel shows sky.
     // With relief on, this hits the actual terrain; otherwise (or off the loaded tiles) the ellipsoid.
     function surfaceAt(x, y) {
@@ -900,20 +956,230 @@
     tiltSlider.addEventListener("input", () => { tiltVal.textContent = `${tiltSlider.value}°`; });
     tiltSlider.addEventListener("change", () => setTilt(Number(tiltSlider.value), 0.6));
 
-    const PLACES = [
-      { name: "Gale landing area", go: () => fly(GALE.lon, GALE.lat, 20_000) },
-      { name: "Gale crater", go: () => fly(137.8, -5.4, 400_000) },
-      { name: "Jezero crater", go: () => fly(77.6, 18.4, 250_000) },
-      { name: "Olympus Mons", go: () => fly(-133.8, 18.65, 1_300_000) },
-      { name: "Valles Marineris", go: () => fly(-59.0, -14.0, 3_500_000) },
-      { name: "Whole planet", go: () => fly(-60, 10, 14_000_000, 2) },
+    // Curated, static mission/science spots. Coordinates and mission facts are NASA/JPL
+    // references; the spot card labels the map-derived values separately from those facts.
+    const BOXWORK_PANORAMAS = [
+      { sol: 4512, date: "16 Apr 2025", lon: 137.3882287, lat: -4.79504357, site: 115, drive: 960, heading: 202, dir: "04", file: "N_R000_4512_EDR115CYLASB0960_AUTOLM1", ext: "PNG" },
+      { sol: 4525, date: "29 Apr 2025", lon: 137.3877473, lat: -4.79641047, site: 115, drive: 1770, heading: 200, dir: "05", file: "N_R000_4525XEDR115CYLASB1770_AUTOLM1", ext: "PNG" },
+      { sol: 4548, date: "23 May 2025", lon: 137.3840451, lat: -4.79879294, site: 116, drive: 1260, heading: 221, dir: "06", file: "N_R000_4548_EDR116CYLASB1260_AUTOLM2", ext: "PNG" },
+      { sol: 4561, date: "6 Jun 2025", lon: 137.3835414, lat: -4.79984723, site: 116, drive: 1944, heading: 179, dir: "06", file: "N_R000_4561XEDR116CYLASB1944_AUTOLM1", ext: "PNG" },
+      { sol: 4580, date: "25 Jun 2025", lon: 137.3812512, lat: -4.80232637, site: 117, drive: 420, heading: 233, dir: "06", file: "N_R000_4580_EDR117CYLASB0420_AUTOLM1", ext: "PNG" },
+      { sol: 4611, date: "27 Jul 2025", lon: 137.3793204, lat: -4.80474015, site: 117, drive: 2730, heading: 239, dir: "07", file: "N_R000_4611XEDR117CYLASB2730_AUTOLM1", ext: "PNG" },
+      { sol: 4647, date: "2 Sep 2025", lon: 137.3798121, lat: -4.80689063, site: 118, drive: 2268, heading: 98, dir: "09", file: "N_R000_4647_EDR118CYLASB2268_AUTOLM1", ext: "PNG" },
+      { sol: 4671, date: "27 Sep 2025", lon: 137.3812695, lat: -4.80827103, site: 119, drive: 486, heading: 119, dir: "09", file: "N_R000_4671_EDR119CYLASB0486_AUTOLM1", ext: "jpg" },
     ];
-    const placesEl = document.getElementById("places");
-    for (const p of PLACES) {
+    // A regular MAHLI close-up from the same boxwork traverse (Sol 4636), used as
+    // representative marker-card imagery instead of repeating the 360° Navcam projections.
+    const boxworkPhoto = "https://assets.science.nasa.gov/dynamicimage/assets/science/psd/photojournal/pia/pia26/pia26697/PIA26697.jpg?fit=crop&h=540&w=960";
+    const panoramaUrl = (p) => `https://science.nasa.gov/resource/sol-${p.sol}-right-navigation-camera-cylindrical-projection/`;
+    const SPOTS = [
+      { id: "gale-boxwork", name: "Gale · boxwork target", lon: 137.3931242, lat: -4.78692417,
+        type: "Science target · Glen Torridon", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
+        category: "Science target", tags: ["Gale", "Geology", "Boxwork", "Curiosity"], vrEnabled: true,
+        image: boxworkPhoto, imageSource: "https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/",
+        imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork", imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636",
+        note: "Boxwork ridges and hollows can preserve clues to groundwater history. Marker is an approximate regional target, not a rover position.",
+        source: "NASA/JPL · Curiosity’s First 360° View of Boxwork Patterns", url: "https://science.nasa.gov/photojournal/curiositys-first-360-degree-view-of-boxwork-patterns/" },
+      ...BOXWORK_PANORAMAS.map((p) => ({
+        id: `curiosity-sol-${p.sol}`, name: `Boxwork panorama · Sol ${p.sol}`, lon: p.lon, lat: p.lat,
+        type: `Curiosity Navcam · site ${p.site}, drive ${p.drive}`, mission: "Mars Science Laboratory",
+        date: `Sol ${p.sol} · ${p.date}`, category: "Panorama", tags: ["Gale", "Boxwork", "Curiosity", "Navcam", "360°", `Site ${p.site}`],
+        vrEnabled: true, sol: p.sol, site: p.site, drive: p.drive, projection: "360° cylindrical", heading: p.heading,
+        positionNote: `NASA waypoint at site ${p.site}, drive ${p.drive}`,
+        image: boxworkPhoto, imageSource: "https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/",
+        imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork",
+        imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636 boxwork close-up", source: `NASA · Sol ${p.sol} Right Navcam Panorama`, url: panoramaUrl(p),
+      })),
+      { id: "curiosity", name: "Curiosity landing", lon: 137.4417, lat: -4.5895,
+        type: "Rover landing site", mission: "Curiosity / Mars Science Laboratory", date: "Touchdown · 6 Aug 2012",
+        category: "Landing site", tags: ["Gale", "Rover", "MSL", "NASA"], vrEnabled: false,
+        note: "Gale crater landing area; mission rover traverse is not plotted in this prototype.", source: "NASA/JPL · Curiosity landing site", url: "https://mars.nasa.gov/msl/mission/timeline/surfaceops/" },
+      { id: "viking1", name: "Viking 1", lon: -49.97, lat: 22.48,
+        type: "Lander site · Chryse Planitia", mission: "Viking 1", date: "Touchdown · 20 Jul 1976",
+        category: "Landing site", tags: ["Chryse Planitia", "Lander", "NASA", "1970s"], vrEnabled: false,
+        note: "First successful U.S. landing on Mars.", source: "NASA Science · Viking 1", url: "https://science.nasa.gov/mission/viking-1/" },
+      { id: "viking2", name: "Viking 2", lon: -134.29, lat: 47.97,
+        type: "Lander site · Utopia Planitia", mission: "Viking 2", date: "Touchdown · 3 Sep 1976",
+        category: "Landing site", tags: ["Utopia Planitia", "Lander", "NASA", "1970s"], vrEnabled: false,
+        note: "Coordinates shown in planetographic convention.", source: "NASA Science · Viking 2", url: "https://science.nasa.gov/mission/viking-2/" },
+      { id: "pathfinder", name: "Pathfinder", lon: 326.75 - 360, lat: 19.13,
+        type: "Lander + Sojourner rover", mission: "Mars Pathfinder", date: "Touchdown · 4 Jul 1997",
+        category: "Landing site", tags: ["Ares Vallis", "Rover", "Lander", "NASA"], vrEnabled: false,
+        note: "A technology demonstration with the Sojourner rover.", source: "NASA NSSDC · Mars Pathfinder", url: "https://nssdc.gsfc.nasa.gov/planetary/mesur.html" },
+      { id: "perseverance", name: "Perseverance", lon: 77.45, lat: 18.44,
+        type: "Rover landing site · Jezero crater", mission: "Perseverance / Mars 2020", date: "Touchdown · 18 Feb 2021",
+        category: "Landing site", tags: ["Jezero", "Rover", "Mars 2020", "NASA"], vrEnabled: false,
+        note: "Jezero crater landing site. Coordinates are an approximate map pin.", source: "NASA Science · How We Land on Mars", url: "https://science.nasa.gov/planetary-science/programs/mars-exploration/mission-timeline/how-we-land-on-mars/" },
+    ];
+    const spotButtons = new Map();
+    const spotEntities = new Map();
+    const activeSpotTags = new Set();
+    let spotsVisible = true;
+    let selectedSpot = null;
+    const spotToggle = document.getElementById("spotToggle");
+    const spotsEl = document.getElementById("spots");
+    for (const spot of SPOTS) {
+      const entity = viewer.entities.add({
+        id: `spot-${spot.id}`, position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS),
+        show: spotsVisible,
+        properties: { spotId: spot.id, category: spot.category, tags: spot.tags ?? [], vrEnabled: !!spot.vrEnabled },
+        billboard: {
+          image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46"><path d="M19 2C9.6 2 3 8.8 3 17.2 3 28 19 44 19 44s16-16 16-26.8C35 8.8 28.4 2 19 2Z" fill="#171614" fill-opacity=".96" stroke="${spot.id === "gale-boxwork" ? "#f4c66a" : "#8fc9dc"}" stroke-width="2.2"/><circle cx="19" cy="17" r="7" fill="${spot.id === "gale-boxwork" ? "#f4c66a" : "#8fc9dc"}" fill-opacity=".2" stroke="${spot.id === "gale-boxwork" ? "#f4c66a" : "#8fc9dc"}" stroke-width="1.6"/><circle cx="19" cy="17" r="2.5" fill="#fff"/></svg>`
+          )}`,
+          width: 38, height: 46, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          scaleByDistance: new Cesium.NearFarScalar(2e4, 1, 1e7, 0.8),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        },
+        label: { text: spot.name, show: false, font: "12px sans-serif", fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.fromCssColorString("#151515"), outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          pixelOffset: new Cesium.Cartesian2(0, -14), verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          disableDepthTestDistance: 50000, distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 1800000) },
+      });
+      spotEntities.set(spot.id, entity);
       const b = document.createElement("button");
-      b.textContent = p.name;
-      b.addEventListener("click", p.go);
-      placesEl.append(b);
+      b.append(document.createTextNode(spot.name));
+      if (spot.vrEnabled) {
+        const badge = document.createElement("span"); badge.className = "spotBadge"; badge.textContent = "VR";
+        b.append(badge);
+      }
+      b.addEventListener("click", () => { setSpotsVisible(true); selectSpot(spot); });
+      spotsEl.append(b); spotButtons.set(spot.id, b);
+    }
+    const spotCard = document.getElementById("spotCard");
+    const spotStats = document.getElementById("spotStats");
+    const spotImage = document.getElementById("spotImage");
+    const spotImageCaption = document.getElementById("spotImageCaption");
+    const spotVrButton = document.getElementById("spotVrButton");
+    function addSpotStat(key, value) {
+      const k = document.createElement("span"), v = document.createElement("span");
+      k.textContent = key; v.textContent = value; spotStats.append(k, v);
+      return v;
+    }
+    function setSpotsVisible(visible) {
+      spotsVisible = visible;
+      if (!visible) {
+        selectedSpot = null;
+        spotCard.hidden = true;
+        for (const entity of spotEntities.values()) entity.label.show = false;
+        for (const b of spotButtons.values()) b.classList.remove("active");
+      }
+      applySpotFilters();
+      spotToggle.textContent = visible ? "Markers on" : "Markers off";
+      spotToggle.classList.toggle("on", visible);
+      spotToggle.setAttribute("aria-pressed", String(visible));
+    }
+    function spotMatches(spot) {
+      const query = document.getElementById("spotSearch").value.trim().toLowerCase();
+      const category = document.getElementById("spotCategory").value;
+      const haystack = [spot.name, spot.type, spot.mission, spot.note, spot.category, ...(spot.tags ?? [])].join(" ").toLowerCase();
+      return (!query || haystack.includes(query)) && (!category || spot.category === category) &&
+        [...activeSpotTags].every((tag) => spot.tags?.includes(tag));
+    }
+    function applySpotFilters() {
+      let count = 0;
+      for (const spot of SPOTS) {
+        const matches = spotMatches(spot);
+        if (matches) count++;
+        spotButtons.get(spot.id).hidden = !matches;
+        spotEntities.get(spot.id).show = spotsVisible && matches;
+        if (!matches && selectedSpot?.id === spot.id) {
+          selectedSpot = null; spotCard.hidden = true;
+          spotEntities.get(spot.id).label.show = false;
+          spotButtons.get(spot.id).classList.remove("active");
+        }
+      }
+      document.getElementById("spotFilterCount").textContent = `${count} of ${SPOTS.length} spots`;
+    }
+    const categoryFilter = document.getElementById("spotCategory");
+    for (const category of [...new Set(SPOTS.map((spot) => spot.category))].sort()) {
+      const option = document.createElement("option"); option.value = category; option.textContent = category;
+      categoryFilter.append(option);
+    }
+    const tagFilters = document.getElementById("spotTagFilters");
+    for (const tag of [...new Set(SPOTS.flatMap((spot) => spot.tags ?? []))].sort()) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "spotTagFilter"; b.textContent = tag;
+      b.addEventListener("click", () => {
+        if (activeSpotTags.has(tag)) activeSpotTags.delete(tag); else activeSpotTags.add(tag);
+        b.classList.toggle("on", activeSpotTags.has(tag));
+        b.setAttribute("aria-pressed", String(activeSpotTags.has(tag)));
+        applySpotFilters();
+      });
+      b.setAttribute("aria-pressed", "false"); tagFilters.append(b);
+    }
+    document.getElementById("spotSearch").addEventListener("input", applySpotFilters);
+    categoryFilter.addEventListener("change", applySpotFilters);
+    applySpotFilters();
+    spotToggle.addEventListener("click", () => setSpotsVisible(!spotsVisible));
+    setSpotsVisible(true);
+    spotVrButton.addEventListener("click", () => {
+      statusEl.textContent = "Street-view mode is planned for this spot but is not available yet.";
+    });
+    document.getElementById("spotClose").addEventListener("click", () => {
+      spotCard.hidden = true;
+      selectedSpot = null;
+      for (const b of spotButtons.values()) b.classList.remove("active");
+      for (const entity of spotEntities.values()) entity.label.show = false;
+    });
+    async function selectSpot(spot) {
+      closeProbe();
+      selectedSpot = spot;
+      for (const [id, b] of spotButtons) b.classList.toggle("active", id === spot.id);
+      for (const [id, entity] of spotEntities) entity.label.show = id === spot.id;
+      document.getElementById("spotTitle").textContent = spot.name;
+      document.getElementById("spotType").textContent = `${spot.category} · ${spot.type} · ${spot.mission}`;
+      const spotTags = document.getElementById("spotTags");
+      spotTags.replaceChildren();
+      for (const tag of spot.tags ?? []) {
+        const chip = document.createElement("span"); chip.className = "spotTag"; chip.textContent = tag; spotTags.append(chip);
+      }
+      spotImage.hidden = !spot.image;
+      spotImageCaption.hidden = !spot.image;
+      spotImage.onerror = () => { spotImage.hidden = true; spotImageCaption.hidden = true; };
+      if (spot.image) {
+        spotImage.src = spot.image;
+        spotImage.alt = spot.imageAlt ?? `${spot.name} image`;
+        spotImageCaption.replaceChildren(document.createTextNode("Image: "));
+        if (spot.imageSource) {
+          const imageSource = document.createElement("a");
+          imageSource.textContent = spot.imageCredit ?? "NASA image";
+          imageSource.href = spot.imageSource; imageSource.target = "_blank"; imageSource.rel = "noopener noreferrer";
+          imageSource.style.color = "#9fd3ff"; spotImageCaption.append(imageSource);
+        } else spotImageCaption.append(document.createTextNode(spot.imageCredit ?? ""));
+      } else {
+        spotImage.removeAttribute("src"); spotImage.alt = ""; spotImageCaption.textContent = "";
+      }
+      spotVrButton.hidden = !spot.vrEnabled;
+      const note = document.getElementById("spotNote");
+      note.replaceChildren(document.createTextNode(`${spot.date}. ${spot.note} Source: `));
+      const source = document.createElement("a");
+      source.textContent = spot.source; source.href = spot.url; source.target = "_blank"; source.rel = "noopener noreferrer";
+      source.style.color = "#9fd3ff"; note.append(source, document.createTextNode("."));
+      spotStats.replaceChildren();
+      const ns = spot.lat >= 0 ? "N" : "S", ew = spot.lon >= 0 ? "E" : "W";
+      addSpotStat("Latitude", `${Math.abs(spot.lat).toFixed(4)}° ${ns}`);
+      addSpotStat("Longitude", `${Math.abs(spot.lon).toFixed(4)}° ${ew}`);
+      if (spot.sol) {
+        addSpotStat("Sol · site", `${spot.sol} · ${spot.site}`);
+        addSpotStat("Drive · heading", `${spot.drive} · ${spot.heading}°`);
+        addSpotStat("Projection", spot.projection);
+      }
+      const elevation = addSpotStat("MOLA elevation", "loading…");
+      const galeDistance = surfaceDistance(
+        Cesium.Cartesian3.fromDegrees(GALE.lon, GALE.lat, 0, MARS),
+        Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS));
+      addSpotStat("From Gale landing", fmtDist(galeDistance));
+      const hi = LAYERS.find((l) => l.name === "Gale HiRISE mosaic");
+      const inside = hi.bounds && spot.lon >= hi.bounds[0] && spot.lon <= hi.bounds[2] && spot.lat >= hi.bounds[1] && spot.lat <= hi.bounds[3];
+      addSpotStat("HiRISE coverage", inside ? "Gale mosaic" : "outside Gale mosaic");
+      spotCard.hidden = false;
+      const cameraHeight = spot.category === "Panorama" ? 6000
+        : spot.id === "gale-boxwork" || spot.id === "curiosity" ? 18000 : 350000;
+      flyToSpot(spot.lon, spot.lat, cameraHeight);
+      if (USE_PROXY) fetch(`./terrain/point?lat=${spot.lat}&lon=${spot.lon}`).then(r => r.ok ? r.json() : Promise.reject())
+        .then(j => { if (spotStats.contains(elevation)) elevation.textContent = `${Math.round(j.height).toLocaleString()} m`; })
+        .catch(() => { if (spotStats.contains(elevation)) elevation.textContent = "unavailable"; });
+      else elevation.textContent = "local server required";
     }
 
     // ---------------------------------------------------------------- distances
@@ -1368,12 +1634,31 @@
       renderProbe();
     }
 
+    function placeSpotCard() {
+      if (!selectedSpot) return;
+      occluder.cameraPosition = viewer.camera.positionWC;
+      const world = spotEntities.get(selectedSpot.id).position.getValue(Cesium.JulianDate.now());
+      const p = Cesium.SceneTransforms.worldToWindowCoordinates(viewer.scene, world, screenPos);
+      if (!p || !occluder.isPointVisible(world)) { spotCard.hidden = true; return; }
+      spotCard.hidden = false;
+      const half = spotCard.offsetWidth / 2;
+      const x = Math.max(half + 8, Math.min(viewer.scene.canvas.clientWidth - half - 8, p.x));
+      const y = Math.max(spotCard.offsetHeight + 24, p.y - 10);
+      spotCard.style.left = `${x}px`;
+      spotCard.style.top = `${y}px`;
+    }
+    viewer.scene.postRender.addEventListener(placeSpotCard);
+
     function closeProbe() {
       probe = null;
       probeEl.hidden = markerEl.hidden = true;
     }
 
     async function openProbe(screen) {
+      selectedSpot = null;
+      spotCard.hidden = true;
+      for (const entity of spotEntities.values()) entity.label.show = false;
+      for (const b of spotButtons.values()) b.classList.remove("active");
       const world = surfaceAt(screen.x, screen.y);
       if (!world) return closeProbe();
       const carto = MARS.cartesianToCartographic(world);
@@ -1409,7 +1694,17 @@
 
     // A click (press + release without dragging) probes; dragging still pans the globe.
     const clicker = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-    clicker.setInputAction((e) => openProbe(e.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    clicker.setInputAction((e) => {
+      const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
+      const id = picked.map((p) => p?.id?.properties?.spotId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
+      const spot = SPOTS.find((s) => s.id === id);
+      if (spot) selectSpot(spot);
+      else openProbe(e.position);
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    clicker.setInputAction((e) => {
+      const picked = spotsVisible && viewer.scene.pick(e.endPosition);
+      viewer.scene.canvas.style.cursor = picked?.id?.properties?.spotId ? "pointer" : "";
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && probe) closeProbe(); });
 
     // ---------------------------------------------------------------- cache info
@@ -1442,7 +1737,12 @@
     // planet has painted (or after 10 s). Flying earlier cancels the global tiles and leaves a
     // bare brown ball.
     let flown = false;
-    const goGale = () => { if (!flown) { flown = true; fly(GALE.lon, GALE.lat, 20_000, 5); } };
+    const goGale = () => {
+      if (flown) return;
+      flown = true;
+      const entrySpot = SPOTS.find((spot) => spot.id === "gale-boxwork");
+      if (entrySpot) selectSpot(entrySpot);
+    };
     const onLoaded = (queued) => {
       if (queued === 0 && globe.tilesLoaded) {
         globe.tileLoadProgressEvent.removeEventListener(onLoaded);
