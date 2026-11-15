@@ -1,4 +1,4 @@
-// Local, terrain-only A* over numeric MOLA height tiles served by serve.mjs.
+// Local, terrain-only Theta* over numeric MOLA height tiles served by serve.mjs.
 // Trek's MOLA/HRSC relief layer is color imagery; these heights come from numeric MOLA.
 const TILE_CELLS = 64;
 const TILE_SAMPLES = TILE_CELLS + 1;
@@ -98,7 +98,7 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
 }
 
 // Load only fine tiles touched by a coarse route and a one-tile buffer around it.
-// The returned sparse grid lets fine A* explore only this local corridor.
+// The returned sparse grid lets fine Theta* explore only this local corridor.
 export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles = 1, maxTiles = 256, signal } = {}) {
   if (!coarsePath?.length) throw new RangeError("A coarse route is required");
   if (!Number.isInteger(bufferTiles) || bufferTiles < 0) throw new RangeError("Invalid tile buffer");
@@ -134,6 +134,7 @@ export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles =
   }
   return {
     width: worldWidth, height: worldHeight + 1, heights, wrapX: true,
+    tileKeys: [...keys].map((key) => key.split(",").map(Number)),
     westDeg: -180, northDeg: 90,
     lonStepDeg: 360 / worldWidth, latStepDeg: -180 / worldHeight,
     level,
@@ -151,7 +152,36 @@ export function lonLatToTerrainCell(grid, lonDeg, latDeg) {
   return { x, y };
 }
 
-export function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity } = {}) {
+export function terrainCellSlopeDeg(grid, x, y) {
+  const { width, height, heights, wrapX, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
+  const get = (xx, yy) => {
+    if (wrapX) xx = (xx + width) % width;
+    if (xx < 0 || xx >= width || yy < 0 || yy >= height) return undefined;
+    const id = yy * width + xx;
+    return heights instanceof Map ? heights.get(id) : heights[id];
+  };
+  const h = get(x, y);
+  if (h === undefined) return Infinity;
+  const radians = Math.PI / 180;
+  const lat = (northDeg + y * latStepDeg) * radians;
+  const horizontal = (dx, dy) => Math.hypot(dx * lonStepDeg * radians * MARS_RADIUS_M * Math.cos(lat),
+    dy * latStepDeg * radians * MARS_RADIUS_M);
+  const derivative = (a, b, da, db) => {
+    if (a !== undefined && b !== undefined) return (b - a) / (da + db);
+    if (b !== undefined) return (b - h) / db;
+    if (a !== undefined) return (h - a) / da;
+    return undefined;
+  };
+  const west = get(x - 1, y), east = get(x + 1, y), north = get(x, y - 1), south = get(x, y + 1);
+  const dx = derivative(west, east, horizontal(-1, 0), horizontal(1, 0));
+  const dy = derivative(north, south, horizontal(0, -1), horizontal(0, 1));
+  if (dx === undefined || dy === undefined) return Infinity;
+  return Math.atan(Math.hypot(dx, dy)) / radians;
+}
+
+// Weighted Basic Theta*: any-angle shortcuts are checked against the same cell slope
+// mask as the overlay, while edge grades retain the configured climb limit.
+export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity, signal, shouldCancel = () => false } = {}) {
   if (!(maxSlopeDeg === Infinity || (Number.isFinite(maxSlopeDeg) && maxSlopeDeg >= 0 && maxSlopeDeg < 90)))
     throw new RangeError("maxSlopeDeg must be between 0 and 90 degrees");
   const { width, height, heights, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
@@ -190,7 +220,11 @@ export function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity } =
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat) * Math.cos(b.lat) * Math.sin(dLon / 2) ** 2;
     return 2 * MARS_RADIUS_M * Math.asin(Math.sqrt(Math.min(1, h)));
   };
-  const g = new Map([[startId, 0]]), parent = new Map(), closed = new Set();
+  const g = new Map([[startId, 0]]), parent = new Map(), closed = new Set(), slopeCache = new Map();
+  const cellSlope = (id) => {
+    if (!slopeCache.has(id)) slopeCache.set(id, terrainCellSlopeDeg(grid, id % width, Math.floor(id / width)));
+    return slopeCache.get(id);
+  };
 
   // Binary min-heap, ordered by estimated total terrain distance.
   const heap = [];
@@ -215,29 +249,96 @@ export function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity } =
     return first;
   };
 
+  const rasterLine = (from, to) => {
+    let x0 = from % width, y0 = Math.floor(from / width), x1 = to % width, y1 = Math.floor(to / width);
+    if (grid.wrapX && Math.abs(x1 - x0) > width / 2) x1 += x1 < x0 ? width : -width;
+    const line = [], dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    const dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    for (;;) {
+      line.push((y0 * width) + ((x0 % width + width) % width));
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+    return line;
+  };
+  const segment = (from, to) => {
+    const line = rasterLine(from, to);
+    let cost = 0;
+    for (let i = 0; i < line.length; i++) {
+      if (cellSlope(line[i]) > maxSlopeDeg) return null;
+      if (!i) continue;
+      const a = line[i - 1], b = line[i], ax = a % width, ay = Math.floor(a / width), bx = b % width, by = Math.floor(b / width);
+      const ha = heightAt(a), hb = heightAt(b);
+      if (ha === undefined || hb === undefined) return null;
+      const d = horizontal(ax, ay, bx, by), rise = Math.abs(hb - ha);
+      if (rise > d * maxSlopeRatio) return null;
+      cost += Math.hypot(d, rise);
+    }
+    return { cost, line };
+  };
+  if (cellSlope(startId) > maxSlopeDeg || cellSlope(goalId) > maxSlopeDeg) return null;
   push([heuristic(start), 0, startId]);
   const moves = [[-1,-1], [0,-1], [1,-1], [-1,0], [1,0], [-1,1], [0,1], [1,1]];
+  let expanded = 0;
   while (heap.length) {
+    if (signal?.aborted || shouldCancel()) return null;
+    if (++expanded % 128 === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (signal?.aborted || shouldCancel()) return null;
+    }
     const [, currentCost, id] = pop();
     if (closed.has(id) || currentCost !== g.get(id)) continue;
     if (id === goalId) {
+      const anchors = [];
+      for (let at = id; at !== undefined; at = parent.get(at)) anchors.push(at);
+      anchors.reverse();
       const ids = [];
-      for (let at = id; at !== undefined; at = parent.get(at)) ids.push(at);
-      ids.reverse();
+      const displayPath = [];
+      const turnIndices = [];
+      for (let i = 1; i < anchors.length; i++) {
+        const from = anchors[i - 1], to = anchors[i], line = segment(from, to).line;
+        if (i > 1) turnIndices.push(displayPath.length - 1);
+        ids.push(...line.slice(ids.length ? 1 : 0));
+        const ax = from % width, ay = Math.floor(from / width);
+        let bx = to % width;
+        const by = Math.floor(to / width);
+        if (grid.wrapX && Math.abs(bx - ax) > width / 2) bx += bx < ax ? width : -width;
+        const dx = bx - ax, dy = by - ay, length2 = dx * dx + dy * dy;
+        const a = pos(ax, ay), b = pos(to % width, by);
+        let dLon = b.lon - a.lon;
+        if (dLon > Math.PI) dLon -= 2 * Math.PI;
+        else if (dLon < -Math.PI) dLon += 2 * Math.PI;
+        for (let k = displayPath.length ? 1 : 0; k < line.length; k++) {
+          const cell = line[k];
+          let cx = cell % width;
+          if (grid.wrapX && Math.abs(cx - ax) > width / 2) cx += cx < ax ? width : -width;
+          const cy = Math.floor(cell / width);
+          const t = length2 ? Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy) / length2)) : 0;
+          const ll = pos(ax, ay);
+          displayPath.push({
+            x: cx, y: cy,
+            lon: (ll.lon + dLon * t) / radians,
+            lat: (a.lat + (b.lat - a.lat) * t) / radians,
+            elevationM: heightAt(cell),
+          });
+        }
+      }
+      if (!ids.length) ids.push(startId);
       let horizontalDistanceM = 0;
       const path = ids.map((at, i) => {
         const x = at % width, y = Math.floor(at / width);
-        if (i) {
-          const prev = ids[i - 1], px = prev % width, py = Math.floor(prev / width);
-          horizontalDistanceM += horizontal(px, py, x, y);
-        }
+        if (i) { const prev = ids[i - 1]; horizontalDistanceM += horizontal(prev % width, Math.floor(prev / width), x, y); }
         const ll = pos(x, y);
         return { x, y, lon: ll.lon / radians, lat: ll.lat / radians, elevationM: heightAt(at) };
       });
-      return { path, horizontalDistanceM, terrainDistanceM: currentCost };
+      if (!displayPath.length) displayPath.push(path[0]);
+      return { path, displayPath, turnIndices, horizontalDistanceM, terrainDistanceM: currentCost };
     }
     closed.add(id);
-    const x = id % width, y = Math.floor(id / width), here = heightAt(id);
+    const x = id % width, y = Math.floor(id / width);
     for (const [ox, oy] of moves) {
       let nx = x + ox;
       const ny = y + oy;
@@ -246,15 +347,19 @@ export function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity } =
       if (ny < 0 || ny >= height) continue;
       const next = ny * width + nx;
       if (closed.has(next)) continue;
-      const nextHeight = heightAt(next);
-      if (nextHeight === undefined) continue;
-      const horizontalStep = horizontal(x, y, nx, ny);
-      const rise = Math.abs(nextHeight - here);
-      if (rise > horizontalStep * maxSlopeRatio) continue;
-      const surfaceStep = Math.hypot(horizontalStep, rise);
-      const tentative = currentCost + surfaceStep;
+      if (cellSlope(next) > maxSlopeDeg) continue;
+      const parentId = parent.get(id);
+      let via = id, step = segment(id, next);
+      if (parentId !== undefined) {
+        const shortcut = segment(parentId, next);
+        if (shortcut && g.get(parentId) + shortcut.cost < currentCost + (step?.cost ?? Infinity)) {
+          via = parentId; step = shortcut;
+        }
+      }
+      if (!step) continue;
+      const tentative = (via === id ? currentCost : g.get(via)) + step.cost;
       if (tentative >= (g.get(next) ?? Infinity)) continue;
-      g.set(next, tentative); parent.set(next, id);
+      g.set(next, tentative); parent.set(next, via);
       push([tentative + heuristic({ x: nx, y: ny }), tentative, next]);
     }
   }

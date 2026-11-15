@@ -422,12 +422,16 @@
       <div class="winBody">
         <div id="routeControls">
           <div class="sub" style="margin-top:0">Terrain route · MOLA</div>
-          <button id="routeStartBtn" type="button">Choose start</button>
-          <button id="routeGoalBtn" type="button">Choose destination</button>
+          <button id="routeAddBtn" type="button">Add waypoint</button>
+          <button id="routeUndoBtn" type="button">Undo last</button>
           <button id="routeClearBtn" type="button">Clear</button>
+          <div class="hint">Add points in order; the route visits each one.</div>
+          <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
+          <label class="hint" style="display:block"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
           <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
-          <div class="hint">Red terrain exceeds the slope limit and is unwalkable.</div>
-          <div id="routeStatus" aria-live="polite">Choose a start and destination on the map.</div>
+          <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
+          <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
+          <div id="routeStatus" aria-live="polite">Add at least two waypoints in travel order.</div>
         </div>
       </div>
     </section>
@@ -478,7 +482,7 @@
         "Cesium did not load. In the web folder run:  npm install cesium  and reload.";
       return;
     }
-    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, smoothTerrainPath } = await import("./pathfinding.js");
+    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg } = await import("./pathfinding.js");
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -2385,28 +2389,33 @@
     // A click (press + release without dragging) probes; dragging still pans the globe.
     const clicker = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     let routePickMode = null;
-    let routeStart = null, routeGoal = null, routeGraphic = null, routeStartPin = null, routeGoalPin = null;
-    let routeDisplayPath = null, routeRawPath = null, routeGrid = null;
+    const routePoints = [], routePins = [];
+    let routeGraphic = null;
+    let routeDisplayPath = null, routeRawPath = null, routeRawTurns = null, routeGrid = null;
     let unwalkableLayers = [];
     let routeRequest = 0;
     const routeStatus = document.getElementById("routeStatus");
-    const routeButtons = [document.getElementById("routeStartBtn"), document.getElementById("routeGoalBtn")];
+    const routeAddButton = document.getElementById("routeAddBtn");
+    const routeSmoothBox = document.getElementById("routeSmooth");
     const maxSlopeSlider = document.getElementById("maxSlope");
     const maxSlopeValue = document.getElementById("maxSlopeValue");
+    const slopeMeaning = document.getElementById("slopeMeaning");
     const maxSlopeDeg = () => Number(maxSlopeSlider.value);
+    const updateSlopeMeaning = () => {
+      const risePer100m = Math.round(Math.tan(maxSlopeDeg() * Math.PI / 180) * 100);
+      slopeMeaning.textContent = `At ${maxSlopeDeg()}°, allow up to ${risePer100m} m elevation change per 100 m.`;
+    };
     function setRoutePickMode(mode) {
       routePickMode = mode;
-      routeButtons[0].classList.toggle("on", mode === "start");
-      routeButtons[1].classList.toggle("on", mode === "goal");
-      routeStatus.textContent = mode === "start" ? "Click the map to set the start." :
-        mode === "goal" ? "Click the map to set the destination." : "Choose a start and destination on the map.";
+      routeAddButton.classList.toggle("on", mode === "waypoint");
+      routeStatus.textContent = mode === "waypoint" ? `Click the map to add waypoint ${routePoints.length + 1}.` :
+        routePoints.length < 2 ? "Add at least two waypoints in travel order." : "";
     }
     function clearRouteGraphics() {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
-      if (routeStartPin) viewer.entities.remove(routeStartPin);
-      if (routeGoalPin) viewer.entities.remove(routeGoalPin);
-      routeGraphic = routeDisplayPath = routeRawPath = routeGrid = null;
-      routeStartPin = routeGoalPin = null;
+      routeGraphic = routeDisplayPath = routeRawPath = routeRawTurns = routeGrid = null;
+      for (const pin of routePins) viewer.entities.remove(pin);
+      routePins.length = 0;
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
     }
@@ -2429,15 +2438,28 @@
       });
     }
     function syncRoutePins() {
-      if (routeStartPin) viewer.entities.remove(routeStartPin);
-      if (routeGoalPin) viewer.entities.remove(routeGoalPin);
-      routeStartPin = routeStart ? makeRoutePin(routeStart, Cesium.Color.LIME, "S") : null;
-      routeGoalPin = routeGoal ? makeRoutePin(routeGoal, Cesium.Color.ORANGE, "E") : null;
+      for (const pin of routePins) viewer.entities.remove(pin);
+      routePins.length = 0;
+      const list = document.getElementById("routeWaypointList");
+      list.replaceChildren();
+      routePoints.forEach((point, index) => {
+        const isFirst = index === 0, isLast = index === routePoints.length - 1;
+        const color = isFirst ? Cesium.Color.LIME : isLast ? Cesium.Color.ORANGE : Cesium.Color.YELLOW;
+        routePins.push(makeRoutePin(point, color, String(index + 1)));
+        const item = document.createElement("li");
+        item.style.cssText = "color:#ccc;font-size:11px;margin:2px 0";
+        item.append(`${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}° `);
+        const remove = document.createElement("button");
+        remove.type = "button"; remove.textContent = "×"; remove.title = `Remove waypoint ${index + 1}`;
+        remove.dataset.waypointIndex = String(index);
+        item.append(remove); list.append(item);
+      });
       placeRoutePins();
     }
     function placeRoutePins() {
       occluder.cameraPosition = viewer.camera.positionWC;
-      for (const [point, pin] of [[routeStart, routeStartPin], [routeGoal, routeGoalPin]]) {
+      for (let i = 0; i < routePoints.length; i++) {
+        const point = routePoints[i], pin = routePins[i];
         if (!point || !pin) continue;
         const world = Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 0, MARS);
         pin.show = occluder.isPointVisible(world);
@@ -2445,14 +2467,57 @@
     }
     viewer.scene.postRender.addEventListener(placeRoutePins);
 
-    function drawRouteLine(grid, path) {
+    function smoothRouteCorners(path, turnIndices, trimFraction = 0.4) {
+      if (!path || path.length < 3 || !turnIndices?.length) return path;
+      const interpolate = (a, b, t) => {
+        let dLon = b.lon - a.lon;
+        if (dLon > 180) dLon -= 360;
+        else if (dLon < -180) dLon += 360;
+        return {
+          lon: a.lon + dLon * t,
+          lat: a.lat + (b.lat - a.lat) * t,
+          elevationM: a.elevationM + (b.elevationM - a.elevationM) * t,
+        };
+      };
+      const output = [path[0]];
+      let cursor = 0, previousTurn = -2;
+      for (const i of turnIndices) {
+        if (i <= cursor || i >= path.length - 1 || i - previousTurn < 2) continue;
+        for (let j = cursor + 1; j < i; j++) output.push(path[j]);
+        const before = path[i - 1], corner = path[i], after = path[i + 1];
+        const entry = interpolate(before, corner, 1 - trimFraction);
+        const exit = interpolate(corner, after, trimFraction);
+        output.push(entry);
+        let cLon = corner.lon;
+        if (cLon - entry.lon > 180) cLon -= 360;
+        else if (cLon - entry.lon < -180) cLon += 360;
+        let endLon = exit.lon;
+        if (endLon - cLon > 180) endLon -= 360;
+        else if (endLon - cLon < -180) endLon += 360;
+        for (let step = 1; step <= 8; step++) {
+          const t = step / 8, u = 1 - t;
+          output.push({
+            lon: u * u * entry.lon + 2 * u * t * cLon + t * t * endLon,
+            lat: u * u * entry.lat + 2 * u * t * corner.lat + t * t * exit.lat,
+            elevationM: u * u * entry.elevationM + 2 * u * t * corner.elevationM + t * t * exit.elevationM,
+          });
+        }
+        cursor = i + 1;
+        output.push(path[cursor]);
+        previousTurn = i;
+      }
+      for (let i = cursor + 1; i < path.length; i++) output.push(path[i]);
+      return output;
+    }
+    function drawRouteLine(grid, path, turnIndices = []) {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
-      routeDisplayPath = smoothTerrainPath(grid, path, maxSlopeDeg());
+      routeDisplayPath = routeSmoothBox.checked ? smoothRouteCorners(path, turnIndices) : path;
       const radians = Math.PI / 180;
       const showRelief = terrainReady && reliefBox.checked;
       const visualHeight = (elevationM) => (showRelief ? elevationM * viewer.scene.verticalExaggeration : 0) + 8;
       if (routeDisplayPath.length === 1) {
         const p = routeDisplayPath[0];
+        const routeStart = routePoints[0], routeGoal = routePoints.at(-1);
         let dLon = routeGoal.lon - routeStart.lon;
         if (dLon > 180) dLon -= 360;
         else if (dLon < -180) dLon += 360;
@@ -2509,77 +2574,65 @@
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
       await new Promise((resolve) => requestAnimationFrame(resolve));
-      const w = Math.max(1, Math.min(1024, grid.width));
-      const h = Math.max(1, Math.min(512, grid.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      const pixels = ctx.createImageData(w, h);
-      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg, wrapX } = grid;
-      const sparse = heights instanceof Map, limit = maxSlopeDeg() * Math.PI / 180;
-      const visit = function* () {
-        if (sparse) yield* heights.keys();
-        else for (let id = 0; id < width * height; id++) yield id;
-      };
-      const moves = [[-1,-1], [0,-1], [1,-1], [-1,0], [1,0], [-1,1], [0,1], [1,1]];
-      let scanned = 0;
-      for (const id of visit()) {
-        const x = id % width, y = Math.floor(id / width), here = sparse ? heights.get(id) : heights[id];
-        if ((!wrapX && x === width - 1) || y === height - 1) continue;
-        let steep = false;
-        for (const [ox, oy] of moves) {
-          let nx = x + ox;
-          if (wrapX) nx = (nx + width) % width;
-          else if (nx < 0 || nx >= width) continue;
-          const ny = y + oy;
-          if (ny < 0 || ny >= height) continue;
-          const nextId = ny * width + nx;
-          const next = sparse ? heights.get(nextId) : heights[nextId];
-          if (next === undefined) continue;
-          const lat = (northDeg + (y + ny) * 0.5 * latStepDeg) * Math.PI / 180;
-          let dLon = ox * lonStepDeg * Math.PI / 180;
-          if (dLon > Math.PI) dLon -= 2 * Math.PI;
-          else if (dLon < -Math.PI) dLon += 2 * Math.PI;
-          const dLat = oy * latStepDeg * Math.PI / 180;
-          const distance = Math.hypot(dLon * 3_396_190 * Math.cos(lat), dLat * 3_396_190);
-          if (Math.atan2(Math.abs(next - here), distance) > limit) { steep = true; break; }
-        }
-        if (steep) {
-          const px = Math.min(w - 1, Math.floor(x * w / width));
-          const py = Math.min(h - 1, Math.floor(y * h / height));
-          const k = (py * w + px) * 4;
-          pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
-        }
-        if (++scanned % 24_000 === 0) {
-          await new Promise((resolve) => requestAnimationFrame(resolve));
-          if (!isCurrent()) return;
-        }
-      }
-      ctx.putImageData(pixels, 0, 0);
-      const south = northDeg + height * latStepDeg;
-      const east = westDeg + width * lonStepDeg;
-      const addLayer = async (image, west, east) => {
+      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
+      const sparse = heights instanceof Map;
+      const addLayer = async (image, west, south, east, north) => {
         const blob = await new Promise((resolve) => image.toBlob(resolve, "image/png"));
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         try {
           const provider = await Cesium.SingleTileImageryProvider.fromUrl(url, {
-            rectangle: Cesium.Rectangle.fromDegrees(west, south, east, northDeg), ellipsoid: MARS,
+            rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north), ellipsoid: MARS,
           });
           const layer = viewer.imageryLayers.addImageryProvider(provider);
           layer.alpha = 0.58;
           unwalkableLayers.push(layer);
         } finally { URL.revokeObjectURL(url); }
       };
-      if (east > 180) {
-        const split = Math.max(1, Math.min(w - 1, Math.round((180 - westDeg) / (east - westDeg) * w)));
-        const left = document.createElement("canvas"); left.width = split; left.height = h;
-        left.getContext("2d").drawImage(canvas, 0, 0, split, h, 0, 0, split, h);
-        const right = document.createElement("canvas"); right.width = w - split; right.height = h;
-        right.getContext("2d").drawImage(canvas, split, 0, w - split, h, 0, 0, w - split, h);
-        await addLayer(left, westDeg, 180);
-        await addLayer(right, -180, east - 360);
-      } else await addLayer(canvas, westDeg, east);
+      const paint = async (canvas, x0, y0) => {
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(canvas.width, canvas.height);
+        const x1 = x0 + canvas.width, y1 = y0 + canvas.height;
+        const limit = maxSlopeDeg();
+        for (let y = y0; y < y1; y++) {
+          for (let x = x0; x < x1; x++) {
+            if (x >= width || y >= height || terrainCellSlopeDeg(grid, x, y) <= limit) continue;
+            const px = x - x0, py = y - y0, k = (py * canvas.width + px) * 4;
+            pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+          }
+          if ((y - y0 + 1) % 32 === 0) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            if (!isCurrent()) return false;
+          }
+        }
+        ctx.putImageData(pixels, 0, 0);
+        return true;
+      };
+      if (sparse) {
+        // Sparse worldwide coordinates stay cheap: one full-resolution canvas per loaded tile.
+        for (const [tx, ty] of grid.tileKeys || []) {
+          if (!isCurrent()) return;
+          const x = tx * 64, y = ty * 64, size = 64;
+          const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+          if (!await paint(canvas, x, y)) return;
+          const west = -180 + x * lonStepDeg, east = west + size * lonStepDeg;
+          const north = 90 + y * latStepDeg, south = north + size * latStepDeg;
+          await addLayer(canvas, west, south, east, north);
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+      } else {
+        const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
+        if (!await paint(canvas, 0, 0)) return;
+        const south = northDeg + height * latStepDeg, east = westDeg + width * lonStepDeg;
+        if (east > 180) {
+          const split = Math.max(1, Math.min(width - 1, Math.round((180 - westDeg) / (east - westDeg) * width)));
+          const left = document.createElement("canvas"); left.width = split; left.height = height;
+          left.getContext("2d").drawImage(canvas, 0, 0, split, height, 0, 0, split, height);
+          const right = document.createElement("canvas"); right.width = width - split; right.height = height;
+          right.getContext("2d").drawImage(canvas, split, 0, width - split, height, 0, 0, width - split, height);
+          await addLayer(left, westDeg, south, 180, northDeg);
+          await addLayer(right, -180, south, east - 360, northDeg);
+        } else await addLayer(canvas, westDeg, south, east, northDeg);
+      }
     }
     async function waitForMola() {
       for (let i = 0; i < 300; i++) {
@@ -2593,8 +2646,9 @@
       throw new Error("MOLA terrain is still loading");
     }
     async function computeTerrainRoute() {
-      if (!routeStart || !routeGoal) return;
+      if (routePoints.length < 2) return;
       if (!USE_PROXY) { routeStatus.textContent = "Start the local viewer server to load MOLA heights."; return; }
+      const waypoints = routePoints.slice();
       const request = ++routeRequest;
       clearRouteGraphics();
       syncRoutePins();
@@ -2603,24 +2657,53 @@
         await waitForMola();
         if (request !== routeRequest) return;
         const pad = 0.12;
-        const lonA = routeStart.lon, lonB = routeGoal.lon;
-        const crossesSeam = Math.abs(lonA - lonB) > 180;
+        const longitudes = waypoints.map((p) => ((p.lon % 360) + 360) % 360).sort((a, b) => a - b);
+        let largestGap = -1, gapIndex = 0;
+        for (let i = 0; i < longitudes.length; i++) {
+          const next = i + 1 < longitudes.length ? longitudes[i + 1] : longitudes[0] + 360;
+          const gap = next - longitudes[i];
+          if (gap > largestGap) { largestGap = gap; gapIndex = i; }
+        }
+        let westUnwrapped = longitudes[(gapIndex + 1) % longitudes.length];
+        let eastUnwrapped = longitudes[gapIndex];
+        if (eastUnwrapped < westUnwrapped) eastUnwrapped += 360;
+        westUnwrapped -= pad; eastUnwrapped += pad;
+        let west = ((westUnwrapped + 180) % 360 + 360) % 360 - 180;
+        let east = ((eastUnwrapped + 180) % 360 + 360) % 360 - 180;
+        if (eastUnwrapped - westUnwrapped >= 359.999) { west = -180; east = 180; }
         const patchBounds = {
-          west: crossesSeam ? Math.max(lonA, lonB) - pad : Math.max(-180, Math.min(lonA, lonB) - pad),
-          east: crossesSeam ? Math.min(lonA, lonB) + pad : Math.min(180, Math.max(lonA, lonB) + pad),
-          south: Math.max(-90, Math.min(routeStart.lat, routeGoal.lat) - pad),
-          north: Math.min(90, Math.max(routeStart.lat, routeGoal.lat) + pad),
+          west, east,
+          south: Math.max(-90, Math.min(...waypoints.map((p) => p.lat)) - pad),
+          north: Math.min(90, Math.max(...waypoints.map((p) => p.lat)) + pad),
+        };
+        const planSequence = async (grid) => {
+          const combined = { path: [], displayPath: [], turnIndices: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
+          for (let i = 1; i < waypoints.length; i++) {
+            if (request !== routeRequest) return null;
+            const a = lonLatToTerrainCell(grid, waypoints[i - 1].lon, waypoints[i - 1].lat);
+            const b = lonLatToTerrainCell(grid, waypoints[i].lon, waypoints[i].lat);
+            const leg = a && b ? await planTerrainRoute(grid, a, b, {
+              maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
+            }) : null;
+            if (!leg) return null;
+            combined.path.push(...leg.path.slice(combined.path.length ? 1 : 0));
+            const displayOffset = combined.displayPath.length ? combined.displayPath.length - 1 : 0;
+            combined.turnIndices.push(...leg.turnIndices.map((index) => displayOffset + index));
+            combined.displayPath.push(...leg.displayPath.slice(combined.displayPath.length ? 1 : 0));
+            combined.horizontalDistanceM += leg.horizontalDistanceM;
+            combined.terrainDistanceM += leg.terrainDistanceM;
+          }
+          return combined;
         };
         let grid, result, detail = "full local grid";
         if (estimateTerrainPatchCells(patchBounds, 6) > 120_000) {
-          routeStatus.textContent = "Finding a broad route, then refining the terrain corridor…";
+          routeStatus.textContent = `Finding a broad route through ${waypoints.length} waypoints, then refining…`;
           let coarseLevel = 4;
           while (coarseLevel > 0 && estimateTerrainPatchCells(patchBounds, coarseLevel) > 300_000) coarseLevel--;
           const coarseGrid = await loadTerrainPatch({ ...patchBounds, level: coarseLevel });
           if (request !== routeRequest) return;
-          const ca = lonLatToTerrainCell(coarseGrid, routeStart.lon, routeStart.lat);
-          const cb = lonLatToTerrainCell(coarseGrid, routeGoal.lon, routeGoal.lat);
-          const coarseResult = ca && cb ? planTerrainRoute(coarseGrid, ca, cb, { maxSlopeDeg: maxSlopeDeg() }) : null;
+          const coarseResult = await planSequence(coarseGrid);
+          if (request !== routeRequest) return;
           grid = coarseGrid;
           result = coarseResult;
           detail = `coarse MOLA z${coarseLevel}`;
@@ -2628,9 +2711,8 @@
             routeStatus.textContent = "Loading detailed MOLA tiles along the route corridor…";
             const fineGrid = await loadTerrainCorridor(coarseResult.path, { level: 6, bufferTiles: 1 });
             if (request !== routeRequest) return;
-            const fa = lonLatToTerrainCell(fineGrid, routeStart.lon, routeStart.lat);
-            const fb = lonLatToTerrainCell(fineGrid, routeGoal.lon, routeGoal.lat);
-            const refined = fa && fb ? planTerrainRoute(fineGrid, fa, fb, { maxSlopeDeg: maxSlopeDeg() }) : null;
+            const refined = await planSequence(fineGrid);
+            if (request !== routeRequest) return;
             if (refined) { grid = fineGrid; result = refined; detail = "refined MOLA z6 corridor"; }
             else { grid = fineGrid; result = null; detail = "no fine route within slope limit"; }
           } catch (error) {
@@ -2649,42 +2731,60 @@
           }
           if (!grid) throw tooLarge || new Error("Could not load a terrain patch");
           if (request !== routeRequest) return;
-          const a = lonLatToTerrainCell(grid, routeStart.lon, routeStart.lat);
-          const b = lonLatToTerrainCell(grid, routeGoal.lon, routeGoal.lat);
-          result = a && b ? planTerrainRoute(grid, a, b, { maxSlopeDeg: maxSlopeDeg() }) : null;
+          result = await planSequence(grid);
+          if (request !== routeRequest) return;
         }
         routeGrid = grid;
-        routeRawPath = result?.path ?? null;
+        routeRawPath = result?.displayPath ?? result?.path ?? null;
+        routeRawTurns = result?.turnIndices ?? [];
         try { await drawUnwalkableOverlay(grid, () => request === routeRequest); }
         catch (error) { console.warn("Could not draw slope mask:", error); }
         if (request !== routeRequest) return;
         if (!result) { routeStatus.textContent = "No walkable route found at this slope limit."; return; }
-        drawRouteLine(grid, result.path);
-        routeStatus.textContent = `${result.path.length.toLocaleString()} points · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
+        drawRouteLine(grid, routeRawPath, routeRawTurns);
+        routeStatus.textContent = `${routeRawPath.length.toLocaleString()} samples · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
       } catch (error) {
         if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
       }
     }
-    document.getElementById("routeStartBtn").addEventListener("click", () => setRoutePickMode("start"));
-    document.getElementById("routeGoalBtn").addEventListener("click", () => setRoutePickMode("goal"));
+    document.getElementById("routeAddBtn").addEventListener("click", () => setRoutePickMode("waypoint"));
+    document.getElementById("routeUndoBtn").addEventListener("click", () => {
+      if (!routePoints.length) return;
+      routeRequest++; routePoints.pop();
+      clearRouteGraphics(); syncRoutePins();
+      if (routePoints.length >= 2) computeTerrainRoute();
+      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+    });
+    document.getElementById("routeWaypointList").addEventListener("click", (event) => {
+      const index = Number(event.target.closest("button")?.dataset.waypointIndex);
+      if (!Number.isInteger(index) || index < 0 || index >= routePoints.length) return;
+      routeRequest++; routePoints.splice(index, 1);
+      clearRouteGraphics(); syncRoutePins();
+      if (routePoints.length >= 2) computeTerrainRoute();
+      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+    });
     document.getElementById("routeClearBtn").addEventListener("click", () => {
-      routeRequest++; routeStart = routeGoal = null; clearRouteGraphics(); setRoutePickMode(null);
+      routeRequest++; routePoints.length = 0; clearRouteGraphics(); syncRoutePins(); setRoutePickMode(null);
     });
     let slopeDebounce;
     maxSlopeSlider.addEventListener("input", () => {
       maxSlopeValue.textContent = `${maxSlopeDeg()}°`;
+      updateSlopeMeaning();
       clearTimeout(slopeDebounce);
-      slopeDebounce = setTimeout(() => { if (routeStart && routeGoal) computeTerrainRoute(); }, 250);
+      slopeDebounce = setTimeout(() => { if (routePoints.length >= 2) computeTerrainRoute(); }, 250);
     });
     exagSlider.addEventListener("input", () => {
-      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath);
+      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
     });
     reliefBox.addEventListener("change", () => {
-      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath);
+      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
       syncRoutePins();
     });
+    routeSmoothBox.addEventListener("change", () => {
+      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
+    });
     clicker.setInputAction((e) => {
-      if (routePickMode) {
+      if (routePickMode === "waypoint") {
         const world = surfaceAt(e.position.x, e.position.y);
         if (!world) { routeStatus.textContent = "Click a visible point on Mars."; return; }
         const c = MARS.cartesianToCartographic(world);
@@ -2700,12 +2800,12 @@
             world: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, Number.isFinite(snappedHeight) ? snappedHeight : 0, MARS),
           };
         }
-        if (routePickMode === "start") routeStart = point;
-        else routeGoal = point;
+        routeRequest++;
+        routePoints.push(point);
         syncRoutePins();
         setRoutePickMode(null);
-        if (routeStart && routeGoal) computeTerrainRoute();
-        else routeStatus.textContent = `${spot ? `Snapped to ${spot.name}. ` : ""}${routeStart ? "Start set. Choose a destination." : "Destination set. Choose a start."}`;
+        if (routePoints.length >= 2) computeTerrainRoute();
+        else routeStatus.textContent = `${spot ? `Snapped to ${spot.name}. ` : ""}Waypoint 1 set. Add another waypoint to route.`;
         return;
       }
       const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
