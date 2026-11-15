@@ -56,13 +56,20 @@
     .sub { margin: 6px 0 3px; color: #bbb; }
     #places button { margin: 2px 4px 2px 0; padding: 3px 8px; cursor: pointer; }
     #spots { margin: 4px 0 8px; }
-    .spotGroup { margin-top: 8px; }
+    .spotGroup { margin-top: 5px; border: 1px solid #333; border-left: 3px solid var(--k); border-radius: 5px; background: #1a1a1a; }
     .spotGroup[hidden] { display: none; }
-    .spotGroupHead { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: var(--k); font-size: 11.5px;
-      font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .spotGroupHead { display: flex; align-items: center; gap: 7px; width: 100%; padding: 7px 9px; cursor: pointer;
+      background: none; border: 0; color: var(--k); font: 600 11.5px system-ui, sans-serif; text-transform: uppercase;
+      letter-spacing: 0.04em; text-align: left; }
+    .spotGroupHead:hover:not(:disabled) { background: rgba(255, 255, 255, 0.04); }
+    .spotGroupHead:disabled { cursor: default; }
+    .spotGroupHead .chev { color: #888; font-size: 10px; transition: transform 0.15s; }
+    .spotGroup.open .spotGroupHead .chev { transform: rotate(90deg); }
     .spotGroupHead i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
-    .spotGroupHead em { margin-left: auto; color: #777; font-style: normal; font-weight: 400; }
-    .spotGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .spotGroupHead em { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 9px; background: #2a2a2a;
+      color: #ccc; font-style: normal; font-weight: 600; text-align: center; letter-spacing: 0; }
+    .spotGrid { display: none; grid-template-columns: 1fr 1fr; gap: 4px; padding: 0 6px 6px; }
+    .spotGroup.open .spotGrid { display: grid; }
     .spotGrid button { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 5px 6px 5px 8px; text-align: left;
       cursor: pointer; background: #242424; color: #ddd; border: 1px solid #444; border-left: 3px solid var(--k); border-radius: 4px; }
     .spotGrid button:hover, .spotGrid button.active { border-color: var(--k); background: #2e2a22; }
@@ -80,11 +87,7 @@
     .kindFilter.on i { background: #151515; }
     .kindFilter.on em { color: #333; }
     #kindHead { display: flex; align-items: center; gap: 8px; margin: 2px 0 3px; }
-    #kindToggle { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; padding: 2px 0; cursor: pointer;
-      background: none; border: 0; color: #bbb; font: 13px system-ui, sans-serif; text-align: left; }
-    #kindToggle:hover { color: #eee; }
-    #kindToggle .chev { color: #888; font-size: 10px; transition: transform 0.15s; }
-    #kindToggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+    .kindTitle { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 0; color: #bbb; }
     #kindSummary { color: #888; font-style: normal; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #kindAll { flex: none; padding: 1px 8px; cursor: pointer; font: 600 11px system-ui, sans-serif; color: #151515;
       background: #e8b85a; border: 1px solid #e8b85a; border-radius: 10px; }
@@ -393,12 +396,10 @@
         <div id="spotFilters">
           <input id="spotSearch" type="search" placeholder="Search names, kinds and tags: rover Gale, lander NASA…" aria-label="Search mission spots" />
           <div id="kindHead">
-            <button id="kindToggle" type="button" aria-expanded="false" aria-controls="spotKinds" title="Show or hide the kinds of spots">
-              <span class="chev">▸</span>Kind<em id="kindSummary"></em>
-            </button>
+            <span class="kindTitle">Kind<em id="kindSummary"></em></span>
             <button id="kindAll" type="button" title="Select every kind of spot, or none">Select all</button>
           </div>
-          <div id="spotKinds" aria-label="Filter spots by kind" hidden></div>
+          <div id="spotKinds" aria-label="Filter spots by kind"></div>
           <div class="sub" style="margin:2px 0 0">Tags</div>
           <div id="tagPicker">
             <input id="tagSearch" type="search" placeholder="Add a tag filter: Gale, NASA, Rover…" autocomplete="off" spellcheck="false"
@@ -1315,16 +1316,41 @@
     let selectedSpot = null;
     const spotToggle = document.getElementById("spotToggle");
     const spotsEl = document.getElementById("spots");
-    const spotGroups = new Map(); // kind -> { el, grid }
-    for (const k of SPOT_KINDS) {
+    // The list: one dropdown per kind. Its header shows the colour, name and how many spots
+    // match; click it to open or close that kind's spots. Which kinds are open is remembered.
+    // While a search or tag filter is in use every matching kind opens, so results are visible.
+    const GROUPS_OPEN_KEY = "mars-spot-groups-open-v1";
+    let openGroups = new Set();
+    try { openGroups = new Set(JSON.parse(localStorage.getItem(GROUPS_OPEN_KEY) || "[]")); } catch { /* all closed */ }
+    const spotGroups = new Map(); // kind -> { el, head, grid, count }
+    function makeSpotGroup(k) {
       const el = document.createElement("div"); el.className = "spotGroup"; el.style.setProperty("--k", k.color);
-      const head = document.createElement("div"); head.className = "spotGroupHead";
-      head.innerHTML = `<i></i><span></span><em></em>`;
-      head.querySelector("span").textContent = k.kind;
+      const head = document.createElement("button"); head.type = "button"; head.className = "spotGroupHead";
+      head.innerHTML = `<span class="chev">▸</span><i></i><span class="gName"></span><em></em>`;
+      head.querySelector(".gName").textContent = k.kind;
       const grid = document.createElement("div"); grid.className = "spotGrid";
+      grid.id = `spotGroup-${k.kind.replace(/\W+/g, "-")}`;
+      head.setAttribute("aria-controls", grid.id);
+      head.addEventListener("click", () => {
+        if (openGroups.has(k.kind)) openGroups.delete(k.kind); else openGroups.add(k.kind);
+        try { localStorage.setItem(GROUPS_OPEN_KEY, JSON.stringify([...openGroups])); } catch { /* ignore */ }
+        syncGroupOpen();
+      });
       el.append(head, grid); spotsEl.append(el);
-      spotGroups.set(k.kind, { el, grid, count: head.querySelector("em") });
+      const g = { el, head, grid, count: head.querySelector("em") };
+      spotGroups.set(k.kind, g);
+      return g;
     }
+    function syncGroupOpen() {
+      const searching = activeSpotTags.size > 0 || document.getElementById("spotSearch").value.trim() !== "";
+      for (const [kind, g] of spotGroups) {
+        const open = searching || openGroups.has(kind);
+        g.el.classList.toggle("open", open);
+        g.head.setAttribute("aria-expanded", String(open));
+        g.head.disabled = searching; // results stay open while searching
+      }
+    }
+    for (const k of SPOT_KINDS) makeSpotGroup(k);
     for (const spot of SPOTS) {
       const pin = kindOf(spot).color;
       const entity = viewer.entities.add({
@@ -1361,11 +1387,7 @@
       let group = spotGroups.get(spot.category);
       if (!group) { // a kind missing from SPOT_KINDS still gets listed
         const k = kindOf(spot); SPOT_KINDS.push(k);
-        const el = document.createElement("div"); el.className = "spotGroup"; el.style.setProperty("--k", k.color);
-        el.innerHTML = `<div class="spotGroupHead"><i></i><span></span><em></em></div><div class="spotGrid"></div>`;
-        el.querySelector("span").textContent = k.kind; spotsEl.append(el);
-        group = { el, grid: el.querySelector(".spotGrid"), count: el.querySelector("em") };
-        spotGroups.set(k.kind, group);
+        group = makeSpotGroup(k);
       }
       group.grid.append(b); spotButtons.set(spot.id, b);
     }
@@ -1431,6 +1453,7 @@
         g.el.hidden = !shown;
         g.count.textContent = String(shown);
       }
+      syncGroupOpen();
       document.getElementById("spotHint").hidden = filtering;
       document.getElementById("spotFilterCount").textContent = !filtering ? `No spots shown (${SPOTS.length} available)`
         : count ? `${count} of ${SPOTS.length} spots` : "No spots match. Clear the search or filters.";
@@ -1442,9 +1465,8 @@
     const usedKinds = SPOT_KINDS.filter((k) => SPOTS.some((sp) => sp.category === k.kind)).map((k) => k.kind);
     const saveKinds = () => { try { localStorage.setItem(KINDS_KEY, JSON.stringify([...activeKinds])); } catch { /* ignore */ } };
     // "Select all" / "Select none" next to the Kind title: turns every kind on, or (when they all
-    // are) every kind off, so no spots show on Mars. The title folds the chips away.
+    // are) every kind off, so no spots show on Mars.
     const kindAll = document.getElementById("kindAll");
-    const kindToggle = document.getElementById("kindToggle");
     const kindSummary = document.getElementById("kindSummary");
     kindAll.addEventListener("click", () => {
       const all = usedKinds.every((k) => activeKinds.has(k));
@@ -1460,16 +1482,6 @@
       kindSummary.textContent = all ? `all ${usedKinds.length}` : !on.length ? "none"
         : on.length <= 2 ? on.map((k) => kindOf({ category: k }).short).join(", ") : `${on.length} of ${usedKinds.length}`;
     });
-    const KIND_OPEN_KEY = "mars-spot-kinds-open-v1";
-    function setKindsOpen(open) {
-      kindFilters.hidden = !open;
-      kindToggle.setAttribute("aria-expanded", String(open));
-      try { localStorage.setItem(KIND_OPEN_KEY, open ? "1" : "0"); } catch { /* ignore */ }
-    }
-    let kindsOpen = false;
-    try { kindsOpen = localStorage.getItem(KIND_OPEN_KEY) === "1"; } catch { /* folded */ }
-    setKindsOpen(kindsOpen);
-    kindToggle.addEventListener("click", () => setKindsOpen(kindFilters.hidden));
     function syncKindChips() { for (const f of kindSyncs) f(); }
     for (const k of SPOT_KINDS) {
       const n = SPOTS.filter((sp) => sp.category === k.kind).length;
@@ -1690,6 +1702,7 @@
       selectedSpot = spot;
       onSpotSelected();
       for (const [id, b] of spotButtons) b.classList.toggle("active", id === spot.id);
+      if (!openGroups.has(spot.category)) { openGroups.add(spot.category); syncGroupOpen(); }
       for (const [id, entity] of spotEntities) entity.label.show = id === spot.id;
       document.getElementById("spotTitle").textContent = spot.name;
       const kindEl = document.getElementById("spotKind");
