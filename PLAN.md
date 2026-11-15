@@ -33,11 +33,11 @@ Legend used below: ✅ done · 🟡 partly done / differs from plan · ❌ not s
 | # | Feature | Status | What is missing |
 |---|---|---|---|
 | 1 | Globe + Gale optical + MOLA | ✅ | Must also load from the **public link** (0.3) |
-| 2 | Layer panel + provenance chips | 🟡 | Panel, opacity and a mission/resolution note per layer exist. **No date** and no uniform chip (dataset · mission · resolution · date) |
+| 2 | Layer panel + provenance chips | ✅ | Chip per layer: kind · dataset · mission · resolution · date · credit (15 Nov, agent:yasser). Data kinds: optical (Viking, HiRISE), topographic (MOLA, MOLA+HRSC), thermal (THEMIS day IR), atmospheric (REMS panel) |
 | 3 | POI markers + detail card + real traverse | ✅ | — |
 | 4 | Route planner with suit-mobility cost + slope mask | 🟡 | Slope mask ✅, bends around no-go ✅. Cost must become **time** (§5: `step_len / (v0 · slope_penalty)`), with `MobilityProfile` + `crew[]` arguments |
-| 5 | Route card: ETA, O₂ / water / battery `timeline[]`, 20% reserve, why-this-route, warnings + caveats | ❌ | Biggest P0 gap. Route status today is distance only |
-| 6 | Comms line-of-sight + blackout term | ❌ | Needs a relay point + LOS over the same height grid |
+| 5 | Route card: ETA, O₂ / water / battery `timeline[]`, 20% reserve, why-this-route, warnings + caveats | ✅ | `web/survival.js` + survival card: per-crew O₂/water/battery at return, 20% reserve, walk-back limit, refusal naming crew + consumable, hypothetical-failure scenarios; `route.json` export (`docs/route-schema.md`). Coefficients mostly ASSUMED (`docs/assumptions.md`) |
+| 6 | Comms line-of-sight + blackout term | 🟡 | LOS from the haven antenna over the planner grid → blackout runs + warning + risk seconds on the card. Not yet a routing cost (the router still minimises distance) |
 | 7 | VR HUD (Three.js WebXR, reads `route.json`) | ❌ | Panorama cards link to external 360° viewers; no `route.json`, no VR scene |
 
 ### 0.3 Hard constraints status
@@ -101,8 +101,20 @@ NASA data, gets a route that respects suit mobility, terrain hazards and comms b
 and is told — before they step outside — whether the oxygen and battery budget actually
 gets them home.
 
-**Demo site:** Gale crater / Glen Torridon, boxwork formations (the science objective named
-in the challenge brief). **Architecture is site-agnostic**; a tiered site registry lets other
+**Demo site:** the boxwork unit on the lower slopes of Aeolis Mons (Mount Sharp) inside Gale
+crater, ~4.8°S 137.38°E (planetocentric), where Curiosity has been driving through ridge-and-hollow
+"boxwork" since 2025 (sols 4512–4680 in our traverse data). Not Glen Torridon, which is a different,
+older stop on the same climb.
+
+**Science question.** Are the boxwork ridges and the hollows between them mineralogically different,
+and does the difference record how groundwater moved through these layers? Boxwork forms when water
+flowing through fractures deposits minerals that cement the fracture walls; the cemented ridges then
+resist wind erosion while the rock between them is scoured into hollows. If that is what happened here,
+ridge crests should carry vein minerals the hollows lack, and the contact between layers should show
+where the fluids stopped. Our excursion visits exactly those three targets — **ridge crest, hollow
+floor, layer contact** — from one safe haven. Orbital mineral maps are hundreds of metres to kilometres
+per pixel and cannot separate a ridge from the hollow next to it; only samples taken on foot answer this
+at walk scale, which is why the plan prices every metre of the walk in oxygen, water and battery. **Architecture is site-agnostic**; a tiered site registry lets other
 locations load, labelled with their real data resolution. *(Status: the globe, terrain, spots and
 router already work anywhere on Mars; Gale and Jezero have the richest spot data.)*
 

@@ -1,0 +1,11 @@
+# Render Blueprint: New > Blueprint > pick this repo. Free plan sleeps after ~15 min idle
+# (first request then takes ~1 min); a paid instance stays warm for judging.
+services:
+  - type: web
+    name: happyfeet-mars
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
