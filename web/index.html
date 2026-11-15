@@ -1179,6 +1179,12 @@
     // representative marker-card imagery instead of repeating the 360° Navcam projections.
     const boxworkPhoto = "https://assets.science.nasa.gov/dynamicimage/assets/science/psd/photojournal/pia/pia26/pia26697/PIA26697.jpg?fit=crop&h=540&w=960";
     const panoramaUrl = (p) => `https://science.nasa.gov/resource/sol-${p.sol}-right-navigation-camera-cylindrical-projection/`;
+    let PERSEVERANCE_PANORAMAS = [];
+    try {
+      const response = await fetch("./public/data/panoramas/perseverance_mastcamz.json");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      PERSEVERANCE_PANORAMAS = (await response.json()).panoramas ?? [];
+    } catch (error) { console.warn("Could not load Perseverance panorama catalog:", error); }
     const SPOTS = [
       { id: "gale-boxwork", name: "Gale · boxwork target", lon: 137.3931242, lat: -4.78692417,
         type: "Science target · Glen Torridon", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
@@ -1196,6 +1202,20 @@
         image: boxworkPhoto, imageSource: "https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/",
         imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork",
         imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636 boxwork close-up", source: `NASA · Sol ${p.sol} Right Navcam Panorama`, url: panoramaUrl(p),
+      })),
+      ...PERSEVERANCE_PANORAMAS.map((p) => ({
+        id: p.id, name: p.name, lon: p.lon, lat: p.lat,
+        type: "Mastcam-Z 360° panorama · natural color", mission: "Perseverance / Mars 2020",
+        date: p.dateText, category: "Panorama",
+        tags: ["Jezero", "Perseverance", "Mars 2020", "Mastcam-Z", "Natural color", "360°"],
+        sol: p.sol, solStart: p.solStart, solEnd: p.solEnd,
+        positionSol: p.positionSol, positionSolOffset: p.positionSolOffset,
+        projection: "360° cylindrical", positionSol: p.positionSol,
+        positionNote: `Nearest rover localization: Sol ${p.positionSol} (${p.positionSource})`,
+        vrEnabled: true, vrUrl: p.url, image: p.image, imageSource: "https://mastcamz.asu.edu/mastcam-zs-360-panorama-collection/",
+        imageAlt: p.imageAlt, imageCredit: p.imageCredit,
+        source: `Mastcam-Z panorama #${p.number} interactive viewer`, url: p.url,
+        note: `Natural-color panorama. The marker uses the nearest available rover localization to ${p.dateText}; the camera pointing coordinate is not available in this catalog.`,
       })),
       { id: "curiosity", name: "Curiosity landing", lon: 137.4417, lat: -4.5895,
         type: "Rover landing site", mission: "Curiosity / Mars Science Laboratory", date: "Touchdown · 6 Aug 2012",
@@ -1651,6 +1671,10 @@
     roadToggle.addEventListener("click", () =>
       setTraverseVisible(!(traverseEntity && traverseEntity.show)));
     spotVrButton.addEventListener("click", () => {
+      if (selectedSpot?.vrUrl) {
+        window.open(selectedSpot.vrUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
       statusEl.textContent = "Street-view mode is planned for this spot but is not available yet.";
     });
     document.getElementById("spotClose").addEventListener("click", () => {
@@ -1693,6 +1717,7 @@
         spotImage.removeAttribute("src"); spotImage.alt = ""; spotImageCaption.textContent = "";
       }
       spotVrButton.hidden = !spot.vrEnabled;
+      spotVrButton.textContent = spot.vrUrl ? "Open 360° / VR view" : "Open street view";
       const note = document.getElementById("spotNote");
       note.replaceChildren(document.createTextNode(`${spot.date}. ${spot.note} Source: `));
       const source = document.createElement("a");
@@ -1702,7 +1727,12 @@
       const ns = spot.lat >= 0 ? "N" : "S", ew = spot.lon >= 0 ? "E" : "W";
       addSpotStat("Latitude", `${Math.abs(spot.lat).toFixed(4)}° ${ns}`);
       addSpotStat("Longitude", `${Math.abs(spot.lon).toFixed(4)}° ${ew}`);
-      if (spot.sol) {
+      if (spot.solStart != null) {
+        addSpotStat("Panorama sols", spot.date);
+        addSpotStat("Rover position", `Sol ${spot.positionSol}`);
+        addSpotStat("Position offset", `${spot.positionSolOffset > 0 ? "+" : ""}${spot.positionSolOffset} sols from midpoint`);
+        if (spot.projection) addSpotStat("Projection", spot.projection);
+      } else if (spot.sol) {
         addSpotStat("Sol · site", `${spot.sol} · ${spot.site}`);
         addSpotStat("Drive · heading", `${spot.drive} · ${spot.heading}°`);
         addSpotStat("Projection", spot.projection);
@@ -2390,7 +2420,7 @@
     const clicker = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     let routePickMode = null;
     const routePoints = [], routePins = [];
-    let routeGraphic = null;
+    let routeGraphic = null, routePinPositions = null;
     let routeDisplayPath = null, routeRawPath = null, routeRawTurns = null, routeGrid = null;
     let unwalkableLayers = [];
     let routeRequest = 0;
@@ -2414,6 +2444,7 @@
     function clearRouteGraphics() {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
       routeGraphic = routeDisplayPath = routeRawPath = routeRawTurns = routeGrid = null;
+      routePinPositions = null;
       for (const pin of routePins) viewer.entities.remove(pin);
       routePins.length = 0;
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
@@ -2423,7 +2454,8 @@
       return viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 0, MARS),
         point: {
-          pixelSize: 13, color, outlineColor: Cesium.Color.BLACK, outlineWidth: 3,
+          pixelSize: 11, color, outlineColor: Cesium.Color.BLACK, outlineWidth: 2,
+          scaleByDistance: new Cesium.NearFarScalar(250, 0.65, 1_000_000, 1.0),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: 50_000,
         },
@@ -2432,6 +2464,7 @@
           outlineColor: Cesium.Color.BLACK, outlineWidth: 3,
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           pixelOffset: new Cesium.Cartesian2(0, -18),
+          scaleByDistance: new Cesium.NearFarScalar(250, 0.7, 1_000_000, 1.0),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: 50_000,
         },
@@ -2445,7 +2478,7 @@
       routePoints.forEach((point, index) => {
         const isFirst = index === 0, isLast = index === routePoints.length - 1;
         const color = isFirst ? Cesium.Color.LIME : isLast ? Cesium.Color.ORANGE : Cesium.Color.YELLOW;
-        routePins.push(makeRoutePin(point, color, String(index + 1)));
+        routePins.push(makeRoutePin(routePinPositions?.[index] ?? point, color, String(index + 1)));
         const item = document.createElement("li");
         item.style.cssText = "color:#ccc;font-size:11px;margin:2px 0";
         item.append(`${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}° `);
@@ -2459,7 +2492,7 @@
     function placeRoutePins() {
       occluder.cameraPosition = viewer.camera.positionWC;
       for (let i = 0; i < routePoints.length; i++) {
-        const point = routePoints[i], pin = routePins[i];
+        const point = routePinPositions?.[i] ?? routePoints[i], pin = routePins[i];
         if (!point || !pin) continue;
         const world = Cesium.Cartesian3.fromDegrees(point.lon, point.lat, 0, MARS);
         pin.show = occluder.isPointVisible(world);
@@ -2677,7 +2710,7 @@
           north: Math.min(90, Math.max(...waypoints.map((p) => p.lat)) + pad),
         };
         const planSequence = async (grid) => {
-          const combined = { path: [], displayPath: [], turnIndices: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
+          const combined = { path: [], displayPath: [], turnIndices: [], waypointPositions: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
           for (let i = 1; i < waypoints.length; i++) {
             if (request !== routeRequest) return null;
             const a = lonLatToTerrainCell(grid, waypoints[i - 1].lon, waypoints[i - 1].lat);
@@ -2686,10 +2719,17 @@
               maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
             }) : null;
             if (!leg) return null;
+            const legDisplayPath = leg.displayPath.map((point) => ({ ...point }));
+            legDisplayPath[0] = { ...legDisplayPath[0], lon: waypoints[i - 1].lon, lat: waypoints[i - 1].lat };
+            legDisplayPath[legDisplayPath.length - 1] = {
+              ...legDisplayPath.at(-1), lon: waypoints[i].lon, lat: waypoints[i].lat,
+            };
+            if (!combined.waypointPositions.length) combined.waypointPositions.push({ ...waypoints[i - 1] });
+            combined.waypointPositions.push({ ...waypoints[i] });
             combined.path.push(...leg.path.slice(combined.path.length ? 1 : 0));
             const displayOffset = combined.displayPath.length ? combined.displayPath.length - 1 : 0;
             combined.turnIndices.push(...leg.turnIndices.map((index) => displayOffset + index));
-            combined.displayPath.push(...leg.displayPath.slice(combined.displayPath.length ? 1 : 0));
+            combined.displayPath.push(...legDisplayPath.slice(combined.displayPath.length ? 1 : 0));
             combined.horizontalDistanceM += leg.horizontalDistanceM;
             combined.terrainDistanceM += leg.terrainDistanceM;
           }
@@ -2737,6 +2777,8 @@
         routeGrid = grid;
         routeRawPath = result?.displayPath ?? result?.path ?? null;
         routeRawTurns = result?.turnIndices ?? [];
+        routePinPositions = result?.waypointPositions ?? null;
+        syncRoutePins();
         try { await drawUnwalkableOverlay(grid, () => request === routeRequest); }
         catch (error) { console.warn("Could not draw slope mask:", error); }
         if (request !== routeRequest) return;
