@@ -187,9 +187,8 @@ function updateWalkPanel() {
     panel.innerHTML = markup;
     if (animateIntro) panel.classList.add("walk-typewriter");
   }
-  // Render the browser overlay on desktop and the KRPano layer in immersive VR.
-  // Keep the KRPano layer visible in both modes; the WebVR plugin retains layers
-  // marked vr=true in the headset. The DOM panel is only a fallback when embedding fails.
+  // Keep the KRPano layer visible in flat and immersive modes; the WebVR plugin
+  // retains layers marked vr=true in the headset. Hide the duplicate DOM preview.
   if (panel) panel.hidden = true;
   krpano.set("layer[mars_walk_status_panel].vr", true);
   krpano.set("layer[mars_walk_status_panel].visible", true);
