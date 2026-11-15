@@ -70,8 +70,9 @@ Rules:
 ## Survival model as implemented (`web/survival.js`, mirrored in `route.json → params`)
 
 Added Sun 15 Nov 2026 by agent:yasser. These are the numbers the survival card uses. Most are
-**ASSUMED** — order-of-magnitude values chosen to be plausible and internally consistent (each
-consumable lasts roughly an 8-hour EVA at the flat-walking rate), not mission data. Change them in
+**ASSUMED**. Since 08:30 the suit capacities follow a real reference design, the **Apollo 15–17 PLSS**
+(8-hour EVA), and the metabolic rate is the measured Apollo lunar-EVA average; the rest are still
+ASSUMED and labelled so. Change them in
 `SURVIVAL_PARAMS` / `DEFAULT_CREW` and here together.
 
 | Symbol (code) | Meaning | Value | Unit | Source | Status |
@@ -81,7 +82,7 @@ consumable lasts roughly an 8-hour EVA at the flat-walking rate), not mission da
 | `v0_kmh` | suited walking speed, flat | 2.5 | km/h | — | ASSUMED |
 | `tobler_a`, `tobler_b` | speed vs grade: v = v0·e^(−a·|g+b|)/e^(−a·b) | 3.5, 0.05 | – | Tobler (1993) hiking function, normalised so v(0)=v0 | CITED form, ASSUMED for suits on Mars |
 | `max_slope_deg` | hard slope mask | 25 (UI slider) | ° | — | ASSUMED |
-| `metabolic_flat_w` | metabolic rate walking on the flat | 272 | W | ~Apollo lunar-surface EVA average of ~234 kcal/h (Waligora & Horrigan, *Biomedical Results of Apollo*, NASA SP-368, 1975) — verify | ASSUMED (literature-informed) |
+| `metabolic_flat_w` | metabolic rate walking on the flat | 272 | W | Apollo lunar EVA overall average 234 kcal/h (NASA NTRS 19910001262, citing Waligora & Horrigan); Apollo lunar EVA range 822–1267 kJ/h = 228–352 W (NASA TN D-7883, https://www.nasa.gov/wp-content/uploads/static/history/alsj/tnD7883Metabolic.pdf) | CITED |
 | `metabolic_stop_w` | metabolic rate while sampling | 230 | W | — | ASSUMED |
 | uphill term | extra power = m·g·v_up / η | – | W | mechanical work of lifting body + suit | physics |
 | `eta_muscle` | muscular efficiency, climbing | 0.25 | – | textbook range ~0.2–0.25 | ASSUMED |
@@ -91,10 +92,10 @@ consumable lasts roughly an 8-hour EVA at the flat-walking rate), not mission da
 | `e_o2_j_per_kg` | energy per kg O₂ consumed | 14.07 × 10⁶ | J/kg | ~20.1 kJ per litre O₂ (indirect calorimetry, Weir 1949) at 1.429 g/L | CITED |
 | `l_sub_j_per_kg` | latent heat of sublimation of ice | 2.83 × 10⁶ | J/kg | physical constant | CITED |
 | `f_cool` | share of metabolic heat rejected by the sublimator | 0.8 | – | — | ASSUMED |
-| `suit_power_w` | average electrical draw (fans, pump, radio, heaters) | 55 | W | — | ASSUMED |
-| `o2_kg` | usable O₂ per suit | 0.54 | kg | order of the NASA EMU primary O₂ load (~1.2 lb) — verify | ASSUMED |
-| `water_kg` | usable cooling water per suit | 3.6 | kg | order of the EMU feedwater load — verify | ASSUMED |
-| `battery_wh` | usable battery per suit | 450 | Wh | order of the EMU battery — verify | ASSUMED |
+| `suit_power_w` | average electrical draw (fans, pump, radio, heaters) | 49 | W | 390 Wh battery ÷ 8 h Apollo 15–17 design EVA | DERIVED |
+| `o2_kg` | usable O₂ per suit | 0.54 | kg | not found in a source we could check (Apollo PLSS gives tank pressure, 1430 psi, not mass); sized so O₂ lasts ~8 h at 272 W | ASSUMED |
+| `water_kg` | usable cooling water per suit | 5.2 | kg | Apollo 15–17 PLSS cooling water 11.5 lb (extended configuration; Apollo 11–14: 8.5 lb). https://en.wikipedia.org/wiki/Primary_life_support_system (secondary; primary: ALSJ PLSS history, https://history.nasa.gov/alsj/ALSJ-FlightPLSS.pdf) | CITED (secondary) |
+| `battery_wh` | battery per suit | 390 | Wh | Apollo 15–17 PLSS battery 390 Wh (Apollo 11–14: 279 Wh), same sources as `water_kg`. Treated as fully usable | CITED (secondary) |
 | `stop_dwell_s` | sampling time per science stop | 1200 | s | — | ASSUMED |
 | `reserve_frac` | reserve required at return | 0.20 | – | design decision | FIXED |
 | `blackout_grace_s` | blackout treated as recoverable | 60 | s | design decision | FIXED |
