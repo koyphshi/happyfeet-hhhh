@@ -27,10 +27,14 @@ export function estimateTerrainPatchCells(bounds, level = 6) {
   return (nx * TILE_CELLS + 1) * ((y1 - y0 + 1) * TILE_CELLS + 1);
 }
 
-async function fetchHeightTile(z, x, y, signal) {
+// onWait(true) the first time the server answers 202 ("still downloading this data"),
+// onWait(false) once the tile arrives; used for the route planner's progress report.
+async function fetchHeightTile(z, x, y, signal, onWait) {
+  let waited = false;
   for (let attempt = 0; attempt < 120; attempt++) {
     const response = await fetch(`/terrain/${z}/${x}/${y}`, { signal, cache: "force-cache" });
     if (response.status === 202) {
+      if (!waited) { waited = true; onWait?.(true); }
       const delay = Number(response.headers.get("Retry-After") || 1);
       await new Promise((resolve, reject) => {
         const finish = () => { signal?.removeEventListener("abort", abort); resolve(); };
@@ -45,14 +49,28 @@ async function fetchHeightTile(z, x, y, signal) {
     const bytes = await response.arrayBuffer();
     if (bytes.byteLength !== TILE_SAMPLES * TILE_SAMPLES * 4)
       throw new Error(`MOLA height tile ${z}/${x}/${y}: unexpected byte count`);
+    if (waited) onWait?.(false);
     return new Float32Array(bytes);
   }
   throw new Error(`MOLA height tile ${z}/${x}/${y} is still being prepared`);
 }
 
+// Fetch many tiles at once and report onProgress({ done, total, preparing, level }):
+// preparing = tiles the server is still downloading source data for (it answered 202).
+async function fetchTiles(level, list, signal, onProgress) {
+  let done = 0, preparing = 0;
+  const report = () => onProgress?.({ done, total: list.length, preparing, level });
+  report();
+  return Promise.all(list.map(async ([tx, ty]) => {
+    const data = await fetchHeightTile(level, tx, ty, signal, (w) => { preparing += w ? 1 : -1; report(); });
+    done++; report();
+    return data;
+  }));
+}
+
 // Bounds are Mars longitude/latitude degrees. Keep the patch local; the source data is
 // fetched only for intersecting Cesium tiles and no whole-planet raster is built.
-export async function loadTerrainPatch({ west, south, east, north, level = 6, signal, maxCells = 4_000_000 }) {
+export async function loadTerrainPatch({ west, south, east, north, level = 6, signal, maxCells = 4_000_000, onProgress }) {
   if (![west, south, east, north].every(Number.isFinite) || south >= north ||
       west < -180 || east > 180 || south < -90 || north > 90)
     throw new RangeError("Expected Mars bounds; west > east is allowed across the longitude seam");
@@ -73,10 +91,8 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
   if (width * height > maxCells)
     throw new RangeError(`Terrain patch is too large (${width}×${height}); narrow the route area or lower level`);
 
-  const tiles = await Promise.all(Array.from({ length: nx * ny }, async (_, i) => {
-    const tx = xs[i % nx], ty = y0 + Math.floor(i / nx);
-    return fetchHeightTile(level, tx, ty, signal);
-  }));
+  const tiles = await fetchTiles(level,
+    Array.from({ length: nx * ny }, (_, i) => [xs[i % nx], y0 + Math.floor(i / nx)]), signal, onProgress);
   const heights = new Float32Array(width * height);
   for (let ty = 0; ty < ny; ty++) for (let tx = 0; tx < nx; tx++) {
     const tile = tiles[ty * nx + tx];
@@ -99,7 +115,7 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
 
 // Load only fine tiles touched by a coarse route and a one-tile buffer around it.
 // The returned sparse grid lets fine Theta* explore only this local corridor.
-export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles = 1, maxTiles = 256, signal } = {}) {
+export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles = 1, maxTiles = 256, signal, onProgress } = {}) {
   if (!coarsePath?.length) throw new RangeError("A coarse route is required");
   if (!Number.isInteger(bufferTiles) || bufferTiles < 0) throw new RangeError("Invalid tile buffer");
   const nx = tileColumns(level), ny = tileRows(level), keys = new Set();
@@ -117,10 +133,9 @@ export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles =
   if (keys.size > maxTiles)
     throw new RangeError(`Detailed route corridor needs ${keys.size} tiles (limit ${maxTiles})`);
 
-  const tiles = await Promise.all([...keys].map(async (key) => {
-    const [x, y] = key.split(",").map(Number);
-    return { x, y, data: await fetchHeightTile(level, x, y, signal) };
-  }));
+  const coords = [...keys].map((key) => key.split(",").map(Number));
+  const datas = await fetchTiles(level, coords, signal, onProgress);
+  const tiles = coords.map(([x, y], i) => ({ x, y, data: datas[i] }));
   const worldWidth = nx * TILE_CELLS, worldHeight = ny * TILE_CELLS;
   const heights = new Map();
   for (const { x, y, data } of tiles) {
@@ -181,7 +196,7 @@ export function terrainCellSlopeDeg(grid, x, y) {
 
 // Weighted Basic Theta*: any-angle shortcuts are checked against the same cell slope
 // mask as the overlay, while edge grades retain the configured climb limit.
-export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity, signal, shouldCancel = () => false } = {}) {
+export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity, signal, shouldCancel = () => false, onProgress } = {}) {
   if (!(maxSlopeDeg === Infinity || (Number.isFinite(maxSlopeDeg) && maxSlopeDeg >= 0 && maxSlopeDeg < 90)))
     throw new RangeError("maxSlopeDeg must be between 0 and 90 degrees");
   const { width, height, heights, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
@@ -286,6 +301,7 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
   while (heap.length) {
     if (signal?.aborted || shouldCancel()) return null;
     if (++expanded % 128 === 0) {
+      if (expanded % 4096 === 0) onProgress?.({ expanded });
       await new Promise((resolve) => setTimeout(resolve, 0));
       if (signal?.aborted || shouldCancel()) return null;
     }

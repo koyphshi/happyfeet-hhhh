@@ -654,6 +654,10 @@ function serveTerrain(url, res) {
       progress: DEMS[0].progress,
       error: terrain.error,
       cached: Object.fromEntries(DEMS.map((d) => [d.ppd, d.progress])),
+      // source data being fetched right now: chunks/blocks per dataset, and the two queues
+      downloading: Object.fromEntries(DEMS.map((d) => [d.ppd,
+        d.files ? d.files.reduce((n, f) => n + f.pending.size, 0) : d.pending?.size ?? 0]).filter(([, n]) => n > 0)),
+      queues: { pds: { active: net.active, waiting: net.stack.length }, s3: { active: s3.active, waiting: s3.queue.length } },
     }));
   }
   const m = /^\/terrain\/(\d{1,2})\/(\d{1,8})\/(\d{1,8})$/.exec(url.pathname);
