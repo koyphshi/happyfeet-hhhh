@@ -30,5 +30,5 @@ is the message bus**.
 
 - App: `web/` (Cesium globe in `index.html`, router `pathfinding.js`, Node server `serve.mjs`).
   Run: `cd web && npm ci && node serve.mjs --no-open` → http://localhost:8080
-- Tests: `cd web && node --test` (Node 20+, no extra deps).
+- Tests: `cd web && npm test` (Node 20+, no extra deps).
 - Coefficients: every number goes in `docs/assumptions.md` with a source or `ASSUMED`.

@@ -610,6 +610,17 @@
             <div class="bar"><i></i></div>
             <div class="lines"></div>
           </div>
+          <div id="survivalBox">
+            <div class="svRow">
+              <label title="Same route, different suit condition: shows how the plan refuses an unsafe excursion">Scenario <select id="svScenario"></select></label>
+              <button id="routeExportBtn" type="button" disabled title="Download the computed route, survival budget and terrain excerpt as route.json">⬇ route.json</button>
+            </div>
+            <div class="svRow">
+              <button id="routeDemoBtn" type="button" title="Load the committed demo excursion (public/data/route.json); works without the terrain server">Load demo excursion (boxwork)</button>
+              <label class="hint" style="cursor:pointer"><input id="routeImportFile" type="file" accept=".json,application/json" hidden />⬆ Open route.json…</label>
+            </div>
+            <div id="survivalCard"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -708,6 +719,9 @@
       return;
     }
     const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg, steepMask } = await import("./pathfinding.js");
+    const RouteIO = await import("./route-io.js");
+    const Survival = await import("./survival.js");
+    const { renderSurvivalCard } = await import("./survival-card.js");
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -3448,6 +3462,7 @@
       routePins.length = 0;
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
+      clearSurvival();
     }
     function makeRoutePin(point, color, label) {
       return viewer.entities.add({
@@ -3736,6 +3751,102 @@
       }
       throw new Error("MOLA terrain is still loading");
     }
+    // ---------------------------------------------------------------- survival card + route.json
+    // survival.js prices the computed route for a crew of two (O2, cooling water, battery, 20 %
+    // reserve, walk-back limit); route-io.js turns it into route.json (docs/route-schema.md).
+    let currentRoute = null, walkBackPins = [];
+    const svScenario = document.getElementById("svScenario");
+    for (const [key, sc] of Object.entries(Survival.SCENARIOS)) svScenario.add(new Option(sc.label, key));
+    const routeExportBtn = document.getElementById("routeExportBtn");
+    function clearSurvival() {
+      currentRoute = null;
+      routeExportBtn.disabled = true;
+      document.getElementById("survivalCard").innerHTML = "";
+      for (const pin of walkBackPins) viewer.entities.remove(pin);
+      walkBackPins = [];
+    }
+    function scenarioInputs() {
+      const sc = Survival.SCENARIOS[svScenario.value] ?? Survival.SCENARIOS.standard;
+      return { scenario: svScenario.value, crew: sc.apply(Survival.DEFAULT_CREW), params: { ...(sc.params || {}), max_slope_deg: maxSlopeDeg() } };
+    }
+    function showRoute(route) {
+      currentRoute = route;
+      routeExportBtn.disabled = false;
+      renderSurvivalCard(document.getElementById("survivalCard"), route);
+      for (const pin of walkBackPins) viewer.entities.remove(pin);
+      walkBackPins = [];
+      // one marker per distinct walk-back limit (point of no return)
+      const seen = new Set();
+      for (const c of route.survival.crew) {
+        const p = route.path[c.walk_back.index];
+        if (!p || seen.has(c.walk_back.index) || c.walk_back.index >= route.path.length - 1) continue;
+        seen.add(c.walk_back.index);
+        walkBackPins.push(viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 30, MARS),
+          point: { pixelSize: 10, color: Cesium.Color.ORANGE, outlineColor: Cesium.Color.BLACK, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+          label: { text: `Walk-back limit · ${c.name}`, font: "12px sans-serif", pixelOffset: new Cesium.Cartesian2(0, -16), fillColor: Cesium.Color.ORANGE,
+            showBackground: true, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        }));
+      }
+    }
+    function updateSurvival() {
+      if (!routeRawPath || routeRawPath.length < 2) return clearSurvival();
+      const waypoints = routePoints.map((p, k) => ({ name: p.name ?? (k ? `Stop ${k}` : "Haven"), lon: p.lon, lat: p.lat }));
+      if (routeLoopBox.checked) waypoints.push({ ...waypoints[0], name: `${waypoints[0].name} (return)`, role: "haven" });
+      showRoute(RouteIO.buildRoute({ path: routeRawPath, waypoints, grid: routeGrid, ...scenarioInputs() }));
+    }
+    function reevaluateLoaded() { // scenario changed on a route loaded from a file
+      const r = currentRoute;
+      const path = RouteIO.plannerPath(r);
+      const waypoints = r.waypoints.map(({ name, lon, lat, role }) => ({ name, lon, lat, role }));
+      showRoute(RouteIO.buildRoute({ path, waypoints, heightAt: RouteIO.excerptSampler(r.terrain), ...scenarioInputs(),
+        meta: { label: r.label, site: r.site, terrain_source: r.profile?.terrain_source } }));
+    }
+    svScenario.addEventListener("change", () => {
+      if (routeRawPath && !routeRawPath.fromFile) updateSurvival();
+      else if (currentRoute) reevaluateLoaded();
+    });
+    routeExportBtn.addEventListener("click", () => {
+      if (!currentRoute) return;
+      const blob = new Blob([JSON.stringify(currentRoute, null, 1)], { type: "application/json" });
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "route.json" });
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    });
+    async function loadRouteFile(route, label) {
+      route = RouteIO.parseRoute(route);
+      routeRequest++;
+      clearRouteGraphics();
+      routePoints.length = 0;
+      route.waypoints.filter((w, k) => !(k && w.role === "haven")).forEach((w) => routePoints.push({ name: w.name, lon: w.lon, lat: w.lat }));
+      routeLoopBox.checked = route.waypoints.length > 2 && route.waypoints.at(-1).role === "haven";
+      routeRawPath = Object.assign(RouteIO.plannerPath(route), { fromFile: true });
+      routeRawTurns = [];
+      syncRoutePins();
+      drawRouteLine(null, routeRawPath, []);
+      if (route.profile?.scenario && Survival.SCENARIOS[route.profile.scenario]) svScenario.value = route.profile.scenario;
+      currentRoute = route;
+      reevaluateLoaded();
+      setRouteStatus(`${label} · ${route.label || route.site} · ${(route.distance_m / 1000).toFixed(2)} km · re-checked with this page's survival model`);
+      const lons = route.path.map((p) => p.lon), lats = route.path.map((p) => p.lat);
+      flyToSpot((Math.min(...lons) + Math.max(...lons)) / 2, (Math.min(...lats) + Math.max(...lats)) / 2, 6000);
+      document.getElementById("survivalCard").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    document.getElementById("routeDemoBtn").addEventListener("click", async () => {
+      try {
+        const res = await fetch("./public/data/route.json", { cache: "no-cache" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await loadRouteFile(await res.json(), "Demo excursion");
+      } catch (error) { setRouteStatus(`Could not load the demo route: ${error.message}`); }
+    });
+    document.getElementById("routeImportFile").addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try { await loadRouteFile(await file.text(), file.name); }
+      catch (error) { setRouteStatus(`Could not open ${file.name}: ${error.message}`); }
+      event.target.value = "";
+    });
+    window.happyfeet = Object.assign(window.happyfeet || {}, { get route() { return currentRoute; }, loadRouteFile });
+
     async function computeTerrainRoute() {
       if (routePoints.length < 2) return;
       if (!USE_PROXY) { setRouteStatus("Start the local viewer server to load MOLA heights."); return; }
@@ -3868,6 +3979,7 @@
           .catch((error) => console.warn("Could not draw slope mask:", error));
         if (!result) { setRouteStatus("No walkable route found at this slope limit."); return; }
         drawRouteLine(grid, routeRawPath, routeRawTurns);
+        try { updateSurvival(); } catch (error) { console.warn("Survival budget failed:", error); }
         setRouteStatus(`${routeLoopBox.checked ? "Loop · " : ""}terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${routeRawPath.length.toLocaleString()} samples · ${detail}` +
           (prog.reused ? ` · ${prog.reused} leg${prog.reused === 1 ? "" : "s"} reused` : ""));
       } catch (error) {
