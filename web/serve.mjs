@@ -31,6 +31,7 @@ const types = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".gif": "image/gif",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".wasm": "application/wasm",
@@ -718,9 +719,74 @@ async function serveFile(url, res) {
     .pipe(res);
 }
 
+// ---------------------------------------------------------------- custom spots
+// The viewer's "custom spots" (name, kind, colour, description, tags, images...) are kept in
+// web/data/custom/spots.json, and uploaded images in web/data/custom/images/. Both are
+// git-ignored: use the viewer's Export / Import to share them. Only this machine can reach the
+// server (it listens on 127.0.0.1), and writes must come from the viewer page itself (Origin
+// check), so another website open in the browser cannot change them.
+const CUSTOM_DIR = path.join(root, "data", "custom");
+const CUSTOM_FILE = path.join(CUSTOM_DIR, "spots.json");
+const CUSTOM_IMG_DIR = path.join(CUSTOM_DIR, "images");
+const IMAGE_EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+const MAX_JSON = 2 * 1024 * 1024, MAX_IMAGE = 15 * 1024 * 1024;
+
+function sameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return req.headers["sec-fetch-site"] !== "cross-site";
+  return origin === `http://localhost:${port}` || origin === `http://127.0.0.1:${port}`;
+}
+function readBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > limit) { reject(Object.assign(new Error("Too large"), { status: 413 })); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+function sendJson(res, status, obj) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(JSON.stringify(obj));
+}
+async function customSpotsApi(req, res, url) {
+  if (url.pathname === "/api/custom-spots" && req.method === "GET") {
+    try { return sendJson(res, 200, JSON.parse(await readFile(CUSTOM_FILE, "utf8"))); }
+    catch { return sendJson(res, 200, { version: 1, kinds: [], spots: [] }); }
+  }
+  if (!sameOrigin(req)) return send(res, 403, "Forbidden");
+  if (url.pathname === "/api/custom-spots" && req.method === "PUT") {
+    const doc = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8"));
+    if (!doc || !Array.isArray(doc.spots) || !Array.isArray(doc.kinds)) return send(res, 400, "Expected { kinds: [], spots: [] }");
+    await mkdir(CUSTOM_DIR, { recursive: true });
+    const tmp = CUSTOM_FILE + ".tmp";
+    await writeFile(tmp, JSON.stringify({ version: 1, kinds: doc.kinds, spots: doc.spots }, null, 1));
+    await rename(tmp, CUSTOM_FILE); // atomic: a crash never leaves half a file
+    return sendJson(res, 200, { ok: true, spots: doc.spots.length });
+  }
+  if (url.pathname === "/api/custom-images" && req.method === "POST") {
+    const ext = IMAGE_EXT[(req.headers["content-type"] || "").split(";")[0].trim()];
+    if (!ext) return send(res, 415, "Images only: PNG, JPEG, WebP or GIF");
+    const body = await readBody(req, MAX_IMAGE);
+    await mkdir(CUSTOM_IMG_DIR, { recursive: true });
+    const name = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    await writeFile(path.join(CUSTOM_IMG_DIR, name), body);
+    return sendJson(res, 200, { url: `./data/custom/images/${name}` });
+  }
+  return send(res, 405, "Method not allowed");
+}
+
 const server = http.createServer((req, res) => {
-  if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "Method not allowed");
   const url = new URL(req.url, "http://localhost");
+  if (url.pathname.startsWith("/api/custom-")) {
+    return customSpotsApi(req, res, url).catch((err) =>
+      res.headersSent ? res.destroy() : send(res, err.status || (err instanceof SyntaxError ? 400 : 500), err.message));
+  }
+  if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "Method not allowed");
   if (url.pathname === "/__proxy") return send(res, 200, "ok"); // lets the page detect this server
   if (url.pathname === "/catalog") {
     return getCatalog().then(
