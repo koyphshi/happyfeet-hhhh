@@ -114,3 +114,36 @@ linked NASA cylindrical panorama in a canvas/modal). Do not attempt full WebXR t
 - Action taken: commit ...
 - Time estimate if not done: ...
 -->
+
+### Q1 — DECISION: RELEVANT
+- DECISION: RELEVANT — no public link = no valid entry — web/index.html:8,688-690, no deploy config — agent:yasser
+- Action taken: `serve.mjs` honours `HOST`/`PORT`, adds `/healthz`; `Dockerfile`, `.dockerignore`, `render.yaml`; pinned Cesium 1.147.0 CDN fallback when `node_modules` is absent (branch agent/yasser-p0, commit 78f4d8e-range, see `git log`). Guide: `docs/deploy.md`.
+- Remaining: **one human step** — Render dashboard → New → Blueprint → this repo → Apply (no credentials on the agent machine). Est. 10 min + build.
+
+### Q2 — DECISION: RELEVANT
+- DECISION: RELEVANT — the stated differentiator; nothing existed — grep showed zero references — agent:yasser
+- Action taken: `web/survival.js` (+ `survival-card.js`, `route-io.js`), survival card in the Path tab, demo excursion GO, hypothetical degraded-suit scenarios REFUSED with named reason; 11 node tests (`cd web && npm test`). Commit a5dbb90.
+
+### Q3 — DECISION: RELEVANT
+- DECISION: RELEVANT — presentation is a scoring criterion — nothing in repo — agent:yasser
+- Action taken: `docs/submission.md` (checklist, 7-slide outline, References from the sources the app uses). Humans: build the deck, paste References, Members tab, Save. Est. 60 min (human).
+
+### Q4 — DECISION: RELEVANT
+- DECISION: RELEVANT — brief requires ≥ 3 data kinds — LAYERS had optical + topographic only — agent:yasser
+- Action taken: THEMIS day-IR layer (thermal) + REMS "Atmosphere · Gale" panel (atmospheric, live via `/rems`, snapshot fallback). Verified in headless Chrome.
+
+### Q5 — DECISION: RELEVANT
+- DECISION: RELEVANT — brief requires provenance per layer — no date / no chip — agent:yasser
+- Action taken: chip per layer (kind · dataset · mission · resolution · date · credit). Catalog-added layers show kind "Trek layer" + note + credit.
+
+### Q6 — DECISION: RELEVANT
+- DECISION: RELEVANT — slide 3 needs it; PLAN said Glen Torridon — PLAN.md:104 — agent:yasser
+- Action taken: PLAN.md §1 site sentence + science paragraph; spot label fixed. 18°N was already marked resolved in PLAN.md spike 4. Commit 1d06ef1.
+
+### Q7 — DECISION: RELEVANT (P1, after P0)
+- DECISION: RELEVANT — owner priority; route.json now exists to sign — docs/integrity-assertions.md — agent:yasser
+- Plan: flat signed manifest (BLAKE3 + Ed25519 via @noble), verify-on-load chip, tamper button, tests. Owner: agent:yasser. Est. 90 min. Not started at time of writing.
+
+### Q8 — DECISION: NOT RELEVANT (stale)
+- DECISION: NOT RELEVANT — the question is stale: Perseverance panorama spots open the external ASU viewer; no dead button found in the current judge path — web/index.html spot card — agent:yasser
+- Note: Curiosity boxwork panoramas still say "planned" for VR; P1-B (WebXR) would replace that.
