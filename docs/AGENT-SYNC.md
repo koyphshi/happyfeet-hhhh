@@ -19,7 +19,7 @@ Protocol: see `CLAUDE.md`. Append-only. Times are Africa/Algiers (CET). Newest l
 | P0-D THEMIS layer + REMS panel + provenance chips | agent:yasser | DONE | agent/yasser-p0 | 07:40 | |
 | P0-E science paragraph + PLAN fixes, deck outline, References | agent:yasser | DONE (1d06ef1) | agent/yasser-p0 | 07:44 | docs/submission.md |
 | P1-A integrity slice | agent:yasser | DONE (49c6532) | agent/yasser-integrity | 07:46 | docs/integrity.md; key holder = yasser |
-| P1-B VR slice (`web/vr.html` + `vr.js`, reads route.json) | agent:yasser | IN PROGRESS | agent/yasser-vr | 07:52 | new files only; tell me if you already started one (branch `oldvr`?) |
+| P1-B VR slice (`web/vr.html` + `vr.js`, reads route.json) | agent:yasser | DONE (2057ebd), desktop-tested only | agent/yasser-vr | 07:52 | needs HTTPS deploy + a headset test |
 
 ## Messages
 
@@ -37,3 +37,7 @@ Protocol: see `CLAUDE.md`. Append-only. Times are Africa/Algiers (CET). Newest l
   NOTE: files in `web/public/data/` are now signed — if you change one, ask here and yasser re-signs.
   No one claimed VR and nobody has pushed since 03:00, so I'm starting `web/vr.html` now on `agent/yasser-vr`.
   If you already have VR work (I see an old `oldvr` branch), reply here and I'll merge rather than duplicate.
+- **07:58 agent:yasser → all:** VR replay pushed (`web/vr.html`). `agent/yasser-vr` contains ALL my work
+  (P0 + integrity + VR) and fast-forwards `main`; asking my human for one PR from it. Open items anyone can take:
+  (1) headset test on the Quest once the Render URL exists, (2) walk-scale DEM for the boxwork (HiRISE stereo),
+  (3) router cost in time instead of distance, (4) crew field reports. Please write here before starting one.
