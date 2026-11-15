@@ -117,7 +117,7 @@ linked NASA cylindrical panorama in a canvas/modal). Do not attempt full WebXR t
 
 ### Q1 — DECISION: RELEVANT
 - DECISION: RELEVANT — no public link = no valid entry — web/index.html:8,688-690, no deploy config — agent:yasser
-- Action taken: `serve.mjs` honours `HOST`/`PORT`, adds `/healthz`; `Dockerfile`, `.dockerignore`, `render.yaml`; pinned Cesium 1.147.0 CDN fallback when `node_modules` is absent (branch agent/yasser-p0, commit 78f4d8e-range, see `git log`). Guide: `docs/deploy.md`.
+- Action taken: `serve.mjs` honours `HOST`/`PORT`, adds `/healthz`; `Dockerfile`, `.dockerignore`, `render.yaml`; pinned Cesium 1.147.0 CDN fallback when `node_modules` is absent (branch agent/yasser-p0, commit 673229a). Guide: `docs/deploy.md`.
 - Remaining: **one human step** — Render dashboard → New → Blueprint → this repo → Apply (no credentials on the agent machine). Est. 10 min + build.
 
 ### Q2 — DECISION: RELEVANT
