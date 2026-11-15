@@ -251,6 +251,7 @@
       <button id="routeClearBtn" type="button">Clear</button>
       <div class="hint">Add points in order; the route visits each one.</div>
       <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
+      <label class="hint" style="display:block"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
       <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
       <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
       <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
@@ -1878,11 +1879,12 @@
     let routePickMode = null;
     const routePoints = [], routePins = [];
     let routeGraphic = null;
-    let routeDisplayPath = null, routeRawPath = null, routeGrid = null;
+    let routeDisplayPath = null, routeRawPath = null, routeRawTurns = null, routeGrid = null;
     let unwalkableLayers = [];
     let routeRequest = 0;
     const routeStatus = document.getElementById("routeStatus");
     const routeAddButton = document.getElementById("routeAddBtn");
+    const routeSmoothBox = document.getElementById("routeSmooth");
     const maxSlopeSlider = document.getElementById("maxSlope");
     const maxSlopeValue = document.getElementById("maxSlopeValue");
     const slopeMeaning = document.getElementById("slopeMeaning");
@@ -1899,7 +1901,7 @@
     }
     function clearRouteGraphics() {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
-      routeGraphic = routeDisplayPath = routeRawPath = routeGrid = null;
+      routeGraphic = routeDisplayPath = routeRawPath = routeRawTurns = routeGrid = null;
       for (const pin of routePins) viewer.entities.remove(pin);
       routePins.length = 0;
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
@@ -1953,9 +1955,51 @@
     }
     viewer.scene.postRender.addEventListener(placeRoutePins);
 
-    function drawRouteLine(grid, path) {
+    function smoothRouteCorners(path, turnIndices, trimFraction = 0.4) {
+      if (!path || path.length < 3 || !turnIndices?.length) return path;
+      const interpolate = (a, b, t) => {
+        let dLon = b.lon - a.lon;
+        if (dLon > 180) dLon -= 360;
+        else if (dLon < -180) dLon += 360;
+        return {
+          lon: a.lon + dLon * t,
+          lat: a.lat + (b.lat - a.lat) * t,
+          elevationM: a.elevationM + (b.elevationM - a.elevationM) * t,
+        };
+      };
+      const output = [path[0]];
+      let cursor = 0, previousTurn = -2;
+      for (const i of turnIndices) {
+        if (i <= cursor || i >= path.length - 1 || i - previousTurn < 2) continue;
+        for (let j = cursor + 1; j < i; j++) output.push(path[j]);
+        const before = path[i - 1], corner = path[i], after = path[i + 1];
+        const entry = interpolate(before, corner, 1 - trimFraction);
+        const exit = interpolate(corner, after, trimFraction);
+        output.push(entry);
+        let cLon = corner.lon;
+        if (cLon - entry.lon > 180) cLon -= 360;
+        else if (cLon - entry.lon < -180) cLon += 360;
+        let endLon = exit.lon;
+        if (endLon - cLon > 180) endLon -= 360;
+        else if (endLon - cLon < -180) endLon += 360;
+        for (let step = 1; step <= 8; step++) {
+          const t = step / 8, u = 1 - t;
+          output.push({
+            lon: u * u * entry.lon + 2 * u * t * cLon + t * t * endLon,
+            lat: u * u * entry.lat + 2 * u * t * corner.lat + t * t * exit.lat,
+            elevationM: u * u * entry.elevationM + 2 * u * t * corner.elevationM + t * t * exit.elevationM,
+          });
+        }
+        cursor = i + 1;
+        output.push(path[cursor]);
+        previousTurn = i;
+      }
+      for (let i = cursor + 1; i < path.length; i++) output.push(path[i]);
+      return output;
+    }
+    function drawRouteLine(grid, path, turnIndices = []) {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
-      routeDisplayPath = path;
+      routeDisplayPath = routeSmoothBox.checked ? smoothRouteCorners(path, turnIndices) : path;
       const radians = Math.PI / 180;
       const showRelief = terrainReady && reliefBox.checked;
       const visualHeight = (elevationM) => (showRelief ? elevationM * viewer.scene.verticalExaggeration : 0) + 8;
@@ -2121,7 +2165,7 @@
           north: Math.min(90, Math.max(...waypoints.map((p) => p.lat)) + pad),
         };
         const planSequence = async (grid) => {
-          const combined = { path: [], displayPath: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
+          const combined = { path: [], displayPath: [], turnIndices: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
           for (let i = 1; i < waypoints.length; i++) {
             if (request !== routeRequest) return null;
             const a = lonLatToTerrainCell(grid, waypoints[i - 1].lon, waypoints[i - 1].lat);
@@ -2131,6 +2175,8 @@
             }) : null;
             if (!leg) return null;
             combined.path.push(...leg.path.slice(combined.path.length ? 1 : 0));
+            const displayOffset = combined.displayPath.length ? combined.displayPath.length - 1 : 0;
+            combined.turnIndices.push(...leg.turnIndices.map((index) => displayOffset + index));
             combined.displayPath.push(...leg.displayPath.slice(combined.displayPath.length ? 1 : 0));
             combined.horizontalDistanceM += leg.horizontalDistanceM;
             combined.terrainDistanceM += leg.terrainDistanceM;
@@ -2178,11 +2224,12 @@
         }
         routeGrid = grid;
         routeRawPath = result?.displayPath ?? result?.path ?? null;
+        routeRawTurns = result?.turnIndices ?? [];
         try { await drawUnwalkableOverlay(grid, () => request === routeRequest); }
         catch (error) { console.warn("Could not draw slope mask:", error); }
         if (request !== routeRequest) return;
         if (!result) { routeStatus.textContent = "No walkable route found at this slope limit."; return; }
-        drawRouteLine(grid, routeRawPath);
+        drawRouteLine(grid, routeRawPath, routeRawTurns);
         routeStatus.textContent = `${routeRawPath.length.toLocaleString()} samples · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
       } catch (error) {
         if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
@@ -2215,11 +2262,14 @@
       slopeDebounce = setTimeout(() => { if (routePoints.length >= 2) computeTerrainRoute(); }, 250);
     });
     exagSlider.addEventListener("input", () => {
-      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath);
+      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
     });
     reliefBox.addEventListener("change", () => {
-      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath);
+      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
       syncRoutePins();
+    });
+    routeSmoothBox.addEventListener("change", () => {
+      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
     });
     clicker.setInputAction((e) => {
       if (routePickMode === "waypoint") {
