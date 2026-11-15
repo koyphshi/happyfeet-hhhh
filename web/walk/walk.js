@@ -108,6 +108,17 @@ let walkPanelCreated = false;
 let domIntroShown = false;
 let vrIntroShown = false;
 let introAnimationUntil = 0;
+let immersiveVr = false;
+window.marsWalkVrChanged = (active) => {
+  immersiveVr = Boolean(active);
+  const preview = $("walkStatusPreview");
+  if (preview) preview.hidden = immersiveVr;
+  if (krpano && walkPanelCreated) {
+    krpano.set("layer[mars_walk_status_panel].vr", true);
+    krpano.set("layer[mars_walk_status_panel].visible", immersiveVr);
+    updateWalkPanel();
+  }
+};
 function setupWalkPanel() {
   if (!krpano || walkPanelCreated) return;
   krpano.call("addlayer(mars_walk_status_panel);");
@@ -156,7 +167,7 @@ function updateWalkPanel() {
   let inVr = false;
   try {
     const vrEnabled = krpano.get("webvr.isenabled");
-    inVr = vrEnabled === true || vrEnabled === "true" || vrEnabled === 1 || vrEnabled === "1";
+    inVr = immersiveVr || vrEnabled === true || vrEnabled === "true" || vrEnabled === 1 || vrEnabled === "1";
   } catch {}
   const animateIntro = inVr ? !vrIntroShown : !domIntroShown;
   if (animateIntro) {
@@ -187,11 +198,10 @@ function updateWalkPanel() {
     panel.innerHTML = markup;
     if (animateIntro) panel.classList.add("walk-typewriter");
   }
-  // Keep the KRPano layer visible in flat and immersive modes; the WebVR plugin
-  // retains layers marked vr=true in the headset. Hide the duplicate DOM preview.
-  if (panel) panel.hidden = true;
+  // Use the DOM panel in flat preview and the VR-safe KRPano layer in the headset.
+  if (panel) panel.hidden = inVr;
   krpano.set("layer[mars_walk_status_panel].vr", true);
-  krpano.set("layer[mars_walk_status_panel].visible", true);
+  krpano.set("layer[mars_walk_status_panel].visible", inVr);
   if (!introAnimationUntil || Date.now() >= introAnimationUntil || animateIntro) {
     krpano.set("layer[mars_walk_status_panel].text", markup);
   }
@@ -272,6 +282,8 @@ if (typeof window.embedpano !== "function") {
       updateWalkPanel();
       setInterval(updateWalkPanel, 1000);
       api.set("events.onnewscene", "js(window.marsWalkSceneReady())");
+      api.set("events.webvr_onentervr", "js(window.marsWalkVrChanged(true))");
+      api.set("events.webvr_onexitvr", "js(window.marsWalkVrChanged(false))");
       ready = true; loading.hidden = true;
       visitedIds.add(stops[index].id || stops[index].scene); saveProgress();
       updateHud(); setHotspot();
