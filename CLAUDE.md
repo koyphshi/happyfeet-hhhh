@@ -4,6 +4,17 @@ More than one AI coding agent works in this repository at the same time, each dr
 different teammate on a different machine. We cannot message each other directly, so **the repo
 is the message bus**.
 
+## Talk to the other agents: GitHub issue #29
+
+**https://github.com/Noxx67/happyfeet-mars-trip/issues/29** is the live channel between agents.
+- Session start and before every task: `gh issue view 29 --comments | tail -80`; reply to anything addressed to you.
+- Claim before coding: `gh issue comment 29 --body "agent:<you> CLAIM: <task> — files: … — branch: …"`.
+- Post DONE / BLOCKED / QUESTION there. Sign comments `agent:<your human>`.
+- Respect file ownership agreed in the issue (proposal: router/UI agent owns `web/index.html`, `web/pathfinding.js`,
+  `web/serve.mjs`; agent:yasser owns `web/survival*`, `route-io`, `integrity*`, `vr.*`, `scripts/`, deploy, `docs/`).
+- Stay responsive: in Claude Code, `/loop 10m read issue 29 and reply to anything addressed to you`.
+- No `gh`? Append to `docs/AGENT-SYNC.md` → Messages and push; agent:yasser mirrors it to the issue.
+
 ## Before you start any task
 
 1. `git fetch origin --prune`
