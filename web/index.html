@@ -1004,6 +1004,12 @@
     // representative marker-card imagery instead of repeating the 360° Navcam projections.
     const boxworkPhoto = "https://assets.science.nasa.gov/dynamicimage/assets/science/psd/photojournal/pia/pia26/pia26697/PIA26697.jpg?fit=crop&h=540&w=960";
     const panoramaUrl = (p) => `https://science.nasa.gov/resource/sol-${p.sol}-right-navigation-camera-cylindrical-projection/`;
+    let PERSEVERANCE_PANORAMAS = [];
+    try {
+      const response = await fetch("./public/data/panoramas/perseverance_mastcamz.json");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      PERSEVERANCE_PANORAMAS = (await response.json()).panoramas ?? [];
+    } catch (error) { console.warn("Could not load Perseverance panorama catalog:", error); }
     const SPOTS = [
       { id: "gale-boxwork", name: "Gale · boxwork target", lon: 137.3931242, lat: -4.78692417,
         type: "Science target · Glen Torridon", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
@@ -1021,6 +1027,20 @@
         image: boxworkPhoto, imageSource: "https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/",
         imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork",
         imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636 boxwork close-up", source: `NASA · Sol ${p.sol} Right Navcam Panorama`, url: panoramaUrl(p),
+      })),
+      ...PERSEVERANCE_PANORAMAS.map((p) => ({
+        id: p.id, name: p.name, lon: p.lon, lat: p.lat,
+        type: "Mastcam-Z 360° panorama · natural color", mission: "Perseverance / Mars 2020",
+        date: p.dateText, category: "Panorama",
+        tags: ["Jezero", "Perseverance", "Mars 2020", "Mastcam-Z", "Natural color", "360°"],
+        sol: p.sol, solStart: p.solStart, solEnd: p.solEnd,
+        positionSol: p.positionSol, positionSolOffset: p.positionSolOffset,
+        projection: "360° cylindrical", positionSol: p.positionSol,
+        positionNote: `Nearest rover localization: Sol ${p.positionSol} (${p.positionSource})`,
+        vrEnabled: true, vrUrl: p.url, image: p.image, imageSource: "https://mastcamz.asu.edu/mastcam-zs-360-panorama-collection/",
+        imageAlt: p.imageAlt, imageCredit: p.imageCredit,
+        source: `Mastcam-Z panorama #${p.number} interactive viewer`, url: p.url,
+        note: `Natural-color panorama. The marker uses the nearest available rover localization to ${p.dateText}; the camera pointing coordinate is not available in this catalog.`,
       })),
       { id: "curiosity", name: "Curiosity landing", lon: 137.4417, lat: -4.5895,
         type: "Rover landing site", mission: "Curiosity / Mars Science Laboratory", date: "Touchdown · 6 Aug 2012",
@@ -1221,6 +1241,10 @@
     roadToggle.addEventListener("click", () =>
       setTraverseVisible(!(traverseEntity && traverseEntity.show)));
     spotVrButton.addEventListener("click", () => {
+      if (selectedSpot?.vrUrl) {
+        window.open(selectedSpot.vrUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
       statusEl.textContent = "Street-view mode is planned for this spot but is not available yet.";
     });
     document.getElementById("spotClose").addEventListener("click", () => {
@@ -1258,6 +1282,7 @@
         spotImage.removeAttribute("src"); spotImage.alt = ""; spotImageCaption.textContent = "";
       }
       spotVrButton.hidden = !spot.vrEnabled;
+      spotVrButton.textContent = spot.vrUrl ? "Open 360° / VR view" : "Open street view";
       const note = document.getElementById("spotNote");
       note.replaceChildren(document.createTextNode(`${spot.date}. ${spot.note} Source: `));
       const source = document.createElement("a");
@@ -1267,7 +1292,12 @@
       const ns = spot.lat >= 0 ? "N" : "S", ew = spot.lon >= 0 ? "E" : "W";
       addSpotStat("Latitude", `${Math.abs(spot.lat).toFixed(4)}° ${ns}`);
       addSpotStat("Longitude", `${Math.abs(spot.lon).toFixed(4)}° ${ew}`);
-      if (spot.sol) {
+      if (spot.solStart != null) {
+        addSpotStat("Panorama sols", spot.date);
+        addSpotStat("Rover position", `Sol ${spot.positionSol}`);
+        addSpotStat("Position offset", `${spot.positionSolOffset > 0 ? "+" : ""}${spot.positionSolOffset} sols from midpoint`);
+        if (spot.projection) addSpotStat("Projection", spot.projection);
+      } else if (spot.sol) {
         addSpotStat("Sol · site", `${spot.sol} · ${spot.site}`);
         addSpotStat("Drive · heading", `${spot.drive} · ${spot.heading}°`);
         addSpotStat("Projection", spot.projection);
