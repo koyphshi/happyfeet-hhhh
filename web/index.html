@@ -86,6 +86,75 @@
     .kindFilter.on { color: #151515; background: var(--k); border-color: var(--k); }
     .kindFilter.on i { background: #151515; }
     .kindFilter.on em { color: #333; }
+    #addSpotBtn { width: 100%; margin: 0 0 4px; padding: 6px; cursor: pointer; font: 600 12.5px system-ui, sans-serif;
+      color: #ffe0a0; background: #2a2418; border: 1px dashed #a7864d; border-radius: 5px; }
+    #addSpotBtn:hover { background: #352d1d; border-style: solid; }
+    #spotMsg { min-height: 0; color: #c9e7a7; font-size: 11.5px; }
+    #spotMsg:empty { display: none; }
+    #sourceSeg { display: flex; margin: 2px 0; border: 1px solid #444; border-radius: 5px; overflow: hidden; }
+    #sourceSeg button { flex: 1; padding: 4px 6px; cursor: pointer; font: 12px system-ui, sans-serif; color: #bbb;
+      background: #1f1f1f; border: 0; border-left: 1px solid #444; }
+    #sourceSeg button:first-child { border-left: 0; }
+    #sourceSeg button.on { color: #151515; background: #e8b85a; font-weight: 600; }
+    #sourceSeg em { font-style: normal; font-size: 10.5px; opacity: 0.8; }
+    .kindSection + .kindSection { margin-top: 5px; }
+    .kindSectionHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 3px;
+      color: #8a8a8a; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .kindSectionAll { padding: 0; cursor: pointer; background: none; border: 0; color: #c9a45e; font-size: 10.5px;
+      text-transform: none; letter-spacing: 0; }
+    .kindSectionAll:hover { color: #ffe0a0; text-decoration: underline; }
+    .kindChips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .spotMore { grid-column: 1 / -1; padding: 5px; cursor: pointer; color: #c9a45e; background: #202020;
+      border: 1px dashed #444; border-radius: 4px; font-size: 11.5px; }
+    #customIO { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #2c2c2c;
+      color: #888; font-size: 11.5px; }
+    #customIO button { padding: 2px 9px; cursor: pointer; color: #ccc; background: #242424; border: 1px solid #444; border-radius: 4px; font-size: 11.5px; }
+    .spotKindRow { display: flex; align-items: center; gap: 6px; }
+    #spotScope { color: #888; font-size: 10.5px; }
+    #spotGallery { display: flex; gap: 4px; margin-top: 4px; overflow-x: auto; }
+    #spotGallery[hidden] { display: none; }
+    #spotGallery img { width: 52px; height: 38px; object-fit: cover; border-radius: 3px; cursor: pointer; opacity: 0.6; border: 1px solid #444; }
+    #spotGallery img.on, #spotGallery img:hover { opacity: 1; border-color: #e8b85a; }
+    #spotOwnActions { display: flex; gap: 6px; margin-top: 7px; }
+    #spotOwnActions[hidden] { display: none; }
+    #spotOwnActions button { flex: 1; padding: 4px 8px; cursor: pointer; color: #ddd; background: #262626; border: 1px solid #555; border-radius: 4px; }
+    button.danger { color: #ffb4a8 !important; border-color: #7a3b33 !important; }
+    /* custom spot editor */
+    #spotEditor { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 40px); padding: 0; color: #eee;
+      background: #171717; border: 1px solid #555; border-radius: 9px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); }
+    #spotEditor::backdrop { background: rgba(0, 0, 0, 0.45); }
+    #spotForm { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; font: 13px system-ui, sans-serif; }
+    #spotForm h2 { margin: 0 0 2px; font-size: 15px; color: #ffe082; }
+    .seField { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; color: #bbb; font-size: 12px; }
+    .seInline { flex-direction: row; align-items: center; gap: 7px; }
+    .seRow { display: flex; gap: 8px; }
+    .seBtns { display: flex; gap: 6px; }
+    #spotForm input:not([type=checkbox]):not([type=color]):not([type=file]), #spotForm select, #spotForm textarea {
+      padding: 5px 7px; color: #eee; background: #222; border: 1px solid #484848; border-radius: 4px; font: 13px system-ui, sans-serif; }
+    #spotForm textarea { resize: vertical; }
+    #spotForm input:focus, #spotForm select:focus, #spotForm textarea:focus { outline: 1px solid #2f6fb3; border-color: #2f6fb3; }
+    #spotForm input[type=color] { width: 44px; height: 26px; padding: 0 2px; background: #222; border: 1px solid #484848; border-radius: 4px; }
+    .seColorField { flex: none; }
+    #spotForm button { padding: 5px 11px; cursor: pointer; color: #ddd; background: #262626; border: 1px solid #555; border-radius: 4px; font: 12.5px system-ui, sans-serif; }
+    #spotForm button.primary { color: #151515; background: #e8b85a; border-color: #e8b85a; font-weight: 600; }
+    #spotForm button:disabled { opacity: 0.5; cursor: default; }
+    .seTagBox { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: #222; border: 1px solid #484848; border-radius: 4px; }
+    .seTagBox input { flex: 1; min-width: 120px; border: 0 !important; background: none !important; outline: none !important; }
+    .seHint { color: #777; font-size: 11px; }
+    #seImages { display: flex; flex-direction: column; gap: 5px; }
+    .seImg { display: grid; grid-template-columns: 76px 1fr; grid-template-rows: auto auto; gap: 4px 8px; align-items: center; }
+    .seImg img { grid-row: 1 / 3; width: 76px; height: 54px; object-fit: cover; border-radius: 4px; background: #111; }
+    .seImg div { display: flex; gap: 5px; align-items: center; }
+    .seImg button { padding: 2px 8px !important; font-size: 11.5px !important; }
+    .seCover { color: #e8b85a; font-size: 11px; }
+    .seAdd input { flex: 1; min-width: 0; }
+    .seUpload { align-self: flex-start; padding: 4px 10px; cursor: pointer; color: #ddd; background: #262626; border: 1px dashed #666; border-radius: 4px; font-size: 12px; }
+    .seUpload input { display: none; }
+    #seMsg { min-height: 1em; color: #9fd3ff; font-size: 12px; }
+    #seMsg.bad { color: #ff9a8a; }
+    .seActions { display: flex; gap: 8px; align-items: center; }
+    .seActions span { flex: 1; }
+    #spotForm [hidden] { display: none !important; }
     #kindHead { display: flex; align-items: center; gap: 8px; margin: 2px 0 3px; }
     .kindTitle { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 0; color: #bbb; }
     #kindSummary { color: #888; font-style: normal; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -334,7 +403,14 @@
             <option value="250">Within 250 km</option>
           </select>
         </div>
-        <div class="setNote">Far out, pins hide so the planet stays clear. A selected spot always stays visible.</div>
+        <div class="setRow">
+          <span>Behind planet</span>
+          <select id="pinBehind" title="Pins on the far side of Mars (or behind hills when tilted)">
+            <option value="faded" selected>Show, faded</option>
+            <option value="hidden">Hide</option>
+          </select>
+        </div>
+        <div class="setNote">Far out, pins hide so the planet stays clear. Small named features (craters…) appear only closer, in proportion to their size. A selected spot always stays visible.</div>
 
         <div class="sub">Performance</div>
         <div class="setRow">
@@ -393,8 +469,15 @@
           <button id="spotToggle" type="button" aria-pressed="true">Markers on</button>
           <button id="roadToggle" type="button" aria-pressed="false" title="Curiosity's real traverse from the PLACES data (NASA/JPL)">Rover road off</button>
         </div>
+        <button id="addSpotBtn" type="button" title="Add your own spot: name, kind, colour, description, images, tags">＋ Add custom spot</button>
+        <div id="spotMsg" aria-live="polite"></div>
         <div id="spotFilters">
-          <input id="spotSearch" type="search" placeholder="Search names, kinds and tags: rover Gale, lander NASA…" aria-label="Search mission spots" />
+          <input id="spotSearch" type="search" placeholder="Search names, kinds, tags, details: Gale, crater Noachis…" aria-label="Search spots" />
+          <div id="sourceSeg" role="group" aria-label="Which spots">
+            <button type="button" data-src="all">All</button>
+            <button type="button" data-src="global" title="Mission spots and IAU named features">Global</button>
+            <button type="button" data-src="custom" title="Spots you added">Custom <em id="customCount"></em></button>
+          </div>
           <div id="kindHead">
             <span class="kindTitle">Kind<em id="kindSummary"></em></span>
             <button id="kindAll" type="button" title="Select every kind of spot, or none">Select all</button>
@@ -416,6 +499,12 @@
         </div>
         <div id="spotHint" class="spotHint">No spots on the map. Press <b>Select all</b> next to Kind, pick kinds, search, or add a tag.</div>
         <div id="spots"></div>
+        <div id="customIO">
+          Custom spots:
+          <button type="button" id="customExport" title="Download every custom spot (with uploaded images) as one JSON file">Export</button>
+          <button type="button" id="customImport" title="Add spots from an exported JSON file">Import</button>
+          <input type="file" id="customImportFile" accept="application/json,.json" hidden />
+        </div>
       </div>
     </section>
 
@@ -447,14 +536,60 @@
   <div id="probe" hidden></div>
   <section id="spotCard" hidden aria-live="polite">
     <div class="spotHead"><h2 id="spotTitle"></h2><button id="spotClose" type="button" aria-label="Close spot details">×</button></div>
-    <span id="spotKind" class="kindTag big"></span>
+    <div class="spotKindRow"><span id="spotKind" class="kindTag big"></span><span id="spotScope"></span></div>
     <div class="spotType" id="spotType"></div>
     <div id="spotTags"></div>
     <img id="spotImage" hidden alt="" />
     <div id="spotImageCaption" hidden></div>
+    <div id="spotGallery" hidden></div>
     <div id="spotStats"></div><div class="spotNote" id="spotNote"></div>
     <button id="spotVrButton" type="button" hidden>Open street view</button>
+    <div id="spotOwnActions" hidden><button id="spotEdit" type="button">Edit</button><button id="spotDelete" type="button" class="danger">Delete</button></div>
   </section>
+  <dialog id="spotEditor" aria-labelledby="seTitle">
+    <form id="spotForm" novalidate>
+      <h2 id="seTitle">New custom spot</h2>
+      <label class="seField">Name <input id="seName" maxlength="120" autocomplete="off" /></label>
+      <div class="seRow">
+        <label class="seField">Latitude <input id="seLat" type="number" step="any" min="-90" max="90" /></label>
+        <label class="seField">Longitude (east) <input id="seLon" type="number" step="any" min="-180" max="360" /></label>
+      </div>
+      <div class="seBtns"><button type="button" id="sePick">Pick on map</button><button type="button" id="seCentre">Use view centre</button></div>
+      <label class="seField">Kind <select id="seKind"></select></label>
+      <div class="seRow" id="seNewKind" hidden>
+        <label class="seField">New kind name <input id="seKindName" maxlength="40" placeholder="e.g. EVA stop, Outcrop, Hazard" /></label>
+        <label class="seField seColorField">Colour <input id="seKindColor" type="color" value="#ff66cc" /></label>
+      </div>
+      <label class="seField seInline" id="seKindColorRow" hidden>Colour of this kind <input id="seKindColorEdit" type="color" /></label>
+      <label class="seField seInline"><input id="seOwnColor" type="checkbox" /> Own pin colour for this spot <input id="seColor" type="color" value="#ffffff" disabled /></label>
+      <label class="seField">Subtitle <input id="seSubtitle" maxlength="160" placeholder="e.g. Layered outcrop · candidate EVA stop" /></label>
+      <label class="seField">Description <textarea id="seDesc" rows="4" maxlength="4000" placeholder="What is here, why it matters, notes for the team…"></textarea></label>
+      <div class="seRow">
+        <label class="seField">Date <input id="seDate" maxlength="80" placeholder="e.g. Sol 4700 · 2026-11-15" /></label>
+        <label class="seField">Mission / team <input id="seMission" maxlength="120" /></label>
+      </div>
+      <div class="seField">Tags
+        <div id="seTags" class="seTagBox"><input id="seTagInput" list="seTagList" placeholder="type a tag, Enter to add" autocomplete="off" /></div>
+        <datalist id="seTagList"></datalist>
+      </div>
+      <div class="seField">Images <span class="seHint">(the first is the cover)</span>
+        <div id="seImages"></div>
+        <div class="seRow seAdd"><input id="seImgUrl" placeholder="Image link: https://…" /><button type="button" id="seImgAdd">Add link</button></div>
+        <label class="seUpload">Upload images… <input id="seImgFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple /></label>
+      </div>
+      <div class="seRow">
+        <label class="seField">Source name <input id="seSourceText" maxlength="160" placeholder="e.g. HiRISE ESP_012345" /></label>
+        <label class="seField">Source link <input id="seUrl" type="url" placeholder="https://…" /></label>
+      </div>
+      <div id="seMsg" aria-live="polite"></div>
+      <div class="seActions">
+        <button type="button" id="seDelete" class="danger" hidden>Delete</button>
+        <span></span>
+        <button type="button" id="seCancel">Cancel</button>
+        <button type="submit" id="seSave" class="primary">Save spot</button>
+      </div>
+    </form>
+  </dialog>
   <div id="scale">
     <div id="scaleLabel">–</div>
     <div id="scaleBar" style="width:100px"></div>
@@ -1275,106 +1410,239 @@
         category: "Rover path", tags: ["Gale", "Curiosity", "MSL", "Rover", "NASA"], vrEnabled: false,
         note: "Curiosity's localized traverse from the PLACES data; selecting this spot turns on the Rover road.",
         source: "MSL Rover PLACES bundle (PDS Imaging Node, JPL)", url: "https://planetarydata.jpl.nasa.gov/img/data/msl/msl_places/" },
-      { id: "aeolis-mons", name: "Aeolis Mons (Mount Sharp)", lon: 137.85, lat: -5.08, range: 90000,
-        type: "Terrain · central mound of Gale crater", mission: "Curiosity's climb", date: "~5.5 km high",
-        category: "Terrain", tags: ["Gale", "Mountain", "Geology"], vrEnabled: false,
-        note: "Layered sedimentary mound Curiosity has been climbing since 2014. Pin at the approximate centre.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
-      { id: "olympus-mons", name: "Olympus Mons", lon: 226.2 - 360, lat: 18.65, range: 2200000,
-        type: "Terrain · shield volcano, Tharsis", mission: "Landmark", date: "~22 km high, ~600 km across",
-        category: "Terrain", tags: ["Tharsis", "Volcano", "Mountain"], vrEnabled: false,
-        note: "Tallest known volcano in the solar system. Pin at the approximate summit caldera.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
-      { id: "valles-marineris", name: "Valles Marineris", lon: 300.8 - 360, lat: -13.9, range: 4500000,
-        type: "Terrain · canyon system", mission: "Landmark", date: "~4,000 km long, up to ~7 km deep",
-        category: "Terrain", tags: ["Canyon", "Tharsis"], vrEnabled: false,
-        note: "The largest canyon system on Mars, running east from Tharsis. Pin at the approximate centre.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
-      { id: "hellas", name: "Hellas Planitia", lon: 70.5, lat: -42.4, range: 4000000,
-        type: "Terrain · impact basin", mission: "Landmark", date: "~2,300 km across, ~7 km deep",
-        category: "Terrain", tags: ["Basin", "Impact crater"], vrEnabled: false,
-        note: "One of the largest impact basins in the solar system and the lowest ground on Mars. Pin at the approximate centre.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
     ];
+    // ---------------------------------------------------------------- spots: kinds and sources
     // Every spot has one kind (its `category`), shown as a coloured label on its button, card and
-    // map pin, and usable as a filter. The order here is the order of the groups in the list.
-    const SPOT_KINDS = [
+    // map pin, and usable as a filter. Spots come from three places:
+    //   - mission spots: the curated SPOTS list above (landers, rovers, panoramas...)
+    //   - named features: every IAU-approved Mars name from the USGS Gazetteer of Planetary
+    //     Nomenclature (craters, montes, valles...), converted by scripts/usgs-nomenclature.mjs
+    //   - custom spots: added in the viewer, with their own kinds, colours, tags and images,
+    //     stored by serve.mjs in web/data/custom (or this browser, without the local server)
+    // "Global" means the first two; "Custom" the last.
+    const MISSION_KINDS = [
       { kind: "Rover path", short: "Rover path", color: "#ffd54f" },
       { kind: "Rover landing site", short: "Rover landing", color: "#5ec8ff" },
       { kind: "Lander site", short: "Lander", color: "#7ddc8c" },
       { kind: "Crash site", short: "Crash site", color: "#ff7a6b" },
       { kind: "Science target", short: "Science", color: "#ffa64d" },
       { kind: "Panorama", short: "Panorama", color: "#c99bff" },
-      { kind: "Terrain", short: "Terrain", color: "#4fd6c8" },
+    ].map((k) => ({ ...k, group: "mission" }));
+    const USGS_KINDS = [
+      { kind: "Crater", short: "Crater", color: "#d9a066" },
+      { kind: "Mountain & volcano", short: "Mountain", color: "#ff8fa3" },
+      { kind: "Valley & canyon", short: "Valley", color: "#4fd6c8" },
+      { kind: "Plain & plateau", short: "Plain", color: "#b8cc6e" },
+      { kind: "Ridge & cliff", short: "Ridge", color: "#9fb3ff" },
+      { kind: "Chaos & pit", short: "Chaos", color: "#e07ad1" },
+      { kind: "Dune & flow", short: "Dune", color: "#f2d39b" },
+      { kind: "Albedo feature", short: "Albedo", color: "#c4c4c4" },
+    ].map((k) => ({ ...k, group: "usgs" }));
+    let customKinds = []; // { kind, short, color, group: "custom" }
+    const KIND_GROUPS = [
+      { id: "mission", title: "Missions & sites" },
+      { id: "usgs", title: "Named features · USGS" },
+      { id: "custom", title: "My kinds" },
     ];
-    const kindOf = (spot) => SPOT_KINDS.find((k) => k.kind === spot.category) ??
-      { kind: spot.category, short: spot.category, color: "#bbbbbb" };
-    const spotButtons = new Map();
-    const spotEntities = new Map();
+    const allKinds = () => [...MISSION_KINDS, ...USGS_KINDS, ...customKinds];
+    function kindOf(spot) {
+      return allKinds().find((k) => k.kind === spot.category) ??
+        { kind: spot.category, short: spot.category, color: "#bbbbbb", group: "custom" };
+    }
+    // Colours typed by people end up in SVG and CSS: only plain #rrggbb is accepted.
+    const safeColor = (c, fallback = "#bbbbbb") => (/^#[0-9a-f]{6}$/i.test(c ?? "") ? c.toLowerCase() : fallback);
+    const pinColor = (spot) => safeColor(spot.color, kindOf(spot).color);
+    for (const s of SPOTS) { s.scope = "global"; s.provider = "mission"; }
+
+    // Named features (IAU / USGS). Small ones only show when the camera is close: a pin appears
+    // within ~35x the feature's diameter (at least 150 km), capped by Settings > Show pins.
+    let NAMED = [];
+    try {
+      const r = await fetch("./public/data/nomenclature/mars_named_features.json");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      NAMED = (await r.json()).features.map((f) => {
+        const d = f.diameterKm ?? 0;
+        return {
+          id: `usgs-${f.id}`, name: f.display ?? f.name, lon: f.lon, lat: f.lat, category: f.kind,
+          scope: "global", provider: "usgs", small: true,
+          type: `${f.type}${f.quad ? ` · ${f.quad}` : ""}`, mission: "IAU-approved name",
+          date: f.approved ? `Named ${f.approved}` : "", note: "",
+          tags: [f.type, f.quad].filter(Boolean),
+          source: "USGS Gazetteer of Planetary Nomenclature", url: `https://planetarynames.wr.usgs.gov/Feature/${f.id}`,
+          details: [
+            ["Feature type", f.type],
+            d ? ["Diameter", `${d.toLocaleString()} km`] : null,
+            f.origin ? ["Name origin", f.origin] : null,
+            f.status ? ["IAU status", `${f.status}${f.approved ? ` · ${f.approved}` : ""}`] : null,
+            f.quad ? ["Quadrangle", `${f.quad}${f.quadCode ? ` (${f.quadCode})` : ""}`] : null,
+          ].filter(Boolean),
+          range: Math.min(6_000_000, Math.max(12_000, d * 2600)),
+          pinFarKm: Math.max(150, d * 35),
+        };
+      });
+    } catch (err) { console.warn("Could not load the USGS named features:", err); }
+
+    // Custom spots: one document { kinds: [...], spots: [...] }, saved whole on every change.
+    const CUSTOM_LOCAL_KEY = "mars-custom-spots-v1";
+    const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+      const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = () => reject(fr.error); fr.readAsDataURL(blob);
+    });
+    const customStore = {
+      async load() {
+        if (USE_PROXY) {
+          const r = await fetch("./api/custom-spots", { cache: "no-store" });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        }
+        return JSON.parse(localStorage.getItem(CUSTOM_LOCAL_KEY) || "null") ?? { version: 1, kinds: [], spots: [] };
+      },
+      async save(doc) {
+        if (USE_PROXY) {
+          const r = await fetch("./api/custom-spots", {
+            method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc),
+          });
+          if (!r.ok) throw new Error(await r.text());
+          return;
+        }
+        localStorage.setItem(CUSTOM_LOCAL_KEY, JSON.stringify(doc));
+      },
+      async uploadImage(blob) {
+        if (USE_PROXY) {
+          const r = await fetch("./api/custom-images", { method: "POST", headers: { "Content-Type": blob.type }, body: blob });
+          if (!r.ok) throw new Error(await r.text());
+          return (await r.json()).url;
+        }
+        if (blob.size > 1_500_000) throw new Error("Without the local server, uploaded images must be under 1.5 MB (or add an image link)");
+        return blobToDataUrl(blob);
+      },
+    };
+    let customDoc = { version: 1, kinds: [], spots: [] };
+    try {
+      const doc = await customStore.load();
+      if (Array.isArray(doc?.spots) && Array.isArray(doc?.kinds)) customDoc = doc;
+    } catch (err) { console.warn("Custom spots unavailable:", err); }
+    customKinds = customDoc.kinds.map((k) => ({ kind: k.kind, short: k.short || k.kind, color: safeColor(k.color), group: "custom" }));
+    // Image and link addresses typed by people: only web links, uploaded files and data images.
+    const safeImageUrl = (u) => (/^(https?:\/\/|\.\/data\/custom\/images\/|data:image\/(png|jpeg|webp|gif);base64,)/i.test(u ?? "") ? u : "");
+    const safeLink = (u) => (/^https?:\/\//i.test(u ?? "") ? u : "");
+    function customSpotView(c) {
+      const images = (c.images ?? []).map((im) => ({ url: safeImageUrl(im.url), caption: im.caption ?? "" })).filter((im) => im.url);
+      return {
+        id: c.id, name: c.name, lat: c.lat, lon: c.lon, category: c.category, color: c.color,
+        scope: "custom", provider: "custom",
+        type: c.subtitle || "Custom spot", mission: c.mission || "", date: c.date || "", note: c.description || "",
+        tags: c.tags ?? [], images, image: images[0]?.url, imageCredit: images[0]?.caption || "Custom image",
+        source: c.sourceText || (c.url ? "Link" : ""), url: safeLink(c.url), range: 60_000,
+      };
+    }
+
+    let allSpots = [];
+    const spotById = new Map();
+    function rebuildSpotIndex() {
+      allSpots = [...SPOTS, ...NAMED, ...customDoc.spots.map(customSpotView)];
+      spotById.clear();
+      for (const s of allSpots) spotById.set(s.id, s);
+    }
+    rebuildSpotIndex();
+
+    // ---------------------------------------------------------------- spots: map pins (made on demand)
+    const spotEntities = new Map(); // id -> Cesium entity, created the first time a spot is shown
+    const spotButtons = new Map();  // id -> list button, created the first time it is listed
     const activeSpotTags = new Set();
     let spotsVisible = true;
     let selectedSpot = null;
     const spotToggle = document.getElementById("spotToggle");
     const spotsEl = document.getElementById("spots");
-    // The list: one dropdown per kind. Its header shows the colour, name and how many spots
-    // match; click it to open or close that kind's spots. Which kinds are open is remembered.
-    // While a search or tag filter is in use every matching kind opens, so results are visible.
-    const GROUPS_OPEN_KEY = "mars-spot-groups-open-v1";
-    let openGroups = new Set();
-    try { openGroups = new Set(JSON.parse(localStorage.getItem(GROUPS_OPEN_KEY) || "[]")); } catch { /* all closed */ }
-    const spotGroups = new Map(); // kind -> { el, head, grid, count }
-    function makeSpotGroup(k) {
-      const el = document.createElement("div"); el.className = "spotGroup"; el.style.setProperty("--k", k.color);
-      const head = document.createElement("button"); head.type = "button"; head.className = "spotGroupHead";
-      head.innerHTML = `<span class="chev">▸</span><i></i><span class="gName"></span><em></em>`;
-      head.querySelector(".gName").textContent = k.kind;
-      const grid = document.createElement("div"); grid.className = "spotGrid";
-      grid.id = `spotGroup-${k.kind.replace(/\W+/g, "-")}`;
-      head.setAttribute("aria-controls", grid.id);
-      head.addEventListener("click", () => {
-        if (openGroups.has(k.kind)) openGroups.delete(k.kind); else openGroups.add(k.kind);
-        try { localStorage.setItem(GROUPS_OPEN_KEY, JSON.stringify([...openGroups])); } catch { /* ignore */ }
-        syncGroupOpen();
-      });
-      el.append(head, grid); spotsEl.append(el);
-      const g = { el, head, grid, count: head.querySelector("em") };
-      spotGroups.set(k.kind, g);
-      return g;
+    const pinImages = new Map();
+    function pinImage(color, small) {
+      const key = `${color}${small ? "s" : ""}`;
+      if (!pinImages.has(key)) {
+        const svg = small
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5" fill="#151413" fill-opacity=".9" stroke="${color}" stroke-width="2.2"/><circle cx="9" cy="9" r="2.4" fill="${color}"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46"><path d="M19 2C9.6 2 3 8.8 3 17.2 3 28 19 44 19 44s16-16 16-26.8C35 8.8 28.4 2 19 2Z" fill="#171614" fill-opacity=".96" stroke="${color}" stroke-width="2.4"/><circle cx="19" cy="17" r="7" fill="${color}" fill-opacity=".35" stroke="${color}" stroke-width="1.6"/><circle cx="19" cy="17" r="2.5" fill="#fff"/></svg>`;
+        pinImages.set(key, `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+      }
+      return pinImages.get(key);
     }
-    function syncGroupOpen() {
-      const searching = activeSpotTags.size > 0 || document.getElementById("spotSearch").value.trim() !== "";
-      for (const [kind, g] of spotGroups) {
-        const open = searching || openGroups.has(kind);
-        g.el.classList.toggle("open", open);
-        g.head.setAttribute("aria-expanded", String(open));
-        g.head.disabled = searching; // results stay open while searching
+    let pinRangeKm = 5000; // Settings > Map spots > Show pins (0 = always)
+    function pinCondition(spot) {
+      if (!spot || spot.id === selectedSpot?.id) return undefined; // the selected pin always shows
+      const km = Math.min(pinRangeKm > 0 ? pinRangeKm : Infinity, spot.pinFarKm ?? Infinity);
+      return Number.isFinite(km) ? new Cesium.DistanceDisplayCondition(0, km * 1000) : undefined;
+    }
+    function refreshPinRanges() {
+      for (const [id, e] of spotEntities) e.billboard.distanceDisplayCondition = pinCondition(spotById.get(id));
+    }
+    // Pins behind the planet: "faded" draws them through Mars at 35% opacity (and pins behind
+    // hills when tilted stay visible too); "hidden" lets the planet and terrain cover them.
+    // Settings > Map spots > Behind the planet.
+    let pinsBehind = "faded";
+    const pinDepthOff = () => (pinsBehind === "faded" ? Number.POSITIVE_INFINITY : 50_000);
+    const pinOccluder = new Cesium.EllipsoidalOccluder(MARS, Cesium.Cartesian3.ZERO);
+    const PIN_SOLID = Cesium.Color.WHITE, PIN_FADED = new Cesium.Color(1, 1, 1, 0.35);
+    const pinWorld = new Map(); // id -> Cartesian3 on the ellipsoid, for the far-side test
+    function updatePinFading() {
+      pinOccluder.cameraPosition = viewer.camera.positionWC;
+      for (const [id, e] of spotEntities) {
+        if (!e.show) continue;
+        const behind = pinsBehind === "faded" && !pinOccluder.isPointVisible(pinWorld.get(id));
+        if (e._behind !== behind) { e._behind = behind; e.billboard.color = behind ? PIN_FADED : PIN_SOLID; }
       }
     }
-    for (const k of SPOT_KINDS) makeSpotGroup(k);
-    for (const spot of SPOTS) {
-      const pin = kindOf(spot).color;
-      const entity = viewer.entities.add({
-        id: `spot-${spot.id}`, position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS),
-        show: spotsVisible,
-        properties: { spotId: spot.id, category: spot.category, tags: spot.tags ?? [], vrEnabled: !!spot.vrEnabled },
+    function setPinsBehind(mode) {
+      pinsBehind = mode;
+      for (const e of spotEntities.values()) e.billboard.disableDepthTestDistance = pinDepthOff();
+      updatePinFading();
+    }
+    { // re-check after the camera moves (at most ~7 times a second)
+      const last = new Cesium.Cartesian3();
+      let at = 0;
+      viewer.scene.postRender.addEventListener(() => {
+        const now = performance.now();
+        if (now - at < 150 || Cesium.Cartesian3.equalsEpsilon(last, viewer.camera.positionWC, 0, 1)) return;
+        at = now;
+        Cesium.Cartesian3.clone(viewer.camera.positionWC, last);
+        updatePinFading();
+      });
+    }
+    function ensureEntity(spot) {
+      let e = spotEntities.get(spot.id);
+      if (e) return e;
+      pinWorld.set(spot.id, Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS));
+      const small = !!spot.small;
+      e = viewer.entities.add({
+        id: `spot-${spot.id}`, position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS), show: false,
+        properties: { spotId: spot.id },
         billboard: {
-          image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46"><path d="M19 2C9.6 2 3 8.8 3 17.2 3 28 19 44 19 44s16-16 16-26.8C35 8.8 28.4 2 19 2Z" fill="#171614" fill-opacity=".96" stroke="${pin}" stroke-width="2.4"/><circle cx="19" cy="17" r="7" fill="${pin}" fill-opacity=".35" stroke="${pin}" stroke-width="1.6"/><circle cx="19" cy="17" r="2.5" fill="#fff"/></svg>`
-          )}`,
-          width: 38, height: 46, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          image: pinImage(pinColor(spot), small), width: small ? 18 : 38, height: small ? 18 : 46,
+          verticalOrigin: small ? Cesium.VerticalOrigin.CENTER : Cesium.VerticalOrigin.BOTTOM,
           scaleByDistance: new Cesium.NearFarScalar(2e4, 1, 1e7, 0.8),
-          // Keep nearby pins from being depth-culled into the terrain at close zoom.
-          disableDepthTestDistance: 50_000,
+          // never hidden by terrain or the planet in "faded" mode; within 50 km otherwise
+          disableDepthTestDistance: pinDepthOff(),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          distanceDisplayCondition: pinCondition(spot),
         },
         label: { text: spot.name, show: false, font: "12px sans-serif", fillColor: Cesium.Color.WHITE,
           outlineColor: Cesium.Color.fromCssColorString("#151515"), outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          pixelOffset: new Cesium.Cartesian2(0, -14), verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, small ? -12 : -14), verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: 50000, distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 1800000) },
       });
-      spotEntities.set(spot.id, entity);
-      const b = document.createElement("button");
-      b.style.setProperty("--k", pin);
+      spotEntities.set(spot.id, e);
+      return e;
+    }
+    function forgetSpotUi(id) { // after a custom spot changes or goes: rebuilt on next use
+      const e = spotEntities.get(id);
+      if (e) { viewer.entities.remove(e); spotEntities.delete(id); }
+      spotButtons.get(id)?.remove();
+      spotButtons.delete(id);
+    }
+    function spotButton(spot) {
+      let b = spotButtons.get(spot.id);
+      if (b) return b;
+      b = document.createElement("button");
+      b.type = "button";
+      b.style.setProperty("--k", pinColor(spot));
       const name = document.createElement("span"); name.className = "spotName"; name.textContent = spot.name;
       const kindTag = document.createElement("span"); kindTag.className = "kindTag"; kindTag.textContent = kindOf(spot).short;
       b.append(name, kindTag);
@@ -1382,15 +1650,78 @@
         const badge = document.createElement("span"); badge.className = "spotBadge"; badge.textContent = "VR";
         kindTag.append(badge);
       }
-      b.title = `${spot.name} · ${spot.category}`;
-      b.addEventListener("click", () => { setSpotsVisible(true); selectSpot(spot); });
-      let group = spotGroups.get(spot.category);
-      if (!group) { // a kind missing from SPOT_KINDS still gets listed
-        const k = kindOf(spot); SPOT_KINDS.push(k);
-        group = makeSpotGroup(k);
+      if (spot.scope === "custom") {
+        const badge = document.createElement("span"); badge.className = "spotBadge"; badge.textContent = "mine";
+        kindTag.append(badge);
       }
-      group.grid.append(b); spotButtons.set(spot.id, b);
+      b.title = `${spot.name} · ${spot.category}`;
+      const id = spot.id;
+      b.addEventListener("click", () => { setSpotsVisible(true); const s = spotById.get(id); if (s) selectSpot(s); });
+      spotButtons.set(spot.id, b);
+      return b;
     }
+
+    // ---------------------------------------------------------------- spots: list (a dropdown per kind)
+    // Each kind is a dropdown showing its colour, name and how many spots match; click to open
+    // it. Which kinds are open is remembered. While searching, every kind with results opens.
+    // Long kinds (1,200+ craters) list 120 at a time with a "show more" button.
+    const GROUPS_OPEN_KEY = "mars-spot-groups-open-v1";
+    let openGroups = new Set();
+    try { openGroups = new Set(JSON.parse(localStorage.getItem(GROUPS_OPEN_KEY) || "[]")); } catch { /* all closed */ }
+    const LIST_STEP = 120;
+    const spotGroups = new Map(); // kind -> { el, head, grid, count, limit }
+    let lastMatches = new Map();  // kind -> matching spots, from the last filter pass
+    function makeSpotGroup(k) {
+      const el = document.createElement("div"); el.className = "spotGroup"; el.style.setProperty("--k", k.color);
+      const head = document.createElement("button"); head.type = "button"; head.className = "spotGroupHead";
+      head.innerHTML = `<span class="chev">▸</span><i></i><span class="gName"></span><em></em>`;
+      head.querySelector(".gName").textContent = k.kind;
+      const grid = document.createElement("div"); grid.className = "spotGrid";
+      head.addEventListener("click", () => {
+        if (openGroups.has(k.kind)) openGroups.delete(k.kind); else openGroups.add(k.kind);
+        try { localStorage.setItem(GROUPS_OPEN_KEY, JSON.stringify([...openGroups])); } catch { /* ignore */ }
+        syncGroupOpen();
+      });
+      el.append(head, grid); spotsEl.append(el);
+      const g = { el, head, grid, count: head.querySelector("em"), limit: LIST_STEP };
+      spotGroups.set(k.kind, g);
+      return g;
+    }
+    function rebuildGroups() {
+      spotsEl.replaceChildren();
+      spotGroups.clear();
+      const present = new Set(allSpots.map((s) => s.category));
+      for (const k of allKinds()) if (present.has(k.kind)) makeSpotGroup(k);
+      for (const kind of present) if (!spotGroups.has(kind)) makeSpotGroup(kindOf({ category: kind }));
+    }
+    function renderGroup(g, kind) {
+      const list = lastMatches.get(kind) ?? [];
+      const shown = list.slice(0, g.limit);
+      const buttons = shown.map((s) => {
+        const b = spotButton(s);
+        b.classList.toggle("active", s.id === selectedSpot?.id);
+        return b;
+      });
+      if (list.length > shown.length) {
+        const more = document.createElement("button");
+        more.type = "button"; more.className = "spotMore";
+        more.textContent = `Show ${Math.min(LIST_STEP, list.length - shown.length)} more (${(list.length - shown.length).toLocaleString()} left)`;
+        more.addEventListener("click", () => { g.limit += LIST_STEP; renderGroup(g, kind); });
+        buttons.push(more);
+      }
+      g.grid.replaceChildren(...buttons);
+    }
+    function syncGroupOpen() {
+      const searching = activeSpotTags.size > 0 || document.getElementById("spotSearch").value.trim() !== "";
+      for (const [kind, g] of spotGroups) {
+        const open = !g.el.hidden && (searching || openGroups.has(kind));
+        g.el.classList.toggle("open", open);
+        g.head.setAttribute("aria-expanded", String(open));
+        g.head.disabled = searching; // results stay open while searching
+        if (open) renderGroup(g, kind); else if (g.grid.firstChild) g.grid.replaceChildren();
+      }
+    }
+
     const spotCard = document.getElementById("spotCard");
     const spotStats = document.getElementById("spotStats");
     const spotImage = document.getElementById("spotImage");
@@ -1401,112 +1732,192 @@
       k.textContent = key; v.textContent = value; spotStats.append(k, v);
       return v;
     }
+    function closeSpotCard() {
+      spotCard.hidden = true;
+      const was = selectedSpot;
+      selectedSpot = null;
+      if (was) {
+        spotButtons.get(was.id)?.classList.remove("active");
+        const e = spotEntities.get(was.id);
+        if (e) { e.label.show = false; e.billboard.distanceDisplayCondition = pinCondition(was); }
+      }
+    }
     function setSpotsVisible(visible) {
       spotsVisible = visible;
-      if (!visible) {
-        selectedSpot = null;
-        spotCard.hidden = true;
-        for (const entity of spotEntities.values()) entity.label.show = false;
-        for (const b of spotButtons.values()) b.classList.remove("active");
-      }
+      if (!visible) closeSpotCard();
       applySpotFilters();
       spotToggle.textContent = visible ? "Markers on" : "Markers off";
       spotToggle.classList.toggle("on", visible);
       spotToggle.setAttribute("aria-pressed", String(visible));
     }
-    const activeKinds = new Set(); // empty = every kind
+
+    // ---------------------------------------------------------------- spots: filters
+    // Source (All / Global / Custom), kinds, a word search and tags. Spots show on the map and
+    // in the list only for the chosen kinds; with no kind chosen a search or tag still finds
+    // spots across every kind; with nothing chosen at all, none show.
+    const activeKinds = new Set();
     let tagMatchAny = false;       // false: a spot needs every chosen tag; true: at least one
     const KINDS_KEY = "mars-spot-kinds-v1";
-    try {
-      const saved = JSON.parse(localStorage.getItem(KINDS_KEY) || "null");
-      for (const k of saved ?? SPOT_KINDS.map((x) => x.kind)) activeKinds.add(k);
-    } catch { for (const x of SPOT_KINDS) activeKinds.add(x.kind); }
-    function spotMatches(spot) {
-      const query = document.getElementById("spotSearch").value.trim().toLowerCase();
-      const haystack = [spot.name, spot.type, spot.mission, spot.note, spot.category, kindOf(spot).short, spot.date,
-        ...(spot.tags ?? [])].join(" ").toLowerCase();
-      // every word must match somewhere, so "rover gale" or "lander nasa" narrow things down
-      const words = query.split(/\s+/).filter(Boolean);
-      return words.every((w) => haystack.includes(w)) && (!activeKinds.size || activeKinds.has(spot.category)) &&
+    {
+      // Saved as { active, known }. Kinds that did not exist at the last visit start switched on.
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(KINDS_KEY) || "null"); } catch { /* defaults */ }
+      const active = Array.isArray(saved) ? saved : saved?.active;
+      const known = new Set(Array.isArray(saved) ? MISSION_KINDS.map((k) => k.kind) : saved?.known ?? []);
+      for (const k of allKinds()) if (!saved || active.includes(k.kind) || !known.has(k.kind)) activeKinds.add(k.kind);
+    }
+    const saveKinds = () => {
+      try { localStorage.setItem(KINDS_KEY, JSON.stringify({ active: [...activeKinds], known: allKinds().map((k) => k.kind) })); } catch { /* ignore */ }
+    };
+    const SOURCE_KEY = "mars-spot-source-v1";
+    let sourceFilter = "all";
+    try { const v = localStorage.getItem(SOURCE_KEY); if (["all", "global", "custom"].includes(v)) sourceFilter = v; } catch { /* all */ }
+    const inSource = (spot) => sourceFilter === "all" || spot.scope === sourceFilter;
+    function haystack(spot) {
+      return (spot._hay ??= [spot.name, spot.type, spot.mission, spot.note, spot.category, kindOf(spot).short, spot.date,
+        ...(spot.tags ?? []), ...(spot.details ?? []).map((d) => d[1])].join(" ").toLowerCase());
+    }
+    function spotMatches(spot, words) {
+      return inSource(spot) && (!activeKinds.size || activeKinds.has(spot.category)) &&
+        words.every((w) => haystack(spot).includes(w)) &&
         (!activeSpotTags.size || [...activeSpotTags][tagMatchAny ? "some" : "every"]((tag) => spot.tags?.includes(tag)));
     }
-    // Spots show (on the map and in the list) only for the chosen kinds. With no kind chosen,
-    // a search or tag still finds spots across every kind; with nothing at all, none show.
     const spotFiltering = () => activeKinds.size > 0 || activeSpotTags.size > 0 ||
       document.getElementById("spotSearch").value.trim() !== "";
     function applySpotFilters() {
-      let count = 0;
       const filtering = spotFiltering();
-      for (const spot of SPOTS) {
-        const matches = spotMatches(spot);
-        if (matches) count++;
-        spotButtons.get(spot.id).hidden = !matches || !filtering;
-        spotEntities.get(spot.id).show = spotsVisible && matches && filtering;
-        if (!matches && selectedSpot?.id === spot.id) {
-          selectedSpot = null; spotCard.hidden = true;
-          spotEntities.get(spot.id).label.show = false;
-          spotButtons.get(spot.id).classList.remove("active");
+      // every word must match somewhere, so "rover gale" or "crater noachis" narrow things down
+      const words = document.getElementById("spotSearch").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      let count = 0, total = 0;
+      const matches = new Map();
+      viewer.entities.suspendEvents();
+      try {
+        for (const spot of allSpots) {
+          if (inSource(spot)) total++;
+          const m = filtering && spotMatches(spot, words);
+          if (m) {
+            count++;
+            let list = matches.get(spot.category);
+            if (!list) matches.set(spot.category, (list = []));
+            list.push(spot);
+            if (spotsVisible) ensureEntity(spot).show = true;
+            else { const e = spotEntities.get(spot.id); if (e) e.show = false; }
+          } else {
+            const e = spotEntities.get(spot.id);
+            if (e) e.show = false;
+            if (selectedSpot?.id === spot.id) closeSpotCard();
+          }
         }
-      }
+      } finally { viewer.entities.resumeEvents(); }
+      updatePinFading();
+      lastMatches = matches;
       for (const [kind, g] of spotGroups) {
-        const shown = SPOTS.filter((sp) => sp.category === kind && !spotButtons.get(sp.id).hidden).length;
-        g.el.hidden = !shown;
-        g.count.textContent = String(shown);
+        const n = matches.get(kind)?.length ?? 0;
+        g.el.hidden = !n;
+        g.count.textContent = n.toLocaleString();
       }
       syncGroupOpen();
       document.getElementById("spotHint").hidden = filtering;
-      document.getElementById("spotFilterCount").textContent = !filtering ? `No spots shown (${SPOTS.length} available)`
-        : count ? `${count} of ${SPOTS.length} spots` : "No spots match. Clear the search or filters.";
+      document.getElementById("spotFilterCount").textContent = !filtering ? `No spots shown (${total.toLocaleString()} available)`
+        : count ? `${count.toLocaleString()} of ${total.toLocaleString()} spots` : "No spots match. Clear the search or filters.";
       syncKindChips();
     }
-    // Kind chips: coloured like the pins, so they double as the map legend. Several can be on.
+
+    // Source switch: All / Global / Custom
+    const sourceButtons = [...document.querySelectorAll("#sourceSeg button")];
+    function syncSource() {
+      for (const b of sourceButtons) {
+        b.classList.toggle("on", b.dataset.src === sourceFilter);
+        b.setAttribute("aria-pressed", String(b.dataset.src === sourceFilter));
+      }
+      const nCustom = allSpots.filter((s) => s.scope === "custom").length;
+      document.getElementById("customCount").textContent = nCustom ? String(nCustom) : "";
+    }
+    for (const b of sourceButtons) {
+      b.addEventListener("click", () => {
+        sourceFilter = b.dataset.src;
+        try { localStorage.setItem(SOURCE_KEY, sourceFilter); } catch { /* ignore */ }
+        syncSource();
+        renderKindChips();
+        applySpotFilters();
+      });
+    }
+
+    // Kind chips, in sections (missions / USGS named features / my kinds), coloured like the
+    // pins so they double as the map legend. "Select all / none" next to the title covers
+    // every kind; each section has its own all / none.
     const kindFilters = document.getElementById("spotKinds");
-    const kindSyncs = [];
-    const usedKinds = SPOT_KINDS.filter((k) => SPOTS.some((sp) => sp.category === k.kind)).map((k) => k.kind);
-    const saveKinds = () => { try { localStorage.setItem(KINDS_KEY, JSON.stringify([...activeKinds])); } catch { /* ignore */ } };
-    // "Select all" / "Select none" next to the Kind title: turns every kind on, or (when they all
-    // are) every kind off, so no spots show on Mars.
     const kindAll = document.getElementById("kindAll");
     const kindSummary = document.getElementById("kindSummary");
-    kindAll.addEventListener("click", () => {
-      const all = usedKinds.every((k) => activeKinds.has(k));
-      activeKinds.clear();
-      if (!all) for (const k of usedKinds) activeKinds.add(k);
-      saveKinds();
-      applySpotFilters();
-    });
-    kindSyncs.push(() => {
+    let chipSyncs = [];
+    let usedKinds = [];
+    function renderKindChips() {
+      kindFilters.replaceChildren();
+      chipSyncs = [];
+      const counts = new Map();
+      for (const s of allSpots) if (inSource(s)) counts.set(s.category, (counts.get(s.category) ?? 0) + 1);
+      const kinds = allKinds().filter((k) => counts.has(k.kind));
+      for (const kind of counts.keys()) if (!kinds.some((k) => k.kind === kind)) kinds.push(kindOf({ category: kind }));
+      usedKinds = kinds.map((k) => k.kind);
+      for (const grp of KIND_GROUPS) {
+        const inGroup = kinds.filter((k) => (k.group ?? "custom") === grp.id);
+        if (!inGroup.length) continue;
+        const sec = document.createElement("div"); sec.className = "kindSection";
+        const head = document.createElement("div"); head.className = "kindSectionHead";
+        const title = document.createElement("span"); title.textContent = grp.title;
+        const toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "kindSectionAll";
+        toggle.addEventListener("click", () => {
+          const all = inGroup.every((k) => activeKinds.has(k.kind));
+          for (const k of inGroup) all ? activeKinds.delete(k.kind) : activeKinds.add(k.kind);
+          saveKinds(); applySpotFilters();
+        });
+        chipSyncs.push(() => { toggle.textContent = inGroup.every((k) => activeKinds.has(k.kind)) ? "none" : "all"; });
+        head.append(title, toggle);
+        const chips = document.createElement("div"); chips.className = "kindChips";
+        for (const k of inGroup) {
+          const b = document.createElement("button"); b.type = "button"; b.className = "kindFilter";
+          b.style.setProperty("--k", k.color);
+          b.innerHTML = `<i></i><span></span><em></em>`;
+          b.querySelector("span").textContent = k.short;
+          b.querySelector("em").textContent = counts.get(k.kind).toLocaleString();
+          b.title = `${k.kind}: show or hide`;
+          chipSyncs.push(() => {
+            b.classList.toggle("on", activeKinds.has(k.kind));
+            b.setAttribute("aria-pressed", String(activeKinds.has(k.kind)));
+          });
+          b.addEventListener("click", () => {
+            if (activeKinds.has(k.kind)) activeKinds.delete(k.kind); else activeKinds.add(k.kind);
+            saveKinds(); applySpotFilters();
+          });
+          chips.append(b);
+        }
+        sec.append(head, chips);
+        kindFilters.append(sec);
+      }
+      syncKindChips();
+    }
+    function syncKindChips() {
+      for (const f of chipSyncs) f();
       const on = usedKinds.filter((k) => activeKinds.has(k));
-      const all = on.length === usedKinds.length;
+      const all = usedKinds.length > 0 && on.length === usedKinds.length;
       kindAll.textContent = all ? "Select none" : "Select all";
       kindSummary.textContent = all ? `all ${usedKinds.length}` : !on.length ? "none"
         : on.length <= 2 ? on.map((k) => kindOf({ category: k }).short).join(", ") : `${on.length} of ${usedKinds.length}`;
-    });
-    function syncKindChips() { for (const f of kindSyncs) f(); }
-    for (const k of SPOT_KINDS) {
-      const n = SPOTS.filter((sp) => sp.category === k.kind).length;
-      if (!n) continue;
-      const b = document.createElement("button"); b.type = "button"; b.className = "kindFilter";
-      b.style.setProperty("--k", k.color); b.setAttribute("aria-pressed", "false");
-      b.innerHTML = `<i></i><span></span><em></em>`;
-      b.querySelector("span").textContent = k.short; b.querySelector("em").textContent = n;
-      b.title = `Show only: ${k.kind}`;
-      const sync = () => {
-        b.classList.toggle("on", activeKinds.has(k.kind));
-        b.setAttribute("aria-pressed", String(activeKinds.has(k.kind)));
-      };
-      kindSyncs.push(sync);
-      b.addEventListener("click", () => {
-        if (activeKinds.has(k.kind)) activeKinds.delete(k.kind); else activeKinds.add(k.kind);
-        saveKinds();
-        applySpotFilters();
-      });
-      kindFilters.append(b);
     }
+    kindAll.addEventListener("click", () => {
+      const all = usedKinds.length > 0 && usedKinds.every((k) => activeKinds.has(k));
+      for (const k of usedKinds) all ? activeKinds.delete(k) : activeKinds.add(k);
+      saveKinds();
+      applySpotFilters();
+    });
+
     // Tag filter: type to get a dropdown of matching tags (with how many spots carry each), pick
     // one to add it as a chip; "all tags" / "any tag" sets how several chips combine.
-    const tagCounts = new Map();
-    for (const sp of SPOTS) for (const t of sp.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+    let tagCounts = new Map();
+    function recountTags() {
+      tagCounts = new Map();
+      for (const sp of allSpots) for (const t of sp.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+    }
     const tagSearch = document.getElementById("tagSearch");
     const tagSuggest = document.getElementById("tagSuggest");
     const tagChosen = document.getElementById("tagChosen");
@@ -1542,7 +1953,8 @@
         .sort((a, b) => {
           const sa = a.toLowerCase().startsWith(q) ? 0 : 1, sb = b.toLowerCase().startsWith(q) ? 0 : 1;
           return sa - sb || tagCounts.get(b) - tagCounts.get(a) || a.localeCompare(b);
-        });
+        })
+        .slice(0, 80);
       tagHl = 0;
       tagSuggest.replaceChildren();
       if (!tagOptions.length) {
@@ -1558,7 +1970,7 @@
           const b = document.createElement("b"); b.textContent = t.slice(at, at + q.length);
           name.append(t.slice(0, at), b, t.slice(at + q.length));
         } else name.textContent = t;
-        const n = document.createElement("em"); n.textContent = `${tagCounts.get(t)} spot${tagCounts.get(t) === 1 ? "" : "s"}`;
+        const n = document.createElement("em"); n.textContent = `${tagCounts.get(t).toLocaleString()} spot${tagCounts.get(t) === 1 ? "" : "s"}`;
         opt.append(name, n);
         opt.addEventListener("mousedown", (e) => { e.preventDefault(); addTag(t); }); // before the input blurs
         opt.addEventListener("mousemove", () => highlightTag(i));
@@ -1604,8 +2016,22 @@
         applySpotFilters();
       });
     }
-    document.getElementById("spotSearch").addEventListener("input", applySpotFilters);
-    applySpotFilters();
+    let searchTimer = 0; // 2,000+ spots: wait for a pause in typing
+    document.getElementById("spotSearch").addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(applySpotFilters, 120);
+    });
+
+    // Everything that depends on the set of spots, after custom spots change.
+    function rebuildSpots() {
+      rebuildSpotIndex();
+      recountTags();
+      rebuildGroups();
+      syncSource();
+      renderKindChips();
+      applySpotFilters();
+    }
+    rebuildSpots();
     spotToggle.addEventListener("click", () => setSpotsVisible(!spotsVisible));
     setSpotsVisible(true);
 
@@ -1689,25 +2115,44 @@
       }
       statusEl.textContent = "Street-view mode is planned for this spot but is not available yet.";
     });
-    document.getElementById("spotClose").addEventListener("click", () => {
-      spotCard.hidden = true;
-      selectedSpot = null;
-      onSpotSelected();
-      for (const b of spotButtons.values()) b.classList.remove("active");
-      for (const entity of spotEntities.values()) entity.label.show = false;
-    });
-    let onSpotSelected = () => {}; // set by the pin-distance setting further down
+    document.getElementById("spotClose").addEventListener("click", closeSpotCard);
     async function selectSpot(spot) {
       closeProbe();
+      const previous = selectedSpot;
       selectedSpot = spot;
-      onSpotSelected();
-      for (const [id, b] of spotButtons) b.classList.toggle("active", id === spot.id);
+      if (previous && previous.id !== spot.id) {
+        const pe = spotEntities.get(previous.id);
+        if (pe) { pe.label.show = false; pe.billboard.distanceDisplayCondition = pinCondition(previous); }
+        spotButtons.get(previous.id)?.classList.remove("active");
+      }
+      const entity = ensureEntity(spot);
+      entity.show = spotsVisible;
+      entity.label.show = true;
+      entity.billboard.distanceDisplayCondition = undefined; // the selected pin always shows
+      spotButtons.get(spot.id)?.classList.add("active");
       if (!openGroups.has(spot.category)) { openGroups.add(spot.category); syncGroupOpen(); }
-      for (const [id, entity] of spotEntities) entity.label.show = id === spot.id;
       document.getElementById("spotTitle").textContent = spot.name;
       const kindEl = document.getElementById("spotKind");
-      kindEl.textContent = spot.category; kindEl.style.setProperty("--k", kindOf(spot).color);
-      document.getElementById("spotType").textContent = `${spot.type} · ${spot.mission}`;
+      kindEl.textContent = spot.category; kindEl.style.setProperty("--k", pinColor(spot));
+      document.getElementById("spotScope").textContent =
+        spot.scope === "custom" ? "Custom spot" : spot.provider === "usgs" ? "IAU named feature" : "Mission spot";
+      document.getElementById("spotType").textContent = [spot.type, spot.mission].filter(Boolean).join(" · ");
+      document.getElementById("spotOwnActions").hidden = spot.scope !== "custom";
+      // several images (custom spots): thumbnails that switch the main image
+      const gallery = document.getElementById("spotGallery");
+      gallery.replaceChildren();
+      gallery.hidden = !(spot.images?.length > 1);
+      for (const im of spot.images ?? []) {
+        if (!(spot.images.length > 1)) break;
+        const t = document.createElement("img"); t.src = im.url; t.alt = im.caption || spot.name;
+        t.addEventListener("click", () => {
+          spotImage.hidden = false; spotImage.src = im.url; spotImage.alt = im.caption || spot.name;
+          spotImageCaption.hidden = false; spotImageCaption.textContent = im.caption ? `Image: ${im.caption}` : "";
+          gallery.querySelectorAll("img").forEach((x) => x.classList.toggle("on", x === t));
+        });
+        gallery.append(t);
+      }
+      gallery.querySelector("img")?.classList.add("on");
       const spotTags = document.getElementById("spotTags");
       spotTags.replaceChildren();
       for (const tag of spot.tags ?? []) {
@@ -1732,10 +2177,15 @@
       spotVrButton.hidden = !spot.vrEnabled;
       spotVrButton.textContent = spot.vrUrl ? "Open 360° / VR view" : "Open street view";
       const note = document.getElementById("spotNote");
-      note.replaceChildren(document.createTextNode(`${spot.date}. ${spot.note} Source: `));
-      const source = document.createElement("a");
-      source.textContent = spot.source; source.href = spot.url; source.target = "_blank"; source.rel = "noopener noreferrer";
-      source.style.color = "#9fd3ff"; note.append(source, document.createTextNode("."));
+      note.replaceChildren();
+      const text = [spot.date, spot.note].filter(Boolean).map((t) => t.replace(/\.$/, "")).join(". ");
+      if (text) note.append(document.createTextNode(`${text}. `));
+      if (spot.url) {
+        note.append(document.createTextNode("Source: "));
+        const source = document.createElement("a");
+        source.textContent = spot.source || spot.url; source.href = spot.url; source.target = "_blank"; source.rel = "noopener noreferrer";
+        source.style.color = "#9fd3ff"; note.append(source, document.createTextNode("."));
+      } else if (spot.source) note.append(document.createTextNode(`Source: ${spot.source}.`));
       spotStats.replaceChildren();
       const ns = spot.lat >= 0 ? "N" : "S", ew = spot.lon >= 0 ? "E" : "W";
       addSpotStat("Latitude", `${Math.abs(spot.lat).toFixed(4)}° ${ns}`);
@@ -1750,6 +2200,7 @@
         addSpotStat("Drive · heading", `${spot.drive} · ${spot.heading}°`);
         addSpotStat("Projection", spot.projection);
       }
+      for (const [k, v] of spot.details ?? []) addSpotStat(k, v);
       const elevation = addSpotStat("MOLA elevation", "loading…");
       const galeDistance = surfaceDistance(
         Cesium.Cartesian3.fromDegrees(GALE.lon, GALE.lat, 0, MARS),
@@ -1768,6 +2219,324 @@
         .catch(() => { if (spotStats.contains(elevation)) elevation.textContent = "unavailable"; });
       else elevation.textContent = "local server required";
     }
+
+    // ---------------------------------------------------------------- custom spots: editor
+    // "+ Add spot" (Spots tab) or "Edit" on a custom spot's card opens this form: name, position
+    // (typed, picked on the map, or the view centre), kind (any existing one, or a new kind with
+    // its own colour), an optional pin colour, subtitle, description, date, mission, tags,
+    // images (links or uploads) and a source link. Saved through customStore (see above).
+    const editor = document.getElementById("spotEditor");
+    const spotMsgEl = document.getElementById("spotMsg");
+    const seForm = document.getElementById("spotForm");
+    const se = (id) => document.getElementById(id);
+    let editingId = null;     // null: a new spot
+    let editTags = [];
+    let editImages = [];      // [{ url, caption }]
+    let spotPickPending = false;
+    const NEW_KIND = "__new__";
+
+    function fillKindSelect(selected) {
+      const sel = se("seKind");
+      sel.replaceChildren();
+      for (const grp of KIND_GROUPS) {
+        const kinds = allKinds().filter((k) => k.group === grp.id);
+        if (!kinds.length) continue;
+        const og = document.createElement("optgroup"); og.label = grp.title;
+        for (const k of kinds) {
+          const o = document.createElement("option"); o.value = k.kind; o.textContent = k.kind; og.append(o);
+        }
+        sel.append(og);
+      }
+      const o = document.createElement("option"); o.value = NEW_KIND; o.textContent = "＋ New kind…"; sel.append(o);
+      sel.value = selected && allKinds().some((k) => k.kind === selected) ? selected : (customKinds[0]?.kind ?? NEW_KIND);
+      syncKindFields();
+    }
+    function syncKindFields() {
+      const v = se("seKind").value;
+      se("seNewKind").hidden = v !== NEW_KIND;
+      const custom = customKinds.find((k) => k.kind === v);
+      se("seKindColorRow").hidden = !custom;
+      if (custom) se("seKindColorEdit").value = custom.color;
+    }
+    se("seKind").addEventListener("change", syncKindFields);
+    se("seOwnColor").addEventListener("change", () => { se("seColor").disabled = !se("seOwnColor").checked; });
+
+    function renderEditTags() {
+      const box = se("seTags");
+      box.querySelectorAll(".tagChip").forEach((c) => c.remove());
+      for (const t of editTags) {
+        const chip = document.createElement("span"); chip.className = "tagChip";
+        chip.append(document.createTextNode(t));
+        const x = document.createElement("button"); x.type = "button"; x.textContent = "×";
+        x.setAttribute("aria-label", `Remove tag ${t}`);
+        x.addEventListener("click", () => { editTags = editTags.filter((y) => y !== t); renderEditTags(); });
+        chip.append(x);
+        box.insertBefore(chip, se("seTagInput"));
+      }
+      const list = se("seTagList");
+      list.replaceChildren(...[...tagCounts.keys()].filter((t) => !editTags.includes(t)).sort()
+        .map((t) => Object.assign(document.createElement("option"), { value: t })));
+    }
+    function addEditTag(raw) {
+      for (const t of raw.split(",").map((x) => x.trim().slice(0, 40)).filter(Boolean)) {
+        if (!editTags.some((y) => y.toLowerCase() === t.toLowerCase())) editTags.push(t);
+      }
+      se("seTagInput").value = "";
+      renderEditTags();
+    }
+    se("seTagInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addEditTag(se("seTagInput").value); }
+      else if (e.key === "Backspace" && !se("seTagInput").value && editTags.length) { editTags.pop(); renderEditTags(); }
+    });
+    se("seTagInput").addEventListener("change", () => { if (se("seTagInput").value.trim()) addEditTag(se("seTagInput").value); });
+
+    function renderEditImages() {
+      const box = se("seImages");
+      box.replaceChildren();
+      editImages.forEach((im, i) => {
+        const card = document.createElement("div"); card.className = "seImg";
+        const img = document.createElement("img"); img.src = im.url; img.alt = im.caption || `Image ${i + 1}`;
+        const cap = document.createElement("input"); cap.placeholder = "Caption / credit"; cap.value = im.caption ?? "";
+        cap.addEventListener("input", () => { im.caption = cap.value.slice(0, 160); });
+        const btns = document.createElement("div");
+        if (i > 0) {
+          const first = document.createElement("button"); first.type = "button"; first.textContent = "Make cover";
+          first.addEventListener("click", () => { editImages.unshift(...editImages.splice(i, 1)); renderEditImages(); });
+          btns.append(first);
+        } else {
+          const tag = document.createElement("span"); tag.className = "seCover"; tag.textContent = "Cover"; btns.append(tag);
+        }
+        const del = document.createElement("button"); del.type = "button"; del.textContent = "Remove";
+        del.addEventListener("click", () => { editImages.splice(i, 1); renderEditImages(); });
+        btns.append(del);
+        card.append(img, cap, btns);
+        box.append(card);
+      });
+    }
+    const editorMsg = (text, bad = false) => { se("seMsg").textContent = text; se("seMsg").classList.toggle("bad", bad); };
+    se("seImgAdd").addEventListener("click", () => {
+      const u = se("seImgUrl").value.trim();
+      if (!/^https?:\/\//i.test(u)) { editorMsg("Image links must start with http:// or https://", true); return; }
+      editImages.push({ url: u, caption: "" });
+      se("seImgUrl").value = "";
+      editorMsg("");
+      renderEditImages();
+    });
+    se("seImgFile").addEventListener("change", async () => {
+      const files = [...se("seImgFile").files];
+      se("seImgFile").value = "";
+      for (const f of files) {
+        if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) { editorMsg(`${f.name}: only PNG, JPEG, WebP or GIF`, true); continue; }
+        editorMsg(`Uploading ${f.name}…`);
+        try {
+          editImages.push({ url: await customStore.uploadImage(f), caption: f.name.replace(/\.[^.]+$/, "") });
+          renderEditImages();
+          editorMsg("");
+        } catch (err) { editorMsg(`${f.name}: ${err.message}`, true); }
+      }
+    });
+
+    function setEditorPosition(lat, lon) {
+      se("seLat").value = lat.toFixed(5);
+      se("seLon").value = lon.toFixed(5);
+    }
+    se("seCentre").addEventListener("click", () => {
+      const c = MARS.cartesianToCartographic(viewCentre());
+      if (c) setEditorPosition(deg(c.latitude), deg(c.longitude));
+    });
+    se("sePick").addEventListener("click", () => {
+      spotPickPending = true;
+      editor.close();
+      spotMsgEl.textContent = "Click the map where the spot goes (Esc to cancel).";
+      viewer.scene.canvas.style.cursor = "crosshair";
+    });
+    // called by the map click handler while picking
+    function finishSpotPick(world) {
+      spotPickPending = false;
+      viewer.scene.canvas.style.cursor = "";
+      spotMsgEl.textContent = "";
+      if (world) {
+        const c = MARS.cartesianToCartographic(world);
+        setEditorPosition(deg(c.latitude), deg(c.longitude));
+      }
+      editor.showModal();
+    }
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && spotPickPending) finishSpotPick(null); });
+
+    function openSpotEditor(spot = null, at = null) {
+      editingId = spot?.id ?? null;
+      const c = spot ? customDoc.spots.find((s) => s.id === spot.id) : null;
+      se("seTitle").textContent = c ? `Edit · ${c.name}` : "New custom spot";
+      se("seName").value = c?.name ?? "";
+      const pos = c ?? at ?? (() => {
+        const cc = MARS.cartesianToCartographic(viewCentre());
+        return cc ? { lat: deg(cc.latitude), lon: deg(cc.longitude) } : { lat: 0, lon: 0 };
+      })();
+      setEditorPosition(pos.lat, pos.lon);
+      fillKindSelect(c?.category);
+      se("seKindName").value = "";
+      se("seKindColor").value = "#ff66cc";
+      se("seOwnColor").checked = !!c?.color;
+      se("seColor").value = safeColor(c?.color, "#ffffff");
+      se("seColor").disabled = !c?.color;
+      se("seSubtitle").value = c?.subtitle ?? "";
+      se("seDesc").value = c?.description ?? "";
+      se("seDate").value = c?.date ?? "";
+      se("seMission").value = c?.mission ?? "";
+      se("seSourceText").value = c?.sourceText ?? "";
+      se("seUrl").value = c?.url ?? "";
+      editTags = [...(c?.tags ?? [])];
+      editImages = (c?.images ?? []).map((im) => ({ ...im }));
+      se("seDelete").hidden = !c;
+      editorMsg(USE_PROXY ? "" : "No local server: custom spots are saved in this browser only.");
+      renderEditTags();
+      renderEditImages();
+      editor.showModal();
+      se("seName").focus();
+    }
+    se("seCancel").addEventListener("click", () => editor.close());
+    document.getElementById("addSpotBtn").addEventListener("click", () => openSpotEditor());
+
+    async function persistCustom(message) {
+      // keep only custom kinds still used by a custom spot
+      const used = new Set(customDoc.spots.map((s) => s.category));
+      customKinds = customKinds.filter((k) => used.has(k.kind));
+      customDoc.kinds = customKinds.map(({ kind, short, color }) => ({ kind, short, color }));
+      await customStore.save(customDoc);
+      rebuildSpots();
+      if (message) spotMsgEl.textContent = message;
+    }
+
+    seForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = se("seName").value.trim();
+      const lat = Number(se("seLat").value);
+      let lon = Number(se("seLon").value);
+      if (!name) { editorMsg("Give the spot a name.", true); return; }
+      if (!(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 360)) { editorMsg("Latitude must be -90..90 and longitude -180..360.", true); return; }
+      if (lon > 180) lon -= 360;
+      let category = se("seKind").value;
+      if (category === NEW_KIND) {
+        category = se("seKindName").value.trim().slice(0, 40);
+        if (!category) { editorMsg("Name the new kind.", true); return; }
+        const existing = allKinds().find((k) => k.kind.toLowerCase() === category.toLowerCase());
+        if (existing) category = existing.kind;
+        else customKinds.push({ kind: category, short: category, color: safeColor(se("seKindColor").value, "#ff66cc"), group: "custom" });
+      } else {
+        const ck = customKinds.find((k) => k.kind === category);
+        if (ck) ck.color = safeColor(se("seKindColorEdit").value, ck.color);
+      }
+      if (se("seTagInput").value.trim()) addEditTag(se("seTagInput").value);
+      const now = new Date().toISOString();
+      const old = customDoc.spots.find((s) => s.id === editingId);
+      const spot = {
+        id: old?.id ?? `custom-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        name: name.slice(0, 120), lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, category,
+        color: se("seOwnColor").checked ? safeColor(se("seColor").value) : undefined,
+        subtitle: se("seSubtitle").value.trim().slice(0, 160) || undefined,
+        description: se("seDesc").value.trim().slice(0, 4000) || undefined,
+        date: se("seDate").value.trim().slice(0, 80) || undefined,
+        mission: se("seMission").value.trim().slice(0, 120) || undefined,
+        tags: editTags,
+        images: editImages.filter((im) => safeImageUrl(im.url)),
+        sourceText: se("seSourceText").value.trim().slice(0, 160) || undefined,
+        url: safeLink(se("seUrl").value.trim()) || undefined,
+        created: old?.created ?? now, updated: now,
+      };
+      se("seSave").disabled = true;
+      editorMsg("Saving…");
+      const before = JSON.stringify(customDoc);
+      if (old) customDoc.spots[customDoc.spots.indexOf(old)] = spot; else customDoc.spots.push(spot);
+      try {
+        forgetSpotUi(spot.id);
+        activeKinds.add(category); saveKinds();          // make sure the new spot is visible
+        if (sourceFilter === "global") { sourceFilter = "all"; try { localStorage.setItem(SOURCE_KEY, "all"); } catch { /* ignore */ } }
+        await persistCustom(old ? `Saved ${spot.name}.` : `Added ${spot.name}.`);
+        editor.close();
+        selectSpot(spotById.get(spot.id));
+      } catch (err) {
+        customDoc = JSON.parse(before);
+        customKinds = customDoc.kinds.map((k) => ({ ...k, group: "custom" }));
+        editorMsg(`Could not save: ${err.message}`, true);
+      } finally { se("seSave").disabled = false; }
+    });
+
+    async function deleteCustomSpot(id) {
+      const c = customDoc.spots.find((s) => s.id === id);
+      if (!c || !confirm(`Delete the custom spot "${c.name}"? This cannot be undone.`)) return false;
+      const before = JSON.stringify(customDoc);
+      customDoc.spots = customDoc.spots.filter((s) => s.id !== id);
+      try {
+        if (selectedSpot?.id === id) closeSpotCard();
+        forgetSpotUi(id);
+        await persistCustom(`Deleted ${c.name}.`);
+        return true;
+      } catch (err) {
+        customDoc = JSON.parse(before);
+        spotMsgEl.textContent = `Could not delete: ${err.message}`;
+        return false;
+      }
+    }
+    se("seDelete").addEventListener("click", async () => { if (await deleteCustomSpot(editingId)) editor.close(); });
+    document.getElementById("spotEdit").addEventListener("click", () => { if (selectedSpot?.scope === "custom") openSpotEditor(selectedSpot); });
+    document.getElementById("spotDelete").addEventListener("click", () => { if (selectedSpot?.scope === "custom") deleteCustomSpot(selectedSpot.id); });
+
+    // Export: one JSON file with every custom spot and kind; uploaded images are embedded so
+    // the file is complete on another machine. Import merges a file (same id = replaced).
+    document.getElementById("customExport").addEventListener("click", async () => {
+      const doc = JSON.parse(JSON.stringify(customDoc));
+      spotMsgEl.textContent = "Preparing export…";
+      for (const s of doc.spots) {
+        for (const im of s.images ?? []) {
+          if (im.url?.startsWith("./data/custom/images/")) {
+            try { im.url = await blobToDataUrl(await (await fetch(im.url)).blob()); } catch { /* keep the path */ }
+          }
+        }
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], { type: "application/json" }));
+      a.download = `mars-custom-spots-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      spotMsgEl.textContent = `Exported ${doc.spots.length} custom spot${doc.spots.length === 1 ? "" : "s"}.`;
+    });
+    document.getElementById("customImport").addEventListener("click", () => document.getElementById("customImportFile").click());
+    document.getElementById("customImportFile").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      const before = JSON.stringify(customDoc);
+      try {
+        const doc = JSON.parse(await file.text());
+        if (!Array.isArray(doc?.spots)) throw new Error("not a custom spots file");
+        for (const k of doc.kinds ?? []) {
+          if (typeof k?.kind === "string" && !allKinds().some((x) => x.kind === k.kind))
+            customKinds.push({ kind: k.kind.slice(0, 40), short: (k.short || k.kind).slice(0, 40), color: safeColor(k.color, "#ff66cc"), group: "custom" });
+        }
+        let n = 0;
+        for (const s of doc.spots) {
+          if (typeof s?.name !== "string" || !Number.isFinite(s.lat) || !Number.isFinite(s.lon)) continue;
+          for (const im of s.images ?? []) { // embedded images go back to the server as files
+            if (USE_PROXY && /^data:image\//.test(im.url ?? "")) im.url = await customStore.uploadImage(await (await fetch(im.url)).blob());
+          }
+          const id = typeof s.id === "string" && s.id.startsWith("custom-") ? s.id : `custom-${Date.now().toString(36)}${n}`;
+          const clean = { ...s, id, category: String(s.category || "Imported").slice(0, 40), tags: (s.tags ?? []).map(String) };
+          if (!allKinds().some((k) => k.kind === clean.category))
+            customKinds.push({ kind: clean.category, short: clean.category, color: "#ff66cc", group: "custom" });
+          const at = customDoc.spots.findIndex((x) => x.id === id);
+          if (at >= 0) customDoc.spots[at] = clean; else customDoc.spots.push(clean);
+          forgetSpotUi(id);
+          activeKinds.add(clean.category);
+          n++;
+        }
+        saveKinds();
+        await persistCustom(`Imported ${n} custom spot${n === 1 ? "" : "s"}.`);
+      } catch (err) {
+        customDoc = JSON.parse(before);
+        customKinds = customDoc.kinds.map((k) => ({ ...k, group: "custom" }));
+        spotMsgEl.textContent = `Import failed: ${err.message}`;
+      }
+    });
 
     // ---------------------------------------------------------------- distances
     const fmtDist = (m) =>
@@ -2178,12 +2947,13 @@
     const detailMode = document.getElementById("detailMode");
     const resMode = document.getElementById("resMode");
     const pinRange = document.getElementById("pinRange");
+    const pinBehind = document.getElementById("pinBehind");
     const GFX_KEY = "mars-graphics-v1";
     try {
       const g = JSON.parse(localStorage.getItem(GFX_KEY) || "null");
       if (g) {
         const pick = (sel, v) => { if ([...sel.options].some((o) => o.value === String(v))) sel.value = String(v); };
-        pick(dayMode, g.dayMode); pick(detailMode, g.detail); pick(resMode, g.res); pick(pinRange, g.pins);
+        pick(dayMode, g.dayMode); pick(detailMode, g.detail); pick(resMode, g.res); pick(pinRange, g.pins); pick(pinBehind, g.behind);
         if (Number.isFinite(g.dayHour)) dayHour.value = g.dayHour;
       }
     } catch { /* storage blocked: defaults */ }
@@ -2191,7 +2961,7 @@
       try {
         localStorage.setItem(GFX_KEY, JSON.stringify({
           dayMode: dayMode.value, dayHour: Number(dayHour.value), detail: detailMode.value, res: resMode.value,
-          pins: pinRange.value,
+          pins: pinRange.value, behind: pinBehind.value,
         }));
       } catch { /* ignore */ }
     }
@@ -2223,15 +2993,14 @@
     // Spot pins only within a distance of the camera (Cesium hides a billboard outside its
     // DistanceDisplayCondition). The selected spot ignores it so its pin stays under its card.
     function applyPinRange() {
-      const km = Number(pinRange.value);
-      const far = km > 0 ? new Cesium.DistanceDisplayCondition(0, km * 1000) : undefined;
-      for (const [id, entity] of spotEntities)
-        entity.billboard.distanceDisplayCondition = id === selectedSpot?.id ? undefined : far;
+      pinRangeKm = Number(pinRange.value);
+      refreshPinRanges();
       saveGraphics();
     }
     pinRange.addEventListener("change", applyPinRange);
     applyPinRange();
-    onSpotSelected = applyPinRange;
+    pinBehind.addEventListener("change", () => { setPinsBehind(pinBehind.value); saveGraphics(); });
+    setPinsBehind(pinBehind.value);
     detailMode.addEventListener("change", applyPerformance);
     resMode.addEventListener("change", applyPerformance);
     applyPerformance();
@@ -2839,6 +3608,7 @@
       if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
     });
     clicker.setInputAction((e) => {
+      if (spotPickPending) { finishSpotPick(surfaceAt(e.position.x, e.position.y)); return; }
       if (routePickMode === "waypoint") {
         const world = surfaceAt(e.position.x, e.position.y);
         if (!world) { routeStatus.textContent = "Click a visible point on Mars."; return; }
@@ -2846,7 +3616,7 @@
         let point = { lon: Cesium.Math.toDegrees(c.longitude), lat: Cesium.Math.toDegrees(c.latitude), world };
         const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
         const id = picked.map((p) => p?.id?.properties?.spotId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
-        const spot = SPOTS.find((s) => s.id === id);
+        const spot = spotById.get(id);
         if (spot) {
           const snappedCarto = Cesium.Cartographic.fromDegrees(spot.lon, spot.lat);
           const snappedHeight = terrainReady && reliefBox.checked ? globe.getHeight(snappedCarto) : 0;
@@ -2865,7 +3635,7 @@
       }
       const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
       const id = picked.map((p) => p?.id?.properties?.spotId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
-      const spot = SPOTS.find((s) => s.id === id);
+      const spot = spotById.get(id);
       if (spot) selectSpot(spot);
       else openProbe(e.position);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
