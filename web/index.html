@@ -9,35 +9,126 @@
   <style>
     html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
     #cesiumContainer { position: absolute; inset: 0; }
-    #panel {
-      position: absolute; top: 12px; left: 12px; z-index: 5; width: 290px; max-height: calc(100% - 60px);
-      overflow: auto; padding: 10px 12px; background: rgba(15, 15, 15, 0.86); color: #eee;
-      border-radius: 8px; font: 13px/1.4 system-ui, sans-serif;
+    /* left dock: one panel, a tab bar on top, one tab's content at a time (scrolls inside) */
+    #dock {
+      position: absolute; top: 12px; left: 12px; z-index: 5; width: min(310px, calc(100vw - 24px));
+      max-height: calc(100% - 46px); display: flex; flex-direction: column;
+      background: rgba(15, 15, 15, 0.86); border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+      color: #eee; font: 13px/1.4 system-ui, sans-serif;
     }
-    #panel h1 { font-size: 14px; margin: 0 0 8px; }
+    #tabs { display: flex; flex: none; padding: 4px 4px 0; gap: 2px; border-bottom: 1px solid #333; }
+    #tabs button {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 6px 2px 5px; cursor: pointer; background: none; color: #aaa; border: 0;
+      border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; font: 600 11.5px system-ui, sans-serif;
+    }
+    #tabs button .ico { font-size: 15px; line-height: 1; color: #8c7a55; }
+    #tabs button:hover { color: #eee; background: rgba(255, 255, 255, 0.05); }
+    #tabs button:focus-visible { outline: 1px solid #2f6fb3; }
+    #tabs button[aria-selected="true"] { color: #ffe0a0; border-bottom-color: #e8b85a; background: rgba(232, 184, 90, 0.08); }
+    #tabs button[aria-selected="true"] .ico { color: #e8b85a; }
+    #dock.collapsed #tabs { border-bottom: 0; }
+    .win { display: none; min-height: 0; flex: 1 1 auto; }
+    .win.active { display: flex; flex-direction: column; }
+    #dock.collapsed .win.active { display: none; }
+    .winBody { min-height: 0; overflow: auto; padding: 2px 12px 10px; }
+    .setRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .setRow > span:first-child { width: 86px; flex: none; color: #ccc; }
+    .setRow select { flex: 1; min-width: 0; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px;
+      font: 12.5px system-ui, sans-serif; padding: 3px 5px; }
+    .setRow input[type=range] { flex: 1; min-width: 0; }
+    .setRow[hidden] { display: none; }
+    .setNote { color: #aaa; font-size: 11.5px; margin-top: 3px; }
+    .setCheck { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+    #cache .cacheLine { display: flex; align-items: center; gap: 6px; }
+    #cache .cacheLine .k { width: 86px; flex: none; color: #ccc; }
+    #cache .cacheLine #cacheInfo { flex: 1; }
+    #serverCache { margin-top: 4px; display: grid; grid-template-columns: auto 1fr auto; gap: 3px 6px; align-items: center;
+      font-size: 11.5px; color: #bbb; }
+    #serverCache .bar { height: 5px; background: #2a2a2a; border-radius: 3px; overflow: hidden; }
+    #serverCache .bar i { display: block; height: 100%; background: #c99a45; }
+    #serverCache .pct { text-align: right; font: 11px ui-monospace, Consolas, monospace; color: #ddd; }
+    #serverCache .head { grid-column: 1 / -1; color: #888; margin-top: 2px; }
     .layer { margin: 0 0 9px; padding-bottom: 8px; border-bottom: 1px solid #333; }
     .layer label { display: flex; align-items: center; gap: 6px; font-weight: 600; }
     .layer input[type=range] { width: 100%; margin: 4px 0 0; }
     .layer .note { color: #aaa; font-size: 11.5px; margin-top: 2px; }
     .sub { margin: 6px 0 3px; color: #bbb; }
     #places button { margin: 2px 4px 2px 0; padding: 3px 8px; cursor: pointer; }
-    #spots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 4px 0 8px; }
-    #spots button { min-width: 0; padding: 5px 6px; text-align: left; cursor: pointer; background: #242424; color: #ddd; border: 1px solid #444; border-radius: 4px; }
-    #spots button:hover, #spots button.active { border-color: #e8b85a; background: #332d20; }
-    #spotControls { display: flex; align-items: center; justify-content: space-between; }
-    #spotToggle { padding: 2px 7px; font-size: 11px; cursor: pointer; background: #242424; color: #ccc; border: 1px solid #444; border-radius: 4px; }
-    #spotToggle.on { color: #ffe0a0; border-color: #8c6b2e; }
-    #roadControls { margin: 0 0 8px; }
-    #roadToggle { padding: 2px 7px; font-size: 11px; cursor: pointer; background: #242424; color: #ccc; border: 1px solid #444; border-radius: 4px; }
-    #roadToggle.on { color: #ffe0a0; border-color: #8c6b2e; }
+    #spots { margin: 4px 0 8px; }
+    .spotGroup { margin-top: 5px; border: 1px solid #333; border-left: 3px solid var(--k); border-radius: 5px; background: #1a1a1a; }
+    .spotGroup[hidden] { display: none; }
+    .spotGroupHead { display: flex; align-items: center; gap: 7px; width: 100%; padding: 7px 9px; cursor: pointer;
+      background: none; border: 0; color: var(--k); font: 600 11.5px system-ui, sans-serif; text-transform: uppercase;
+      letter-spacing: 0.04em; text-align: left; }
+    .spotGroupHead:hover:not(:disabled) { background: rgba(255, 255, 255, 0.04); }
+    .spotGroupHead:disabled { cursor: default; }
+    .spotGroupHead .chev { color: #888; font-size: 10px; transition: transform 0.15s; }
+    .spotGroup.open .spotGroupHead .chev { transform: rotate(90deg); }
+    .spotGroupHead i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
+    .spotGroupHead em { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 9px; background: #2a2a2a;
+      color: #ccc; font-style: normal; font-weight: 600; text-align: center; letter-spacing: 0; }
+    .spotGrid { display: none; grid-template-columns: 1fr 1fr; gap: 4px; padding: 0 6px 6px; }
+    .spotGroup.open .spotGrid { display: grid; }
+    .spotGrid button { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 5px 6px 5px 8px; text-align: left;
+      cursor: pointer; background: #242424; color: #ddd; border: 1px solid #444; border-left: 3px solid var(--k); border-radius: 4px; }
+    .spotGrid button:hover, .spotGrid button.active { border-color: var(--k); background: #2e2a22; }
+    .spotName { overflow: hidden; text-overflow: ellipsis; }
+    .kindTag { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; border-radius: 3px;
+      font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em; color: #151515; background: var(--k, #bbb); }
+    .kindTag.big { margin: 2px 0 3px; padding: 1px 7px; font-size: 10.5px; }
+    #spotKinds { display: flex; flex-wrap: wrap; gap: 4px; }
+    .kindFilter { display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; cursor: pointer; font-size: 11px;
+      color: #ccc; background: #232323; border: 1px solid #444; border-radius: 11px; }
+    .kindFilter i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
+    .kindFilter em { color: #888; font-style: normal; font-size: 10px; }
+    .kindFilter:hover { border-color: var(--k); }
+    .kindFilter.on { color: #151515; background: var(--k); border-color: var(--k); }
+    .kindFilter.on i { background: #151515; }
+    .kindFilter.on em { color: #333; }
+    #kindHead { display: flex; align-items: center; gap: 8px; margin: 2px 0 3px; }
+    .kindTitle { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 0; color: #bbb; }
+    #kindSummary { color: #888; font-style: normal; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #kindAll { flex: none; padding: 1px 8px; cursor: pointer; font: 600 11px system-ui, sans-serif; color: #151515;
+      background: #e8b85a; border: 1px solid #e8b85a; border-radius: 10px; }
+    #kindAll:hover { background: #ffd27f; border-color: #ffd27f; }
+    #spotKinds[hidden] { display: none; }
+    #spotControls { display: grid; grid-template-columns: 1fr 1.4fr; gap: 6px; margin: 8px 0 6px; }
+    #spotToggle, #roadToggle { padding: 7px 8px; font-size: 12.5px; cursor: pointer; background: #242424; color: #ccc;
+      border: 1px solid #444; border-radius: 5px; text-align: center; }
+    #spotToggle.on, #roadToggle.on { color: #ffe0a0; border-color: #a7864d; background: #332d20; }
     #spotFilters { display: grid; gap: 5px; margin: 3px 0 6px; }
-    #spotSearch, #spotCategory { min-width: 0; padding: 4px 6px; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px; font: 12px system-ui, sans-serif; }
-    #spotTagFilters, #spotTags { display: flex; flex-wrap: wrap; gap: 4px; }
+    #spotSearch { min-width: 0; padding: 4px 6px; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px; font: 12px system-ui, sans-serif; }
+    #spotTags { display: flex; flex-wrap: wrap; gap: 4px; }
+    #tagPicker { position: relative; }
+    #tagSearch { width: 100%; box-sizing: border-box; min-width: 0; padding: 4px 6px; background: #1f1f1f; color: #eee;
+      border: 1px solid #444; border-radius: 4px; font: 12px system-ui, sans-serif; }
+    #tagSearch:focus { outline: 1px solid #2f6fb3; border-color: #2f6fb3; }
+    #tagSuggest { position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 3; max-height: 210px; overflow: auto;
+      background: #1b1b1b; border: 1px solid #444; border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
+    #tagSuggest[hidden] { display: none; }
+    #tagSuggest .opt { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
+    #tagSuggest .opt em { color: #888; font-style: normal; font-size: 11px; }
+    #tagSuggest .opt b { color: #ffe0a0; font-weight: 600; }
+    #tagSuggest .opt.hl, #tagSuggest .opt:hover { background: #23384f; }
+    #tagSuggest .none { padding: 6px 8px; color: #888; font-size: 11.5px; }
+    #tagChosen { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+    #tagChosen:empty { display: none; }
+    .tagChip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 3px 1px 7px; border: 1px solid #a7864d;
+      border-radius: 10px; color: #ffe0a0; background: #332d20; font-size: 11px; }
+    .tagChip button { padding: 0 4px; border: 0; background: none; color: #d8bf8a; cursor: pointer; font-size: 12px; line-height: 1; }
+    .tagChip button:hover { color: #fff; }
+    #tagMatchRow { display: flex; align-items: center; gap: 4px; margin-top: 4px; color: #aaa; font-size: 11px; }
+    #tagMatchRow[hidden] { display: none; }
+    #tagMatchRow button { padding: 1px 7px; cursor: pointer; font-size: 11px; color: #bbb; background: #232323;
+      border: 1px solid #444; border-radius: 10px; }
+    #tagMatchRow button.on { color: #151515; background: #e8b85a; border-color: #e8b85a; }
+    .spotHint { margin-top: 10px; padding: 10px; border: 1px dashed #444; border-radius: 6px; color: #999; font-size: 11.5px; text-align: center; }
     .spotTagFilter, .spotTag { padding: 1px 6px; border: 1px solid #444; border-radius: 10px; color: #bbb; background: #252525; font-size: 10px; }
     .spotTagFilter { cursor: pointer; }
     .spotTagFilter.on { border-color: #a7864d; color: #ffe0a0; background: #332d20; }
     #spotFilterCount { color: #888; font-size: 10px; text-align: right; }
-    .spotBadge { float: right; color: #f0d18e; font-size: 9px; }
+    .spotBadge { padding-left: 4px; border-left: 1px solid rgba(0, 0, 0, 0.35); }
     #spotCard { position: absolute; z-index: 7; transform: translate(-50%, calc(-100% - 18px)); width: min(320px, calc(100vw - 24px));
       padding: 9px 10px; border: 1px solid #75613a; border-radius: 7px; background: rgba(18, 18, 17, .95);
       box-shadow: 0 5px 22px rgba(0, 0, 0, .65); color: #eee; pointer-events: auto; }
@@ -64,7 +155,7 @@
     #reliefRow input[type=range] { flex: 1; }
     #terrainNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
     #ground { color: #c9e7a7; font: 12px ui-monospace, Consolas, monospace; min-height: 1.3em; }
-    #routeControls { margin: 8px 0; padding: 7px; border: 1px solid #444; border-radius: 5px; }
+    #routeControls { margin: 8px 0 0; }
     #routeControls button { margin: 2px 4px 2px 0; padding: 4px 7px; cursor: pointer; }
     #routeControls button.on { border-color: #ffd54f; color: #ffe082; }
     #routeStatus { color: #bbb; font-size: 11.5px; min-height: 1.4em; margin-top: 4px; }
@@ -152,15 +243,6 @@
     }
     #probe .lvl { color: #777; font-size: 10.5px; margin-left: 4px; }
     #probe .row.sect { margin-top: 4px; padding-top: 4px; border-top: 1px solid #333; }
-    #sunRow, #shadeRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-    #shadeMode {
-      flex: 1; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px;
-      font: 12.5px system-ui, sans-serif; padding: 3px 5px;
-    }
-    #shadeRow input[type=range] { flex: 1; }
-    #shadeNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
-    #atmoRow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-    #atmoRow label { white-space: nowrap; }
     /* Mars clock, top right: local solar time at the view centre */
     #clock {
       position: absolute; top: 12px; right: 12px; z-index: 5; padding: 7px 12px 8px;
@@ -184,83 +266,176 @@
 </head>
 <body>
   <div id="cesiumContainer"></div>
-  <div id="panel">
-    <h1>Mars · Gale crater</h1>
-    <div id="picker">
-      <div id="pickRow">
-        <select id="layerCat" title="Category"><option value="">All types</option></select>
-        <input id="layerSearch" type="search" placeholder="Add layer: albedo, DEM, THEMIS…" autocomplete="off" spellcheck="false" />
+  <!-- Left dock: a tab bar over four panels, one shown at a time. Clicking the open tab folds
+       the panel away; the chosen tab is remembered per browser (see "dock tabs" in the script). -->
+  <div id="dock">
+    <nav id="tabs" role="tablist" aria-label="Panels">
+      <button type="button" role="tab" data-win="winSettings" aria-controls="winSettings" title="Settings: view, lighting, performance, cache"><span class="ico">⚙</span>Settings</button>
+      <button type="button" role="tab" data-win="winLayers" aria-controls="winLayers" title="Map layers"><span class="ico">▤</span>Layers</button>
+      <button type="button" role="tab" data-win="winSpots" aria-controls="winSpots" title="Mission spots, tags and the rover road"><span class="ico">◎</span>Spots</button>
+      <button type="button" role="tab" data-win="winRoute" aria-controls="winRoute" title="Terrain route planner"><span class="ico">⤳</span>Path</button>
+    </nav>
+    <section class="win" id="winSettings" role="tabpanel">
+      <div class="winBody">
+        <div class="sub">View &amp; terrain</div>
+        <div id="view">
+          <button id="btnTop" class="on">Top-down</button>
+          <button id="btnTilt">Tilted 60°</button>
+          <div id="tiltRow">
+            <span>Tilt</span><input id="tilt" type="range" min="0" max="80" step="1" value="0" />
+            <span id="tiltVal">0°</span>
+          </div>
+          <div id="reliefRow" class="tiltRow">
+            <label><input id="relief" type="checkbox" checked /> 3D relief</label>
+            <input id="exag" type="range" min="1" max="10" step="0.5" value="2" title="Height exaggeration" />
+            <span id="exagVal">×2</span>
+          </div>
+          <div id="terrainNote" class="note"></div>
+        </div>
+
+        <div class="sub">Lighting</div>
+        <div class="setRow">
+          <span>Shading</span>
+          <select id="shadeMode" title="How the terrain is lit">
+            <option value="sun">Real sun (day / night)</option>
+            <option value="hill">Hillshade (light from NW)</option>
+            <option value="off">Off (flat imagery)</option>
+          </select>
+        </div>
+        <div class="setRow" id="shadeRow">
+          <span>Strength</span>
+          <input id="shadeStrength" type="range" min="0.1" max="1" step="0.05" value="0.7" title="How dark shadows and the night side get" />
+          <span id="shadeVal">70%</span>
+        </div>
+        <div class="setRow">
+          <span>Time of day</span>
+          <select id="dayMode" title="Where the sun is (used by Real sun shading and the atmosphere)">
+            <option value="real">Real Mars time (now)</option>
+            <option value="fixed">Fixed local time</option>
+          </select>
+        </div>
+        <div class="setRow" id="dayHourRow" hidden>
+          <span>Local time</span>
+          <input id="dayHour" type="range" min="5" max="19" step="0.25" value="10" title="Local solar time at the view centre" />
+          <span id="dayHourVal">10:00</span>
+        </div>
+        <div id="shadeNote" class="setNote"></div>
+        <label class="setCheck" title="Thin dusty CO2 air: a glow on the limb, haze toward the horizon and a butterscotch sky when you tilt down low"><input id="atmo" type="checkbox" checked /> Atmosphere (sky glow &amp; dust haze)</label>
+
+        <div class="sub">Map spots</div>
+        <div class="setRow">
+          <span>Show pins</span>
+          <select id="pinRange" title="Spot pins appear once the camera is closer than this to them">
+            <option value="0">Always</option>
+            <option value="10000">Within 10,000 km</option>
+            <option value="5000" selected>Within 5,000 km</option>
+            <option value="2000">Within 2,000 km</option>
+            <option value="800">Within 800 km</option>
+            <option value="250">Within 250 km</option>
+          </select>
+        </div>
+        <div class="setNote">Far out, pins hide so the planet stays clear. A selected spot always stays visible.</div>
+
+        <div class="sub">Performance</div>
+        <div class="setRow">
+          <span>Terrain detail</span>
+          <select id="detailMode" title="How sharp terrain and imagery get before finer tiles stop loading">
+            <option value="2">High</option>
+            <option value="3">Balanced</option>
+            <option value="5">Low (fastest)</option>
+          </select>
+        </div>
+        <div class="setRow">
+          <span>Resolution</span>
+          <select id="resMode" title="Render resolution; lower is faster on big or high-DPI screens">
+            <option value="1">100%</option>
+            <option value="0.85">85%</option>
+            <option value="0.7">70% (fastest)</option>
+          </select>
+        </div>
+
+        <div class="sub">Cache</div>
+        <div id="cache">
+          <div class="cacheLine"><span class="k">Browser tiles</span><span id="cacheInfo">…</span><button id="btnClear" type="button" title="Delete the imagery tiles this browser saved">Clear</button></div>
+          <div id="serverCache"></div>
+        </div>
+
+        <div class="sub">Position</div>
+        <div id="marsTime"></div>
+        <div id="readout"></div>
+        <div id="ground"></div>
+        <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 80°) · touch: two-finger drag up/down to tilt</div>
       </div>
-      <div id="pickOpts">
-        <label><input id="globalOnly" type="checkbox" checked /> Global only</label>
-        <span id="pickCount"></span>
+    </section>
+
+    <section class="win" id="winLayers" role="tabpanel">
+      <div class="winBody">
+        <div id="picker">
+          <div id="pickRow">
+            <select id="layerCat" title="Category"><option value="">All types</option></select>
+            <input id="layerSearch" type="search" placeholder="Add layer: albedo, DEM, THEMIS…" autocomplete="off" spellcheck="false" />
+          </div>
+          <div id="pickOpts">
+            <label><input id="globalOnly" type="checkbox" checked /> Global only</label>
+            <span id="pickCount"></span>
+          </div>
+          <div id="results" hidden></div>
+        </div>
+        <div id="layers"></div>
+        <div class="hint" style="margin:0 0 4px">Click the map to read every layer's pixel at that spot.</div>
+        <div id="status"></div>
       </div>
-      <div id="results" hidden></div>
-    </div>
-    <div id="layers"></div>
-    <div class="hint" style="margin:0 0 8px">Click the map to read every layer's pixel at that spot.</div>
-    <div id="spotControls"><div class="sub">Mission spots</div><button id="spotToggle" type="button" aria-pressed="true">Markers on</button></div>
-    <div id="roadControls"><div class="sub">Curiosity traverse · PLACES</div><button id="roadToggle" type="button" aria-pressed="false">Rover road off</button></div>
-    <div id="spotFilters">
-      <input id="spotSearch" type="search" placeholder="Search spots, missions, tags…" aria-label="Search mission spots" />
-      <select id="spotCategory" aria-label="Filter spots by category"><option value="">All categories</option></select>
-      <div id="spotTagFilters" aria-label="Filter spots by tags"></div>
-      <div id="spotFilterCount" aria-live="polite"></div>
-    </div>
-    <div id="spots"></div>
-    <div class="sub">View</div>
-    <div id="view">
-      <button id="btnTop" class="on">Top-down</button>
-      <button id="btnTilt">Tilted 60°</button>
-      <div id="tiltRow">
-        <span>Tilt</span><input id="tilt" type="range" min="0" max="80" step="1" value="0" />
-        <span id="tiltVal">0°</span>
+    </section>
+
+    <section class="win" id="winSpots" role="tabpanel">
+      <div class="winBody">
+        <div id="spotControls">
+          <button id="spotToggle" type="button" aria-pressed="true">Markers on</button>
+          <button id="roadToggle" type="button" aria-pressed="false" title="Curiosity's real traverse from the PLACES data (NASA/JPL)">Rover road off</button>
+        </div>
+        <div id="spotFilters">
+          <input id="spotSearch" type="search" placeholder="Search names, kinds and tags: rover Gale, lander NASA…" aria-label="Search mission spots" />
+          <div id="kindHead">
+            <span class="kindTitle">Kind<em id="kindSummary"></em></span>
+            <button id="kindAll" type="button" title="Select every kind of spot, or none">Select all</button>
+          </div>
+          <div id="spotKinds" aria-label="Filter spots by kind"></div>
+          <div class="sub" style="margin:2px 0 0">Tags</div>
+          <div id="tagPicker">
+            <input id="tagSearch" type="search" placeholder="Add a tag filter: Gale, NASA, Rover…" autocomplete="off" spellcheck="false"
+              role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="tagSuggest" aria-label="Search tags to filter by" />
+            <div id="tagSuggest" role="listbox" hidden></div>
+          </div>
+          <div id="tagChosen" aria-label="Tag filters in use"></div>
+          <div id="tagMatchRow" hidden>
+            <span>Spots with</span>
+            <button type="button" id="tagMatchAll" class="on" aria-pressed="true" title="Only spots that carry every chosen tag">all tags</button>
+            <button type="button" id="tagMatchAny" aria-pressed="false" title="Spots that carry at least one chosen tag">any tag</button>
+          </div>
+          <div id="spotFilterCount" aria-live="polite"></div>
+        </div>
+        <div id="spotHint" class="spotHint">No spots on the map. Press <b>Select all</b> next to Kind, pick kinds, search, or add a tag.</div>
+        <div id="spots"></div>
       </div>
-      <div id="reliefRow" class="tiltRow">
-        <label><input id="relief" type="checkbox" checked /> 3D relief</label>
-        <input id="exag" type="range" min="1" max="10" step="0.5" value="2" title="Height exaggeration" />
-        <span id="exagVal">×2</span>
+    </section>
+
+    <section class="win" id="winRoute" role="tabpanel">
+      <div class="winBody">
+        <div id="routeControls">
+          <div class="sub" style="margin-top:0">Terrain route · MOLA</div>
+          <button id="routeAddBtn" type="button">Add waypoint</button>
+          <button id="routeUndoBtn" type="button">Undo last</button>
+          <button id="routeClearBtn" type="button">Clear</button>
+          <div class="hint">Add points in order; the route visits each one.</div>
+          <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
+          <label class="hint" style="display:block"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
+          <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
+          <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
+          <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
+          <div id="routeStatus" aria-live="polite">Add at least two waypoints in travel order.</div>
+        </div>
       </div>
-      <div id="terrainNote" class="note"></div>
-    </div>
-    <div class="sub">Sun &amp; Mars time</div>
-    <div id="sunRow">
-      <span>Shading</span>
-      <select id="shadeMode" title="How the terrain is lit">
-        <option value="sun">Real sun (day / night)</option>
-        <option value="hill">Hillshade (light from NW)</option>
-        <option value="off">Off (flat imagery)</option>
-      </select>
-    </div>
-    <div id="shadeRow">
-      <span>Strength</span>
-      <input id="shadeStrength" type="range" min="0.1" max="1" step="0.05" value="0.7" title="How dark shadows and the night side get" />
-      <span id="shadeVal">70%</span>
-    </div>
-    <div id="shadeNote"></div>
-    <div id="atmoRow">
-      <label title="Thin dusty CO2 air: a glow on the limb, haze toward the horizon and a butterscotch sky when you tilt down low"><input id="atmo" type="checkbox" checked /> Atmosphere (sky glow &amp; dust haze)</label>
-    </div>
-    <div id="marsTime"></div>
-    <div id="readout"></div>
-    <div id="ground"></div>
-    <div id="routeControls">
-      <div class="sub">Terrain route · MOLA</div>
-      <button id="routeAddBtn" type="button">Add waypoint</button>
-      <button id="routeUndoBtn" type="button">Undo last</button>
-      <button id="routeClearBtn" type="button">Clear</button>
-      <div class="hint">Add points in order; the route visits each one.</div>
-      <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
-      <label class="hint" style="display:block"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
-      <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
-      <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
-      <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
-      <div id="routeStatus" aria-live="polite">Add at least two waypoints in travel order.</div>
-    </div>
-    <div id="status"></div>
-    <div class="sub">Tile cache</div>
-    <div id="cache"><span id="cacheInfo">…</span> <button id="btnClear">Clear</button></div>
-    <div class="hint">Left-drag: move · wheel / right-drag: zoom · hold left + right buttons and drag up/down: tilt (max 80°) · touch: two-finger drag up/down to tilt</div>
+    </section>
   </div>
   <div id="clock">
     <div id="clockTime">--:--:--</div>
@@ -272,6 +447,7 @@
   <div id="probe" hidden></div>
   <section id="spotCard" hidden aria-live="polite">
     <div class="spotHead"><h2 id="spotTitle"></h2><button id="spotClose" type="button" aria-label="Close spot details">×</button></div>
+    <span id="spotKind" class="kindTag big"></span>
     <div class="spotType" id="spotType"></div>
     <div id="spotTags"></div>
     <img id="spotImage" hidden alt="" />
@@ -1044,57 +1220,95 @@
       })),
       { id: "curiosity", name: "Curiosity landing", lon: 137.4417, lat: -4.5895,
         type: "Rover landing site", mission: "Curiosity / Mars Science Laboratory", date: "Touchdown · 6 Aug 2012",
-        category: "Landing site", tags: ["Gale", "Rover", "MSL", "NASA"], vrEnabled: false,
+        category: "Rover landing site", tags: ["Gale", "Rover", "MSL", "NASA"], vrEnabled: false,
         note: "Gale crater landing area. Turn on Rover road to see Curiosity's traverse.", source: "NASA/JPL · Curiosity landing site", url: "https://mars.nasa.gov/msl/mission/timeline/surfaceops/" },
       { id: "mars3", name: "Mars 3", lon: 202.019 - 360, lat: -45.045,
         type: "Lander site · Ptolemaeus crater", mission: "Mars 3 / USSR", date: "Touchdown · 2 Dec 1971",
-        category: "Landing site", tags: ["Ptolemaeus Crater", "Lander", "USSR"], vrEnabled: false,
+        category: "Lander site", tags: ["Ptolemaeus Crater", "Lander", "USSR"], vrEnabled: false,
         note: "First soft landing on Mars; transmitted about 14.5 s before going silent.", source: "NASA JPL · Mars 3 lander", url: "https://www.jpl.nasa.gov/news/nasa-mars-orbiter-images-may-show-1971-soviet-lander" },
       { id: "viking1", name: "Viking 1", lon: -47.95, lat: 22.27,
         type: "Lander site · Chryse Planitia", mission: "Viking 1", date: "Touchdown · 20 Jul 1976",
-        category: "Landing site", tags: ["Chryse Planitia", "Lander", "NASA", "1970s"], vrEnabled: false,
+        category: "Lander site", tags: ["Chryse Planitia", "Lander", "NASA", "1970s"], vrEnabled: false,
         note: "First successful U.S. landing on Mars. Coordinates per NASA NSSDC (planetocentric).", source: "NASA NSSDC · Viking", url: "https://nssdc.gsfc.nasa.gov/planetary/viking.html" },
       { id: "viking2", name: "Viking 2", lon: 134.29, lat: 47.64,
         type: "Lander site · Utopia Planitia", mission: "Viking 2", date: "Touchdown · 3 Sep 1976",
-        category: "Landing site", tags: ["Utopia Planitia", "Lander", "NASA", "1970s"], vrEnabled: false,
+        category: "Lander site", tags: ["Utopia Planitia", "Lander", "NASA", "1970s"], vrEnabled: false,
         note: "Coordinates per NASA NSSDC (planetocentric).", source: "NASA NSSDC · Viking", url: "https://nssdc.gsfc.nasa.gov/planetary/viking.html" },
       { id: "pathfinder", name: "Pathfinder", lon: 326.75 - 360, lat: 19.13,
         type: "Lander + Sojourner rover", mission: "Mars Pathfinder", date: "Touchdown · 4 Jul 1997",
-        category: "Landing site", tags: ["Ares Vallis", "Rover", "Lander", "NASA"], vrEnabled: false,
+        category: "Rover landing site", tags: ["Ares Vallis", "Rover", "Lander", "NASA"], vrEnabled: false,
         note: "A technology demonstration with the Sojourner rover.", source: "NASA NSSDC · Mars Pathfinder", url: "https://nssdc.gsfc.nasa.gov/planetary/mesur.html" },
       { id: "beagle2", name: "Beagle 2", lon: 90.431, lat: 11.529,
         type: "Lander site · Isidis Planitia", mission: "Beagle 2 / Mars Express", date: "Touchdown · 25 Dec 2003",
-        category: "Landing site", tags: ["Isidis Planitia", "Lander", "ESA", "UK"], vrEnabled: false,
+        category: "Lander site", tags: ["Isidis Planitia", "Lander", "ESA", "UK"], vrEnabled: false,
         note: "No signal on landing; found intact but undeployed in HiRISE imagery in 2015.", source: "HiRISE · Beagle 2 (ESP_039308_1915)", url: "https://www.uahirise.org/ESP_039308_1915" },
       { id: "spirit", name: "Spirit", lon: 175.478, lat: -14.572,
         type: "Rover landing site · Gusev crater", mission: "Spirit / MER-A", date: "Touchdown · 4 Jan 2004",
-        category: "Landing site", tags: ["Gusev crater", "Rover", "MER", "NASA"], vrEnabled: false,
+        category: "Rover landing site", tags: ["Gusev crater", "Rover", "MER", "NASA"], vrEnabled: false,
         note: "Gusev crater. Stuck in soft soil; last contact 22 Mar 2010.", source: "MER Analyst's Notebook mission overview", url: "https://an.rsl.wustl.edu/help/Content/About%20the%20mission/MER/MER%20mission.htm" },
       { id: "opportunity", name: "Opportunity", lon: 354.474 - 360, lat: -1.948,
         type: "Rover landing site · Meridiani Planum", mission: "Opportunity / MER-B", date: "Touchdown · 25 Jan 2004",
-        category: "Landing site", tags: ["Meridiani Planum", "Rover", "MER", "NASA"], vrEnabled: false,
+        category: "Rover landing site", tags: ["Meridiani Planum", "Rover", "MER", "NASA"], vrEnabled: false,
         note: "Meridiani Planum; ended in a planet-wide dust storm in 2018.", source: "MER Analyst's Notebook mission overview", url: "https://an.rsl.wustl.edu/help/Content/About%20the%20mission/MER/MER%20mission.htm" },
       { id: "phoenix", name: "Phoenix", lon: 234.251 - 360, lat: 68.219,
         type: "Lander site · Vastitas Borealis (north polar)", mission: "Phoenix / PHX", date: "Touchdown · 25 May 2008",
-        category: "Landing site", tags: ["Vastitas Borealis", "Lander", "NASA", "2000s"], vrEnabled: false,
+        category: "Lander site", tags: ["Vastitas Borealis", "Lander", "NASA", "2000s"], vrEnabled: false,
         note: "Furthest north of any Mars landing; studied water ice in the arctic plains.", source: "NASA Science · Mars Phoenix", url: "https://science.nasa.gov/mission/mars-phoenix" },
       { id: "schiaparelli", name: "Schiaparelli", lon: 353.79 - 360, lat: -2.05,
         type: "Lander crash site · Meridiani Planum", mission: "Schiaparelli EDM / ExoMars", date: "Touchdown · 19 Oct 2016",
-        category: "Landing site", tags: ["Meridiani Planum", "Lander", "ESA", "Failed landing"], vrEnabled: false,
+        category: "Crash site", tags: ["Meridiani Planum", "Lander", "ESA", "Failed landing"], vrEnabled: false,
         note: "ExoMars entry, descent and landing demonstrator; crash landed; site imaged from orbit.", source: "ESA · Schiaparelli crash site", url: "https://www.esa.int/Science_Exploration/Human_and_Robotic_Exploration/Exploration/ExoMars/Schiaparelli_crash_site_in_colour" },
       { id: "insight", name: "InSight", lon: 135.623, lat: 4.502,
         type: "Lander site · Elysium Planitia", mission: "InSight", date: "Touchdown · 26 Nov 2018",
-        category: "Landing site", tags: ["Elysium Planitia", "Lander", "NASA"], vrEnabled: false,
+        category: "Lander site", tags: ["Elysium Planitia", "Lander", "NASA"], vrEnabled: false,
         note: "Interior Exploration lander; seismic + heat-flow probes; last contact Dec 2022.", source: "NASA Science · InSight", url: "https://science.nasa.gov/mission/insight/" },
       { id: "zhurong", name: "Zhurong", lon: 109.914, lat: 25.102,
         type: "Rover landing site · Utopia Planitia", mission: "Zhurong / Tianwen-1", date: "Touchdown · 14 May 2021",
-        category: "Landing site", tags: ["Utopia Planitia", "Rover", "CNSA", "China"], vrEnabled: false,
+        category: "Rover landing site", tags: ["Utopia Planitia", "Rover", "CNSA", "China"], vrEnabled: false,
         note: "China's first Mars rover; position per HiRISE ESP_069665_2055.", source: "HiRISE · Tianwen-1 lander & Zhurong rover", url: "https://www.uahirise.org/ESP_069665_2055" },
       { id: "perseverance", name: "Perseverance", lon: 77.45, lat: 18.44,
         type: "Rover landing site · Jezero crater", mission: "Perseverance / Mars 2020", date: "Touchdown · 18 Feb 2021",
-        category: "Landing site", tags: ["Jezero", "Rover", "Mars 2020", "NASA"], vrEnabled: false,
+        category: "Rover landing site", tags: ["Jezero", "Rover", "Mars 2020", "NASA"], vrEnabled: false,
         note: "Jezero crater landing site. Coordinates are an approximate map pin.", source: "NASA Science · How We Land on Mars", url: "https://science.nasa.gov/planetary-science/programs/mars-exploration/mission-timeline/how-we-land-on-mars/" },
+      { id: "curiosity-traverse", name: "Curiosity traverse", lon: 137.40, lat: -4.70, range: 32000, road: true,
+        type: "Rover path · Bradbury landing to the boxwork", mission: "Curiosity / Mars Science Laboratory", date: "Aug 2012 – 2025",
+        category: "Rover path", tags: ["Gale", "Curiosity", "MSL", "Rover", "NASA"], vrEnabled: false,
+        note: "Curiosity's localized traverse from the PLACES data; selecting this spot turns on the Rover road.",
+        source: "MSL Rover PLACES bundle (PDS Imaging Node, JPL)", url: "https://planetarydata.jpl.nasa.gov/img/data/msl/msl_places/" },
+      { id: "aeolis-mons", name: "Aeolis Mons (Mount Sharp)", lon: 137.85, lat: -5.08, range: 90000,
+        type: "Terrain · central mound of Gale crater", mission: "Curiosity's climb", date: "~5.5 km high",
+        category: "Terrain", tags: ["Gale", "Mountain", "Geology"], vrEnabled: false,
+        note: "Layered sedimentary mound Curiosity has been climbing since 2014. Pin at the approximate centre.",
+        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
+      { id: "olympus-mons", name: "Olympus Mons", lon: 226.2 - 360, lat: 18.65, range: 2200000,
+        type: "Terrain · shield volcano, Tharsis", mission: "Landmark", date: "~22 km high, ~600 km across",
+        category: "Terrain", tags: ["Tharsis", "Volcano", "Mountain"], vrEnabled: false,
+        note: "Tallest known volcano in the solar system. Pin at the approximate summit caldera.",
+        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
+      { id: "valles-marineris", name: "Valles Marineris", lon: 300.8 - 360, lat: -13.9, range: 4500000,
+        type: "Terrain · canyon system", mission: "Landmark", date: "~4,000 km long, up to ~7 km deep",
+        category: "Terrain", tags: ["Canyon", "Tharsis"], vrEnabled: false,
+        note: "The largest canyon system on Mars, running east from Tharsis. Pin at the approximate centre.",
+        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
+      { id: "hellas", name: "Hellas Planitia", lon: 70.5, lat: -42.4, range: 4000000,
+        type: "Terrain · impact basin", mission: "Landmark", date: "~2,300 km across, ~7 km deep",
+        category: "Terrain", tags: ["Basin", "Impact crater"], vrEnabled: false,
+        note: "One of the largest impact basins in the solar system and the lowest ground on Mars. Pin at the approximate centre.",
+        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
     ];
+    // Every spot has one kind (its `category`), shown as a coloured label on its button, card and
+    // map pin, and usable as a filter. The order here is the order of the groups in the list.
+    const SPOT_KINDS = [
+      { kind: "Rover path", short: "Rover path", color: "#ffd54f" },
+      { kind: "Rover landing site", short: "Rover landing", color: "#5ec8ff" },
+      { kind: "Lander site", short: "Lander", color: "#7ddc8c" },
+      { kind: "Crash site", short: "Crash site", color: "#ff7a6b" },
+      { kind: "Science target", short: "Science", color: "#ffa64d" },
+      { kind: "Panorama", short: "Panorama", color: "#c99bff" },
+      { kind: "Terrain", short: "Terrain", color: "#4fd6c8" },
+    ];
+    const kindOf = (spot) => SPOT_KINDS.find((k) => k.kind === spot.category) ??
+      { kind: spot.category, short: spot.category, color: "#bbbbbb" };
     const spotButtons = new Map();
     const spotEntities = new Map();
     const activeSpotTags = new Set();
@@ -1102,14 +1316,50 @@
     let selectedSpot = null;
     const spotToggle = document.getElementById("spotToggle");
     const spotsEl = document.getElementById("spots");
+    // The list: one dropdown per kind. Its header shows the colour, name and how many spots
+    // match; click it to open or close that kind's spots. Which kinds are open is remembered.
+    // While a search or tag filter is in use every matching kind opens, so results are visible.
+    const GROUPS_OPEN_KEY = "mars-spot-groups-open-v1";
+    let openGroups = new Set();
+    try { openGroups = new Set(JSON.parse(localStorage.getItem(GROUPS_OPEN_KEY) || "[]")); } catch { /* all closed */ }
+    const spotGroups = new Map(); // kind -> { el, head, grid, count }
+    function makeSpotGroup(k) {
+      const el = document.createElement("div"); el.className = "spotGroup"; el.style.setProperty("--k", k.color);
+      const head = document.createElement("button"); head.type = "button"; head.className = "spotGroupHead";
+      head.innerHTML = `<span class="chev">▸</span><i></i><span class="gName"></span><em></em>`;
+      head.querySelector(".gName").textContent = k.kind;
+      const grid = document.createElement("div"); grid.className = "spotGrid";
+      grid.id = `spotGroup-${k.kind.replace(/\W+/g, "-")}`;
+      head.setAttribute("aria-controls", grid.id);
+      head.addEventListener("click", () => {
+        if (openGroups.has(k.kind)) openGroups.delete(k.kind); else openGroups.add(k.kind);
+        try { localStorage.setItem(GROUPS_OPEN_KEY, JSON.stringify([...openGroups])); } catch { /* ignore */ }
+        syncGroupOpen();
+      });
+      el.append(head, grid); spotsEl.append(el);
+      const g = { el, head, grid, count: head.querySelector("em") };
+      spotGroups.set(k.kind, g);
+      return g;
+    }
+    function syncGroupOpen() {
+      const searching = activeSpotTags.size > 0 || document.getElementById("spotSearch").value.trim() !== "";
+      for (const [kind, g] of spotGroups) {
+        const open = searching || openGroups.has(kind);
+        g.el.classList.toggle("open", open);
+        g.head.setAttribute("aria-expanded", String(open));
+        g.head.disabled = searching; // results stay open while searching
+      }
+    }
+    for (const k of SPOT_KINDS) makeSpotGroup(k);
     for (const spot of SPOTS) {
+      const pin = kindOf(spot).color;
       const entity = viewer.entities.add({
         id: `spot-${spot.id}`, position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS),
         show: spotsVisible,
         properties: { spotId: spot.id, category: spot.category, tags: spot.tags ?? [], vrEnabled: !!spot.vrEnabled },
         billboard: {
           image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46"><path d="M19 2C9.6 2 3 8.8 3 17.2 3 28 19 44 19 44s16-16 16-26.8C35 8.8 28.4 2 19 2Z" fill="#171614" fill-opacity=".96" stroke="${spot.id === "gale-boxwork" ? "#f4c66a" : "#8fc9dc"}" stroke-width="2.2"/><circle cx="19" cy="17" r="7" fill="${spot.id === "gale-boxwork" ? "#f4c66a" : "#8fc9dc"}" fill-opacity=".2" stroke="${spot.id === "gale-boxwork" ? "#f4c66a" : "#8fc9dc"}" stroke-width="1.6"/><circle cx="19" cy="17" r="2.5" fill="#fff"/></svg>`
+            `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46"><path d="M19 2C9.6 2 3 8.8 3 17.2 3 28 19 44 19 44s16-16 16-26.8C35 8.8 28.4 2 19 2Z" fill="#171614" fill-opacity=".96" stroke="${pin}" stroke-width="2.4"/><circle cx="19" cy="17" r="7" fill="${pin}" fill-opacity=".35" stroke="${pin}" stroke-width="1.6"/><circle cx="19" cy="17" r="2.5" fill="#fff"/></svg>`
           )}`,
           width: 38, height: 46, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           scaleByDistance: new Cesium.NearFarScalar(2e4, 1, 1e7, 0.8),
@@ -1124,13 +1374,22 @@
       });
       spotEntities.set(spot.id, entity);
       const b = document.createElement("button");
-      b.append(document.createTextNode(spot.name));
+      b.style.setProperty("--k", pin);
+      const name = document.createElement("span"); name.className = "spotName"; name.textContent = spot.name;
+      const kindTag = document.createElement("span"); kindTag.className = "kindTag"; kindTag.textContent = kindOf(spot).short;
+      b.append(name, kindTag);
       if (spot.vrEnabled) {
         const badge = document.createElement("span"); badge.className = "spotBadge"; badge.textContent = "VR";
-        b.append(badge);
+        kindTag.append(badge);
       }
+      b.title = `${spot.name} · ${spot.category}`;
       b.addEventListener("click", () => { setSpotsVisible(true); selectSpot(spot); });
-      spotsEl.append(b); spotButtons.set(spot.id, b);
+      let group = spotGroups.get(spot.category);
+      if (!group) { // a kind missing from SPOT_KINDS still gets listed
+        const k = kindOf(spot); SPOT_KINDS.push(k);
+        group = makeSpotGroup(k);
+      }
+      group.grid.append(b); spotButtons.set(spot.id, b);
     }
     const spotCard = document.getElementById("spotCard");
     const spotStats = document.getElementById("spotStats");
@@ -1155,46 +1414,197 @@
       spotToggle.classList.toggle("on", visible);
       spotToggle.setAttribute("aria-pressed", String(visible));
     }
+    const activeKinds = new Set(); // empty = every kind
+    let tagMatchAny = false;       // false: a spot needs every chosen tag; true: at least one
+    const KINDS_KEY = "mars-spot-kinds-v1";
+    try {
+      const saved = JSON.parse(localStorage.getItem(KINDS_KEY) || "null");
+      for (const k of saved ?? SPOT_KINDS.map((x) => x.kind)) activeKinds.add(k);
+    } catch { for (const x of SPOT_KINDS) activeKinds.add(x.kind); }
     function spotMatches(spot) {
       const query = document.getElementById("spotSearch").value.trim().toLowerCase();
-      const category = document.getElementById("spotCategory").value;
-      const haystack = [spot.name, spot.type, spot.mission, spot.note, spot.category, ...(spot.tags ?? [])].join(" ").toLowerCase();
-      return (!query || haystack.includes(query)) && (!category || spot.category === category) &&
-        [...activeSpotTags].every((tag) => spot.tags?.includes(tag));
+      const haystack = [spot.name, spot.type, spot.mission, spot.note, spot.category, kindOf(spot).short, spot.date,
+        ...(spot.tags ?? [])].join(" ").toLowerCase();
+      // every word must match somewhere, so "rover gale" or "lander nasa" narrow things down
+      const words = query.split(/\s+/).filter(Boolean);
+      return words.every((w) => haystack.includes(w)) && (!activeKinds.size || activeKinds.has(spot.category)) &&
+        (!activeSpotTags.size || [...activeSpotTags][tagMatchAny ? "some" : "every"]((tag) => spot.tags?.includes(tag)));
     }
+    // Spots show (on the map and in the list) only for the chosen kinds. With no kind chosen,
+    // a search or tag still finds spots across every kind; with nothing at all, none show.
+    const spotFiltering = () => activeKinds.size > 0 || activeSpotTags.size > 0 ||
+      document.getElementById("spotSearch").value.trim() !== "";
     function applySpotFilters() {
       let count = 0;
+      const filtering = spotFiltering();
       for (const spot of SPOTS) {
         const matches = spotMatches(spot);
         if (matches) count++;
-        spotButtons.get(spot.id).hidden = !matches;
-        spotEntities.get(spot.id).show = spotsVisible && matches;
+        spotButtons.get(spot.id).hidden = !matches || !filtering;
+        spotEntities.get(spot.id).show = spotsVisible && matches && filtering;
         if (!matches && selectedSpot?.id === spot.id) {
           selectedSpot = null; spotCard.hidden = true;
           spotEntities.get(spot.id).label.show = false;
           spotButtons.get(spot.id).classList.remove("active");
         }
       }
-      document.getElementById("spotFilterCount").textContent = `${count} of ${SPOTS.length} spots`;
+      for (const [kind, g] of spotGroups) {
+        const shown = SPOTS.filter((sp) => sp.category === kind && !spotButtons.get(sp.id).hidden).length;
+        g.el.hidden = !shown;
+        g.count.textContent = String(shown);
+      }
+      syncGroupOpen();
+      document.getElementById("spotHint").hidden = filtering;
+      document.getElementById("spotFilterCount").textContent = !filtering ? `No spots shown (${SPOTS.length} available)`
+        : count ? `${count} of ${SPOTS.length} spots` : "No spots match. Clear the search or filters.";
+      syncKindChips();
     }
-    const categoryFilter = document.getElementById("spotCategory");
-    for (const category of [...new Set(SPOTS.map((spot) => spot.category))].sort()) {
-      const option = document.createElement("option"); option.value = category; option.textContent = category;
-      categoryFilter.append(option);
-    }
-    const tagFilters = document.getElementById("spotTagFilters");
-    for (const tag of [...new Set(SPOTS.flatMap((spot) => spot.tags ?? []))].sort()) {
-      const b = document.createElement("button"); b.type = "button"; b.className = "spotTagFilter"; b.textContent = tag;
+    // Kind chips: coloured like the pins, so they double as the map legend. Several can be on.
+    const kindFilters = document.getElementById("spotKinds");
+    const kindSyncs = [];
+    const usedKinds = SPOT_KINDS.filter((k) => SPOTS.some((sp) => sp.category === k.kind)).map((k) => k.kind);
+    const saveKinds = () => { try { localStorage.setItem(KINDS_KEY, JSON.stringify([...activeKinds])); } catch { /* ignore */ } };
+    // "Select all" / "Select none" next to the Kind title: turns every kind on, or (when they all
+    // are) every kind off, so no spots show on Mars.
+    const kindAll = document.getElementById("kindAll");
+    const kindSummary = document.getElementById("kindSummary");
+    kindAll.addEventListener("click", () => {
+      const all = usedKinds.every((k) => activeKinds.has(k));
+      activeKinds.clear();
+      if (!all) for (const k of usedKinds) activeKinds.add(k);
+      saveKinds();
+      applySpotFilters();
+    });
+    kindSyncs.push(() => {
+      const on = usedKinds.filter((k) => activeKinds.has(k));
+      const all = on.length === usedKinds.length;
+      kindAll.textContent = all ? "Select none" : "Select all";
+      kindSummary.textContent = all ? `all ${usedKinds.length}` : !on.length ? "none"
+        : on.length <= 2 ? on.map((k) => kindOf({ category: k }).short).join(", ") : `${on.length} of ${usedKinds.length}`;
+    });
+    function syncKindChips() { for (const f of kindSyncs) f(); }
+    for (const k of SPOT_KINDS) {
+      const n = SPOTS.filter((sp) => sp.category === k.kind).length;
+      if (!n) continue;
+      const b = document.createElement("button"); b.type = "button"; b.className = "kindFilter";
+      b.style.setProperty("--k", k.color); b.setAttribute("aria-pressed", "false");
+      b.innerHTML = `<i></i><span></span><em></em>`;
+      b.querySelector("span").textContent = k.short; b.querySelector("em").textContent = n;
+      b.title = `Show only: ${k.kind}`;
+      const sync = () => {
+        b.classList.toggle("on", activeKinds.has(k.kind));
+        b.setAttribute("aria-pressed", String(activeKinds.has(k.kind)));
+      };
+      kindSyncs.push(sync);
       b.addEventListener("click", () => {
-        if (activeSpotTags.has(tag)) activeSpotTags.delete(tag); else activeSpotTags.add(tag);
-        b.classList.toggle("on", activeSpotTags.has(tag));
-        b.setAttribute("aria-pressed", String(activeSpotTags.has(tag)));
+        if (activeKinds.has(k.kind)) activeKinds.delete(k.kind); else activeKinds.add(k.kind);
+        saveKinds();
         applySpotFilters();
       });
-      b.setAttribute("aria-pressed", "false"); tagFilters.append(b);
+      kindFilters.append(b);
+    }
+    // Tag filter: type to get a dropdown of matching tags (with how many spots carry each), pick
+    // one to add it as a chip; "all tags" / "any tag" sets how several chips combine.
+    const tagCounts = new Map();
+    for (const sp of SPOTS) for (const t of sp.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+    const tagSearch = document.getElementById("tagSearch");
+    const tagSuggest = document.getElementById("tagSuggest");
+    const tagChosen = document.getElementById("tagChosen");
+    const tagMatchRow = document.getElementById("tagMatchRow");
+    let tagOptions = [], tagHl = 0;
+    function renderChosenTags() {
+      tagChosen.replaceChildren();
+      for (const tag of activeSpotTags) {
+        const chip = document.createElement("span"); chip.className = "tagChip";
+        chip.append(document.createTextNode(tag));
+        const x = document.createElement("button"); x.type = "button"; x.textContent = "×";
+        x.setAttribute("aria-label", `Remove tag filter ${tag}`);
+        x.addEventListener("click", () => { activeSpotTags.delete(tag); renderChosenTags(); applySpotFilters(); });
+        chip.append(x); tagChosen.append(chip);
+      }
+      tagMatchRow.hidden = activeSpotTags.size < 2;
+    }
+    function addTag(tag) {
+      activeSpotTags.add(tag);
+      tagSearch.value = "";
+      closeTagSuggest();
+      renderChosenTags();
+      applySpotFilters();
+    }
+    function closeTagSuggest() {
+      tagSuggest.hidden = true;
+      tagSearch.setAttribute("aria-expanded", "false");
+    }
+    function openTagSuggest() {
+      const q = tagSearch.value.trim().toLowerCase();
+      tagOptions = [...tagCounts.keys()]
+        .filter((t) => !activeSpotTags.has(t) && (!q || t.toLowerCase().includes(q)))
+        .sort((a, b) => {
+          const sa = a.toLowerCase().startsWith(q) ? 0 : 1, sb = b.toLowerCase().startsWith(q) ? 0 : 1;
+          return sa - sb || tagCounts.get(b) - tagCounts.get(a) || a.localeCompare(b);
+        });
+      tagHl = 0;
+      tagSuggest.replaceChildren();
+      if (!tagOptions.length) {
+        const none = document.createElement("div"); none.className = "none";
+        none.textContent = q ? `No tag matches "${tagSearch.value.trim()}"` : "Every tag is already in use";
+        tagSuggest.append(none);
+      }
+      tagOptions.forEach((t, i) => {
+        const opt = document.createElement("div"); opt.className = "opt"; opt.setAttribute("role", "option");
+        const name = document.createElement("span");
+        const at = q ? t.toLowerCase().indexOf(q) : -1;
+        if (at >= 0) { // bold the typed part
+          const b = document.createElement("b"); b.textContent = t.slice(at, at + q.length);
+          name.append(t.slice(0, at), b, t.slice(at + q.length));
+        } else name.textContent = t;
+        const n = document.createElement("em"); n.textContent = `${tagCounts.get(t)} spot${tagCounts.get(t) === 1 ? "" : "s"}`;
+        opt.append(name, n);
+        opt.addEventListener("mousedown", (e) => { e.preventDefault(); addTag(t); }); // before the input blurs
+        opt.addEventListener("mousemove", () => highlightTag(i));
+        tagSuggest.append(opt);
+      });
+      highlightTag(0);
+      tagSuggest.hidden = false;
+      tagSearch.setAttribute("aria-expanded", "true");
+    }
+    function highlightTag(i) {
+      tagHl = i;
+      [...tagSuggest.querySelectorAll(".opt")].forEach((el, j) => {
+        el.classList.toggle("hl", j === i);
+        el.setAttribute("aria-selected", String(j === i));
+        if (j === i) el.scrollIntoView({ block: "nearest" });
+      });
+    }
+    tagSearch.addEventListener("input", openTagSuggest);
+    tagSearch.addEventListener("focus", openTagSuggest);
+    tagSearch.addEventListener("blur", closeTagSuggest);
+    tagSearch.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (tagSuggest.hidden) openTagSuggest();
+        else if (tagOptions.length) highlightTag((tagHl + (e.key === "ArrowDown" ? 1 : tagOptions.length - 1)) % tagOptions.length);
+        e.preventDefault();
+      } else if (e.key === "Enter") {
+        if (!tagSuggest.hidden && tagOptions[tagHl]) addTag(tagOptions[tagHl]);
+        e.preventDefault();
+      } else if (e.key === "Escape") {
+        closeTagSuggest();
+      } else if (e.key === "Backspace" && !tagSearch.value && activeSpotTags.size) {
+        activeSpotTags.delete([...activeSpotTags].pop()); // quick undo of the last chip
+        renderChosenTags(); applySpotFilters();
+      }
+    });
+    for (const [id, any] of [["tagMatchAll", false], ["tagMatchAny", true]]) {
+      document.getElementById(id).addEventListener("click", () => {
+        tagMatchAny = any;
+        for (const [other, a] of [["tagMatchAll", false], ["tagMatchAny", true]]) {
+          const b = document.getElementById(other);
+          b.classList.toggle("on", a === any); b.setAttribute("aria-pressed", String(a === any));
+        }
+        applySpotFilters();
+      });
     }
     document.getElementById("spotSearch").addEventListener("input", applySpotFilters);
-    categoryFilter.addEventListener("change", applySpotFilters);
     applySpotFilters();
     spotToggle.addEventListener("click", () => setSpotsVisible(!spotsVisible));
     setSpotsVisible(true);
@@ -1282,16 +1692,22 @@
     document.getElementById("spotClose").addEventListener("click", () => {
       spotCard.hidden = true;
       selectedSpot = null;
+      onSpotSelected();
       for (const b of spotButtons.values()) b.classList.remove("active");
       for (const entity of spotEntities.values()) entity.label.show = false;
     });
+    let onSpotSelected = () => {}; // set by the pin-distance setting further down
     async function selectSpot(spot) {
       closeProbe();
       selectedSpot = spot;
+      onSpotSelected();
       for (const [id, b] of spotButtons) b.classList.toggle("active", id === spot.id);
+      if (!openGroups.has(spot.category)) { openGroups.add(spot.category); syncGroupOpen(); }
       for (const [id, entity] of spotEntities) entity.label.show = id === spot.id;
       document.getElementById("spotTitle").textContent = spot.name;
-      document.getElementById("spotType").textContent = `${spot.category} · ${spot.type} · ${spot.mission}`;
+      const kindEl = document.getElementById("spotKind");
+      kindEl.textContent = spot.category; kindEl.style.setProperty("--k", kindOf(spot).color);
+      document.getElementById("spotType").textContent = `${spot.type} · ${spot.mission}`;
       const spotTags = document.getElementById("spotTags");
       spotTags.replaceChildren();
       for (const tag of spot.tags ?? []) {
@@ -1343,9 +1759,10 @@
       const inside = hi.bounds && spot.lon >= hi.bounds[0] && spot.lon <= hi.bounds[2] && spot.lat >= hi.bounds[1] && spot.lat <= hi.bounds[3];
       addSpotStat("HiRISE coverage", inside ? "Gale mosaic" : "outside Gale mosaic");
       spotCard.hidden = false;
-      const cameraHeight = spot.category === "Panorama" ? 6000
-        : spot.id === "gale-boxwork" || spot.id === "curiosity" ? 18000 : 350000;
+      const cameraHeight = spot.range ?? (spot.category === "Panorama" ? 6000
+        : spot.id === "gale-boxwork" || spot.id === "curiosity" ? 18000 : 350000);
       flyToSpot(spot.lon, spot.lat, cameraHeight);
+      if (spot.road && !(traverseEntity && traverseEntity.show)) setTraverseVisible(true);
       if (USE_PROXY) fetch(`./terrain/point?lat=${spot.lat}&lon=${spot.lon}`).then(r => r.ok ? r.json() : Promise.reject())
         .then(j => { if (spotStats.contains(elevation)) elevation.textContent = `${Math.round(j.height).toLocaleString()} m`; })
         .catch(() => { if (spotStats.contains(elevation)) elevation.textContent = "unavailable"; });
@@ -1528,8 +1945,17 @@
 
     // Sun direction in Mars's body-fixed frame (the frame the globe is drawn in).
     const sunDir = new Cesium.Cartesian3(1, 0, 0);
+    // Settings > Time of day: null follows the real Mars time; a number (hours) puts the sun where
+    // it would be at that local solar time over the view centre (same season and declination).
+    let fixedHour = null;
     function updateSunDir(clk) {
-      const d = rad(clk.decl), l = rad(clk.subLon);
+      let subLon = clk.subLon;
+      if (fixedHour !== null) {
+        const c = MARS.cartesianToCartographic(viewCentre());
+        // local solar time = 12 h + (lon - subsolar lon) / 15 deg per hour
+        if (c) subLon = deg(c.longitude) - (fixedHour - 12) * 15;
+      }
+      const d = rad(clk.decl), l = rad(subLon);
       Cesium.Cartesian3.fromElements(Math.cos(d) * Math.cos(l), Math.cos(d) * Math.sin(l), Math.sin(d), sunDir);
       Cesium.Cartesian3.normalize(sunDir, sunDir);
     }
@@ -1734,7 +2160,8 @@
       const loc = localSolar(clk, lat, lon);
       const set = (el, t) => { if (el.textContent !== t) el.textContent = t; };
       set(clockTimeEl, fmtHours(loc.ltst));
-      set(clockSubEl, `local solar time \u00b7 Sol ${Math.floor(clk.msd).toLocaleString()}`);
+      set(clockSubEl, `local solar time \u00b7 Sol ${Math.floor(clk.msd).toLocaleString()}` +
+        (fixedHour !== null ? ` \u00b7 lit as ${fmtHours(fixedHour).slice(0, 5)}` : ""));
       set(clockWhereEl, fmtLatLon(lat, lon));
       set(clockSunEl, `sun ${loc.elev.toFixed(1)}\u00b0 \u00b7 ${sunWord(loc.elev)} \u00b7 ${season(clk.Ls, lat)}`);
     }
@@ -1742,6 +2169,72 @@
     viewer.camera.changed.addEventListener(() => { if (performance.now() - clockAt > 150) updateClock(); });
     viewer.camera.moveEnd.addEventListener(updateClock);
     viewer.camera.moveEnd.addEventListener(updateMarsTime);
+
+    // ---------------------------------------------------------------- settings: time of day, performance
+    const dayMode = document.getElementById("dayMode");
+    const dayHour = document.getElementById("dayHour");
+    const dayHourRow = document.getElementById("dayHourRow");
+    const dayHourVal = document.getElementById("dayHourVal");
+    const detailMode = document.getElementById("detailMode");
+    const resMode = document.getElementById("resMode");
+    const pinRange = document.getElementById("pinRange");
+    const GFX_KEY = "mars-graphics-v1";
+    try {
+      const g = JSON.parse(localStorage.getItem(GFX_KEY) || "null");
+      if (g) {
+        const pick = (sel, v) => { if ([...sel.options].some((o) => o.value === String(v))) sel.value = String(v); };
+        pick(dayMode, g.dayMode); pick(detailMode, g.detail); pick(resMode, g.res); pick(pinRange, g.pins);
+        if (Number.isFinite(g.dayHour)) dayHour.value = g.dayHour;
+      }
+    } catch { /* storage blocked: defaults */ }
+    function saveGraphics() {
+      try {
+        localStorage.setItem(GFX_KEY, JSON.stringify({
+          dayMode: dayMode.value, dayHour: Number(dayHour.value), detail: detailMode.value, res: resMode.value,
+          pins: pinRange.value,
+        }));
+      } catch { /* ignore */ }
+    }
+    function applyTimeOfDay() {
+      const fixed = dayMode.value === "fixed";
+      fixedHour = fixed ? Number(dayHour.value) : null;
+      dayHourRow.hidden = !fixed;
+      dayHourVal.textContent = fmtHours(Number(dayHour.value)).slice(0, 5);
+      // move the sun (and so the light and atmosphere) right away; the panel text follows on
+      // the next 1 s tick (updateMarsTime can't run yet at startup: it reads the probe below)
+      updateSunDir(clock);
+      applyLightDir();
+      updateClock();
+      saveGraphics();
+    }
+    dayMode.addEventListener("change", applyTimeOfDay);
+    dayHour.addEventListener("input", applyTimeOfDay);
+    applyTimeOfDay();
+
+    // Terrain detail: Cesium refines a tile until its error is under this many pixels. 2 is
+    // Cesium's default; higher loads far fewer tiles (softer distant terrain and imagery).
+    // Resolution: fraction of the screen's pixels rendered, so per-pixel work (atmosphere,
+    // imagery blending, shading) drops with its square.
+    function applyPerformance() {
+      globe.maximumScreenSpaceError = Number(detailMode.value);
+      viewer.resolutionScale = Number(resMode.value);
+      saveGraphics();
+    }
+    // Spot pins only within a distance of the camera (Cesium hides a billboard outside its
+    // DistanceDisplayCondition). The selected spot ignores it so its pin stays under its card.
+    function applyPinRange() {
+      const km = Number(pinRange.value);
+      const far = km > 0 ? new Cesium.DistanceDisplayCondition(0, km * 1000) : undefined;
+      for (const [id, entity] of spotEntities)
+        entity.billboard.distanceDisplayCondition = id === selectedSpot?.id ? undefined : far;
+      saveGraphics();
+    }
+    pinRange.addEventListener("change", applyPinRange);
+    applyPinRange();
+    onSpotSelected = applyPinRange;
+    detailMode.addEventListener("change", applyPerformance);
+    resMode.addEventListener("change", applyPerformance);
+    applyPerformance();
 
     // ---------------------------------------------------------------- click a point: pixel values
     // Click the map: a box pinned above that spot lists "layer name: value" for every layer in
@@ -2382,6 +2875,42 @@
     }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && probe) closeProbe(); });
 
+    // ---------------------------------------------------------------- dock tabs
+    // One panel shown at a time. Clicking the tab that is already open folds the panel down to
+    // just the tab bar (more map); clicking any tab opens it again.
+    const DOCK_KEY = "mars-dock-v2";
+    let serverCacheReady = false; // set once the cache section below has run
+    const dock = document.getElementById("dock");
+    const tabButtons = [...document.querySelectorAll("#tabs button")];
+    function showTab(id, collapsed = false) {
+      for (const b of tabButtons) {
+        const on = b.dataset.win === id;
+        b.setAttribute("aria-selected", String(on && !collapsed));
+        document.getElementById(b.dataset.win).classList.toggle("active", on);
+      }
+      dock.classList.toggle("collapsed", collapsed);
+      try { localStorage.setItem(DOCK_KEY, JSON.stringify({ tab: id, collapsed })); } catch { /* ignore */ }
+      if (id === "winSettings" && !collapsed && serverCacheReady) updateServerCache();
+    }
+    let dockSaved = null;
+    try { dockSaved = JSON.parse(localStorage.getItem(DOCK_KEY) || "null"); } catch { /* defaults */ }
+    showTab(tabButtons.some((b) => b.dataset.win === dockSaved?.tab) ? dockSaved.tab : "winLayers", !!dockSaved?.collapsed);
+    for (const b of tabButtons) {
+      b.addEventListener("click", () => {
+        const isOpen = b.getAttribute("aria-selected") === "true";
+        showTab(b.dataset.win, isOpen);
+      });
+    }
+    // arrow keys move between tabs, as in any tab bar
+    document.getElementById("tabs").addEventListener("keydown", (e) => {
+      const i = tabButtons.indexOf(document.activeElement);
+      if (i < 0 || (e.key !== "ArrowRight" && e.key !== "ArrowLeft")) return;
+      const next = tabButtons[(i + (e.key === "ArrowRight" ? 1 : tabButtons.length - 1)) % tabButtons.length];
+      next.focus();
+      showTab(next.dataset.win);
+      e.preventDefault();
+    });
+
     // ---------------------------------------------------------------- cache info
     const cacheInfo = document.getElementById("cacheInfo");
     async function updateCacheInfo() {
@@ -2397,8 +2926,27 @@
       await caches.delete("mars-tiles-v1").catch(() => {});
       updateCacheInfo();
     });
-    setInterval(updateCacheInfo, 5000);
+    // Server side: how much of each elevation dataset serve.mjs has downloaded to web/data.
+    const serverCacheEl = document.getElementById("serverCache");
+    const demName = (ppd) => ppd > 200 ? "HRSC 200 m" : `MOLA ${ppd} px/°`;
+    async function updateServerCache() {
+      if (!USE_PROXY) { serverCacheEl.textContent = ""; return; }
+      if (!document.getElementById("winSettings").classList.contains("active") || dock.classList.contains("collapsed")) return;
+      try {
+        const st = await (await fetch("./terrain/status", { cache: "no-store" })).json();
+        const rows = Object.entries(st.cached || {}).sort((a, b) => Number(a[0]) - Number(b[0]));
+        serverCacheEl.innerHTML = `<div class="head">Elevation downloaded by the server (web/data)</div>` +
+          rows.map(([ppd, f]) => {
+            const pct = Math.max(0, Math.min(1, f)) * 100;
+            const label = pct >= 99.95 ? "100%" : pct < 0.1 && pct > 0 ? "<0.1%" : `${pct.toFixed(pct < 10 ? 1 : 0)}%`;
+            return `<span>${demName(Number(ppd))}</span><span class="bar"><i style="width:${pct.toFixed(2)}%"></i></span><span class="pct">${label}</span>`;
+          }).join("");
+      } catch { serverCacheEl.textContent = "Server cache: unavailable"; }
+    }
+    setInterval(() => { updateCacheInfo(); updateServerCache(); }, 5000);
     updateCacheInfo();
+    serverCacheReady = true;
+    updateServerCache();
 
     // Tile loading progress, because Trek can take several seconds per tile.
     globe.tileLoadProgressEvent.addEventListener((queued) => {
