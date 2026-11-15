@@ -619,6 +619,7 @@
             <div class="lines"></div>
           </div>
           <div id="survivalBox">
+            <div id="integrityChip" class="intChip wait">Data integrity: checking…</div>
             <div class="svRow">
               <label title="Same route, different suit condition: shows how the plan refuses an unsafe excursion">Scenario <select id="svScenario"></select></label>
               <button id="routeExportBtn" type="button" disabled title="Download the computed route, survival budget and terrain excerpt as route.json">⬇ route.json</button>
@@ -738,6 +739,7 @@
     const RouteIO = await import("./route-io.js");
     const Survival = await import("./survival.js");
     const { renderSurvivalCard } = await import("./survival-card.js");
+    const Integrity = await import("./integrity-ui.js");
     import("./rems.js").then(async ({ loadRems, renderRems }) => renderRems(document.getElementById("remsBox"), await loadRems()))
       .catch((error) => { document.getElementById("remsBox").textContent = `REMS unavailable: ${error.message}`; });
 
@@ -3812,7 +3814,8 @@
       const sc = Survival.SCENARIOS[svScenario.value] ?? Survival.SCENARIOS.standard;
       return { scenario: svScenario.value, crew: sc.apply(Survival.DEFAULT_CREW), params: { ...(sc.params || {}), max_slope_deg: maxSlopeDeg() } };
     }
-    function showRoute(route) {
+    function showRoute(route, origin = route._origin ?? "live") {
+      route._origin = origin;
       currentRoute = route;
       routeExportBtn.disabled = false;
       renderSurvivalCard(document.getElementById("survivalCard"), route);
@@ -3836,14 +3839,14 @@
       if (!routeRawPath || routeRawPath.length < 2) return clearSurvival();
       const waypoints = routePoints.map((p, k) => ({ name: p.name ?? (k ? `Stop ${k}` : "Haven"), lon: p.lon, lat: p.lat }));
       if (routeLoopBox.checked) waypoints.push({ ...waypoints[0], name: `${waypoints[0].name} (return)`, role: "haven" });
-      showRoute(RouteIO.buildRoute({ path: routeRawPath, waypoints, grid: routeGrid, ...scenarioInputs() }));
+      showRoute(RouteIO.buildRoute({ path: routeRawPath, waypoints, grid: routeGrid, ...scenarioInputs() }), "live");
     }
     function reevaluateLoaded() { // scenario changed on a route loaded from a file
       const r = currentRoute;
       const path = RouteIO.plannerPath(r);
       const waypoints = r.waypoints.map(({ name, lon, lat, role }) => ({ name, lon, lat, role }));
       showRoute(RouteIO.buildRoute({ path, waypoints, heightAt: RouteIO.excerptSampler(r.terrain), ...scenarioInputs(),
-        meta: { label: r.label, site: r.site, terrain_source: r.profile?.terrain_source } }));
+        meta: { label: r.label, site: r.site, terrain_source: r.profile?.terrain_source } }), r._origin);
     }
     svScenario.addEventListener("change", () => {
       if (routeRawPath && !routeRawPath.fromFile) updateSurvival();
@@ -3855,8 +3858,9 @@
       const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "route.json" });
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     });
-    async function loadRouteFile(route, label) {
+    async function loadRouteFile(route, label, origin = "file") {
       route = RouteIO.parseRoute(route);
+      route._origin = origin;
       routeRequest++;
       clearRouteGraphics();
       routePoints.length = 0;
@@ -3874,12 +3878,34 @@
       flyToSpot((Math.min(...lons) + Math.max(...lons)) / 2, (Math.min(...lats) + Math.max(...lats)) / 2, 6000);
       document.getElementById("survivalCard").scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
-    document.getElementById("routeDemoBtn").addEventListener("click", async () => {
-      try {
+    // The demo route is a signed file: its bytes must match the verified manifest, or it is refused.
+    function refuseForIntegrity(message) {
+      routeRequest++;
+      clearRouteGraphics();
+      document.getElementById("survivalCard").innerHTML =
+        `<div class="svCard no" role="status"><div class="svVerdict">REFUSED — integrity: ${message.replace(/[&<>]/g, "")}</div>` +
+        `<div class="svFoot">The route file is not the one the team signed, so no survival budget is computed from it.</div></div>`;
+      setRouteStatus("Demo route refused: data integrity check failed.");
+    }
+    async function loadDemoRoute() {
+      let bytes, origin = "signed";
+      try { bytes = await Integrity.signedBytes("public/data/route.json"); }
+      catch (error) {
+        if (error.code !== "unsupported") return refuseForIntegrity(error.message);
         const res = await fetch("./public/data/route.json", { cache: "no-cache" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        await loadRouteFile(await res.json(), "Demo excursion");
-      } catch (error) { setRouteStatus(`Could not load the demo route: ${error.message}`); }
+        bytes = new Uint8Array(await res.arrayBuffer()); origin = "unchecked";
+      }
+      await loadRouteFile(new TextDecoder().decode(bytes), "Demo excursion", origin);
+    }
+    document.getElementById("routeDemoBtn").addEventListener("click", () =>
+      loadDemoRoute().catch((error) => setRouteStatus(`Could not load the demo route: ${error.message}`)));
+    Integrity.mountIntegrity(document.getElementById("integrityChip"), {
+      // only the route file itself decides the route; another changed file turns the chip red but keeps the route
+      onChange: (st) => {
+        const routeFile = st.report?.files?.find((f) => f.path === "public/data/route.json");
+        if (currentRoute?._origin === "signed" && st.status === "bad" && (!routeFile || routeFile.status !== "ok"))
+          refuseForIntegrity(`public/data/route.json: ${routeFile ? "does not match the signed manifest" : st.report.error.message}`);
+      },
     });
     document.getElementById("routeImportFile").addEventListener("change", async (event) => {
       const file = event.target.files?.[0];

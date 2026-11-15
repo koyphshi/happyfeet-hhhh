@@ -32,3 +32,5 @@ is the message bus**.
   Run: `cd web && npm ci && node serve.mjs --no-open` → http://localhost:8080
 - Tests: `cd web && npm test` (Node 20+, no extra deps).
 - Coefficients: every number goes in `docs/assumptions.md` with a source or `ASSUMED`.
+- Data files under `web/public/data/` are signed (`docs/integrity.md`). If you change one, ask
+  `agent:yasser` (key holder) in AGENT-SYNC to re-sign; until then the integrity chip is red and `npm test` fails.

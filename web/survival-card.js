@@ -39,6 +39,7 @@ export function renderSurvivalCard(el, route, { onWalkBack } = {}) {
         Walk-back limit (along the route): ${wb} <span class="h">of ${(route.distance_m / 1000).toFixed(2)} km</span></div>
       ${route.warnings.length ? `<ul class="svWarn">${route.warnings.map((w) => `<li class="${w.level}">${esc(w.text)}</li>`).join("")}</ul>` : ""}
       <ol class="svTl">${route.timeline.map((t) => `<li>${esc(t.name)} — T+${fmtDuration(t.t_s)}, ${(t.dist_m / 1000).toFixed(2)} km${t.dwell_s ? ` (sample ${Math.round(t.dwell_s / 60)} min)` : ""}</li>`).join("")}</ol>
+      <div class="svFoot">${{ signed: "Route file: signed demo, bytes verified against the manifest.", live: "Live route computed in this browser: a live check, not signed.", file: "Route opened from a local file: not signed.", unchecked: "Route file: integrity not checked (browser lacks Ed25519)." }[route._origin] ?? ""}</div>
       <div class="svFoot">White tick = ${Math.round(reserve * 100)}% reserve. Coefficients are ASSUMED unless cited in docs/assumptions.md. Terrain: ${esc(route.profile.terrain_source)} (km-scale, indicative).</div>
     </div>`;
   if (onWalkBack) onWalkBack(s.crew);
