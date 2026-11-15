@@ -108,17 +108,6 @@ let walkPanelCreated = false;
 let domIntroShown = false;
 let vrIntroShown = false;
 let introAnimationUntil = 0;
-let immersiveVr = false;
-window.marsWalkVrChanged = (active) => {
-  immersiveVr = Boolean(active);
-  const preview = $("walkStatusPreview");
-  if (preview) preview.hidden = immersiveVr;
-  if (krpano && walkPanelCreated) {
-    krpano.set("layer[mars_walk_status_panel].vr", true);
-    krpano.set("layer[mars_walk_status_panel].visible", immersiveVr);
-    updateWalkPanel();
-  }
-};
 function setupWalkPanel() {
   if (!krpano || walkPanelCreated) return;
   krpano.call("addlayer(mars_walk_status_panel);");
@@ -167,7 +156,7 @@ function updateWalkPanel() {
   let inVr = false;
   try {
     const vrEnabled = krpano.get("webvr.isenabled");
-    inVr = immersiveVr || vrEnabled === true || vrEnabled === "true" || vrEnabled === 1 || vrEnabled === "1";
+    inVr = vrEnabled === true || vrEnabled === "true" || vrEnabled === 1 || vrEnabled === "1";
   } catch {}
   const animateIntro = inVr ? !vrIntroShown : !domIntroShown;
   if (animateIntro) {
@@ -199,10 +188,11 @@ function updateWalkPanel() {
     if (animateIntro) panel.classList.add("walk-typewriter");
   }
   // Render the browser overlay on desktop and the KRPano layer in immersive VR.
-  // The DOM overlay is a desktop fallback; it is not part of the headset view.
-  if (panel) panel.hidden = inVr;
+  // Keep the KRPano layer visible in both modes; the WebVR plugin retains layers
+  // marked vr=true in the headset. The DOM panel is only a fallback when embedding fails.
+  if (panel) panel.hidden = true;
   krpano.set("layer[mars_walk_status_panel].vr", true);
-  krpano.set("layer[mars_walk_status_panel].visible", inVr);
+  krpano.set("layer[mars_walk_status_panel].visible", true);
   if (!introAnimationUntil || Date.now() >= introAnimationUntil || animateIntro) {
     krpano.set("layer[mars_walk_status_panel].text", markup);
   }
@@ -278,18 +268,6 @@ if (typeof window.embedpano !== "function") {
       // The source tour hides its own entry layer by default; expose it and provide a
       // clear page-level control for Quest Browser as well.
       api.call("set(layer[webvr_enterbutton].visible,true); set(layer[webvr_enterbutton].enabled,true); set(layer[webvr_enterbutton].alpha,1);");
-      // Keep the panorama layer alive through immersive entry. The DOM preview is
-      // hidden only after KRPano confirms it entered VR.
-      for (const [eventName, fallback, state] of [
-        ["onentervr", "webvr_onentervr();", "true"],
-        ["onexitvr", "webvr_onexitvr();", "false"],
-      ]) {
-        try {
-          const key = `plugin[webvr].${eventName}`;
-          const original = api.get(key);
-          api.set(key, `${typeof original === "string" && original.trim() ? original : fallback} js(window.marsWalkVrChanged(${state}));`);
-        } catch (error) { console.warn(`Could not attach the walk panel to KRPano ${eventName}:`, error); }
-      }
       enterVrBtn.hidden = false;
       setupWalkPanel();
       updateWalkPanel();
