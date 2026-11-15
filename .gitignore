@@ -3,3 +3,7 @@
 /web/.tile-cache
 /web/.pano-cache
 /web/data
+
+CLAUDE-BRIEF.md
+AGENT-STATE.md
+EXPERT-REVIEW.md

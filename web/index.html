@@ -86,6 +86,75 @@
     .kindFilter.on { color: #151515; background: var(--k); border-color: var(--k); }
     .kindFilter.on i { background: #151515; }
     .kindFilter.on em { color: #333; }
+    #addSpotBtn { width: 100%; margin: 0 0 4px; padding: 6px; cursor: pointer; font: 600 12.5px system-ui, sans-serif;
+      color: #ffe0a0; background: #2a2418; border: 1px dashed #a7864d; border-radius: 5px; }
+    #addSpotBtn:hover { background: #352d1d; border-style: solid; }
+    #spotMsg { min-height: 0; color: #c9e7a7; font-size: 11.5px; }
+    #spotMsg:empty { display: none; }
+    #sourceSeg { display: flex; margin: 2px 0; border: 1px solid #444; border-radius: 5px; overflow: hidden; }
+    #sourceSeg button { flex: 1; padding: 4px 6px; cursor: pointer; font: 12px system-ui, sans-serif; color: #bbb;
+      background: #1f1f1f; border: 0; border-left: 1px solid #444; }
+    #sourceSeg button:first-child { border-left: 0; }
+    #sourceSeg button.on { color: #151515; background: #e8b85a; font-weight: 600; }
+    #sourceSeg em { font-style: normal; font-size: 10.5px; opacity: 0.8; }
+    .kindSection + .kindSection { margin-top: 5px; }
+    .kindSectionHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 3px;
+      color: #8a8a8a; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .kindSectionAll { padding: 0; cursor: pointer; background: none; border: 0; color: #c9a45e; font-size: 10.5px;
+      text-transform: none; letter-spacing: 0; }
+    .kindSectionAll:hover { color: #ffe0a0; text-decoration: underline; }
+    .kindChips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .spotMore { grid-column: 1 / -1; padding: 5px; cursor: pointer; color: #c9a45e; background: #202020;
+      border: 1px dashed #444; border-radius: 4px; font-size: 11.5px; }
+    #customIO { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #2c2c2c;
+      color: #888; font-size: 11.5px; }
+    #customIO button { padding: 2px 9px; cursor: pointer; color: #ccc; background: #242424; border: 1px solid #444; border-radius: 4px; font-size: 11.5px; }
+    .spotKindRow { display: flex; align-items: center; gap: 6px; }
+    #spotScope { color: #888; font-size: 10.5px; }
+    #spotGallery { display: flex; gap: 4px; margin-top: 4px; overflow-x: auto; }
+    #spotGallery[hidden] { display: none; }
+    #spotGallery img { width: 52px; height: 38px; object-fit: cover; border-radius: 3px; cursor: pointer; opacity: 0.6; border: 1px solid #444; }
+    #spotGallery img.on, #spotGallery img:hover { opacity: 1; border-color: #e8b85a; }
+    #spotOwnActions { display: flex; gap: 6px; margin-top: 7px; }
+    #spotOwnActions[hidden] { display: none; }
+    #spotOwnActions button { flex: 1; padding: 4px 8px; cursor: pointer; color: #ddd; background: #262626; border: 1px solid #555; border-radius: 4px; }
+    button.danger { color: #ffb4a8 !important; border-color: #7a3b33 !important; }
+    /* custom spot editor */
+    #spotEditor { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 40px); padding: 0; color: #eee;
+      background: #171717; border: 1px solid #555; border-radius: 9px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); }
+    #spotEditor::backdrop { background: rgba(0, 0, 0, 0.45); }
+    #spotForm { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; font: 13px system-ui, sans-serif; }
+    #spotForm h2 { margin: 0 0 2px; font-size: 15px; color: #ffe082; }
+    .seField { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; color: #bbb; font-size: 12px; }
+    .seInline { flex-direction: row; align-items: center; gap: 7px; }
+    .seRow { display: flex; gap: 8px; }
+    .seBtns { display: flex; gap: 6px; }
+    #spotForm input:not([type=checkbox]):not([type=color]):not([type=file]), #spotForm select, #spotForm textarea {
+      padding: 5px 7px; color: #eee; background: #222; border: 1px solid #484848; border-radius: 4px; font: 13px system-ui, sans-serif; }
+    #spotForm textarea { resize: vertical; }
+    #spotForm input:focus, #spotForm select:focus, #spotForm textarea:focus { outline: 1px solid #2f6fb3; border-color: #2f6fb3; }
+    #spotForm input[type=color] { width: 44px; height: 26px; padding: 0 2px; background: #222; border: 1px solid #484848; border-radius: 4px; }
+    .seColorField { flex: none; }
+    #spotForm button { padding: 5px 11px; cursor: pointer; color: #ddd; background: #262626; border: 1px solid #555; border-radius: 4px; font: 12.5px system-ui, sans-serif; }
+    #spotForm button.primary { color: #151515; background: #e8b85a; border-color: #e8b85a; font-weight: 600; }
+    #spotForm button:disabled { opacity: 0.5; cursor: default; }
+    .seTagBox { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: #222; border: 1px solid #484848; border-radius: 4px; }
+    .seTagBox input { flex: 1; min-width: 120px; border: 0 !important; background: none !important; outline: none !important; }
+    .seHint { color: #777; font-size: 11px; }
+    #seImages { display: flex; flex-direction: column; gap: 5px; }
+    .seImg { display: grid; grid-template-columns: 76px 1fr; grid-template-rows: auto auto; gap: 4px 8px; align-items: center; }
+    .seImg img { grid-row: 1 / 3; width: 76px; height: 54px; object-fit: cover; border-radius: 4px; background: #111; }
+    .seImg div { display: flex; gap: 5px; align-items: center; }
+    .seImg button { padding: 2px 8px !important; font-size: 11.5px !important; }
+    .seCover { color: #e8b85a; font-size: 11px; }
+    .seAdd input { flex: 1; min-width: 0; }
+    .seUpload { align-self: flex-start; padding: 4px 10px; cursor: pointer; color: #ddd; background: #262626; border: 1px dashed #666; border-radius: 4px; font-size: 12px; }
+    .seUpload input { display: none; }
+    #seMsg { min-height: 1em; color: #9fd3ff; font-size: 12px; }
+    #seMsg.bad { color: #ff9a8a; }
+    .seActions { display: flex; gap: 8px; align-items: center; }
+    .seActions span { flex: 1; }
+    #spotForm [hidden] { display: none !important; }
     #kindHead { display: flex; align-items: center; gap: 8px; margin: 2px 0 3px; }
     .kindTitle { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 0; color: #bbb; }
     #kindSummary { color: #888; font-style: normal; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -156,6 +225,65 @@
     #terrainNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
     #ground { color: #c9e7a7; font: 12px ui-monospace, Consolas, monospace; min-height: 1.3em; }
     #routeControls { margin: 8px 0 0; }
+    .routeSect { margin-top: 8px; padding-top: 7px; border-top: 1px solid #2c2c2c; }
+    .routeHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; color: #bbb; }
+    .routeHead em { color: #888; font-style: normal; font-size: 11px; }
+    .routeRow { display: flex; gap: 5px; margin: 4px 0; }
+    .routeRow > * { flex: 1; min-width: 0; }
+    #routeControls select, #routeSpotSearch { padding: 4px 6px; color: #eee; background: #1f1f1f; border: 1px solid #444;
+      border-radius: 4px; font: 12px system-ui, sans-serif; }
+    #routeSpotSearch { width: 100%; box-sizing: border-box; }
+    #routeControls .routeRow button { margin: 0; }
+    #routeWaypointList { margin: 0; padding: 0; list-style: none; counter-reset: stop; }
+    #routeWaypointList li { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 4px; font-size: 12px; color: #ddd; }
+    #routeWaypointList li:nth-child(odd) { background: #1d1d1d; }
+    #routeWaypointList .n { width: 18px; height: 18px; flex: none; border-radius: 50%; color: #111; font: 700 10.5px/18px system-ui, sans-serif; text-align: center; }
+    #routeWaypointList .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #routeWaypointList .leg { color: #888; font-size: 10.5px; white-space: nowrap; }
+    #routeWaypointList button { margin: 0 !important; padding: 0 5px !important; font-size: 11px; line-height: 17px; color: #bbb;
+      background: #2a2a2a; border: 1px solid #444; border-radius: 3px; cursor: pointer; }
+    #routeWaypointList button:disabled { opacity: 0.3; cursor: default; }
+    #routeWaypointList li.loop { color: #888; font-style: italic; padding-left: 22px; }
+    #routeWaypointList .grip { width: 14px; flex: none; color: #777; cursor: grab; text-align: center; touch-action: none; user-select: none; border-radius: 3px; }
+    #routeWaypointList .grip:hover, #routeWaypointList .grip:focus-visible { color: #ffe0a0; background: #2c2c2c; outline: none; }
+    #routeWaypointList.sorting, #routeWaypointList.sorting .grip { cursor: grabbing; user-select: none; }
+    #routeWaypointList li { position: relative; }
+    #routeWaypointList li.dragging { z-index: 2; background: #2e2a22 !important; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6); }
+    #routeWaypointList li.dropBefore::before, #routeWaypointList li.dropAfter::after {
+      content: ""; position: absolute; left: 4px; right: 4px; height: 2px; background: #e8b85a; border-radius: 1px; }
+    #routeWaypointList li.dropBefore::before { top: -2px; }
+    #routeWaypointList li.dropAfter::after { bottom: -2px; }
+    #routeEmpty[hidden] { display: none; }
+    #routeSpotList { max-height: 190px; overflow: auto; margin-top: 4px; border: 1px solid #333; border-radius: 4px; background: #181818; }
+    #routeSpotList:empty { display: none; }
+    #routeSpotList .rs { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 7px; cursor: pointer; text-align: left;
+      color: #ddd; background: none; border: 0; border-top: 1px solid #222; font: 12px system-ui, sans-serif; margin: 0 !important; }
+    #routeSpotList .rs:first-child { border-top: 0; }
+    #routeSpotList .rs:hover { background: #23384f; }
+    #routeSpotList .rs i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--k); }
+    #routeSpotList .rs span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #routeSpotList .rs em { color: #888; font-style: normal; font-size: 10.5px; white-space: nowrap; }
+    #routeSpotList .rsMore { padding: 4px 7px; color: #777; font-size: 11px; }
+    .routeOpt { display: flex; align-items: center; gap: 6px; margin: 3px 0; color: #ccc; font-size: 12px; }
+    .routeActions { display: flex; gap: 6px; margin-top: 9px; }
+    .routeActions button { margin: 0 !important; }
+    #routeAddBtn.ready { color: #151515; background: #9fd3ff; border-color: #9fd3ff; font-weight: 600; }
+    #routeAddBtn.on { color: #ffe082; border-color: #ffd54f; }
+    #routeCalcBtn { flex: 1; padding: 6px !important; font-weight: 600; color: #151515; background: #e8b85a; border: 1px solid #e8b85a; border-radius: 4px; }
+    #routeCalcBtn:disabled { opacity: 0.45; cursor: default; }
+    #routeCalcBtn.running { color: #ffd8d0; background: #4a2a26; border-color: #8a4a40; }
+    #routeStatus.stale { color: #f0c27a; }
+    #routeProgress { margin-top: 6px; padding: 6px 7px; border: 1px solid #333; border-radius: 5px; background: #181818; }
+    #routeProgress[hidden] { display: none; }
+    #routeProgress .bar { height: 5px; overflow: hidden; border-radius: 3px; background: #2a2a2a; }
+    #routeProgress .bar i { display: block; height: 100%; width: 0; background: #e8b85a; transition: width 0.3s; }
+    #routeProgress .bar.indeterminate i { width: 30% !important; animation: routeBar 1.2s ease-in-out infinite; }
+    @keyframes routeBar { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+    #routeProgress .lines { margin-top: 5px; color: #bbb; font-size: 11px; line-height: 1.45; }
+    #routeProgress .lines div:first-child { color: #eee; font-weight: 600; }
+    #routeProgress .lines .wait { color: #f0c27a; }
+    #spotRouteBtn { margin-top: 7px; margin-right: 6px; padding: 5px 8px; cursor: pointer; color: #9fd3ff; background: #1d2a36;
+      border: 1px solid #3c6a8f; border-radius: 4px; }
     #routeControls button { margin: 2px 4px 2px 0; padding: 4px 7px; cursor: pointer; }
     #routeControls button.on { border-color: #ffd54f; color: #ffe082; }
     #routeStatus { color: #bbb; font-size: 11.5px; min-height: 1.4em; margin-top: 4px; }
@@ -182,6 +310,13 @@
     }
     .layer .head button:hover { background: #3a3a3a; color: #fff; }
     .layer .note.err { color: #ff8a80; }
+    .layer .note.prov { font-size: 10.5px; color: #8b95a5; word-break: break-word; }
+    .layer .note.prov a { color: #9cc3ff; }
+    .kindChip { display: inline-block; padding: 0 5px; border-radius: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; background: #334155; color: #e2e8f0; }
+    .kindChip.k-optical { background: #1e3a8a; } .kindChip.k-topographic { background: #14532d; }
+    .kindChip.k-thermal { background: #9a3412; } .kindChip.k-atmo { background: #0e7490; }
+    .remsGrid { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-size: 12px; margin: 4px 0; }
+    .remsBox .head { margin-bottom: 2px; }
 
     /* layer picker: category dropdown + search box + results list */
     #picker { margin: 2px 0 10px; }
@@ -262,6 +397,58 @@
       position: absolute; z-index: 6; width: 10px; height: 10px; margin: -6px 0 0 -6px;
       border: 2px solid #ffd54f; border-radius: 50%; pointer-events: none;
     }
+    /* crew */
+    #crewList { margin: 6px 0; display: flex; flex-direction: column; gap: 5px; }
+    .crewRow { text-align: left; width: 100%; padding: 6px 8px; background: #1a1a1a; color: #ddd; border: 1px solid #333;
+      border-left: 3px solid var(--k); border-radius: 5px; cursor: pointer; font: 12px system-ui, sans-serif; }
+    .crewRow.on { background: #232220; border-color: #555; border-left-color: var(--k); }
+    .crewRow.warn { box-shadow: inset 0 0 0 1px #c9a227; }
+    .crewRow.danger { box-shadow: inset 0 0 0 1px #e5534b; animation: crewPulse 1s infinite alternate; }
+    @keyframes crewPulse { to { background: #3a1716; } }
+    .crewTop { display: flex; align-items: center; gap: 6px; }
+    .crewTop i { width: 9px; height: 9px; border-radius: 50%; background: var(--k); }
+    .crewTop em { color: #888; font-style: normal; font-size: 11px; }
+    .crewTop .fol { margin-left: auto; color: #e8b85a; font-size: 10.5px; }
+    .crewStat { color: #aaa; font-size: 11.5px; margin: 2px 0; }
+    .crewBar { display: grid; grid-template-columns: 34px 1fr 34px; gap: 5px; align-items: center; font-size: 11px; color: #bbb; }
+    .crewBar .track { position: relative; height: 6px; background: #2a2a2a; border-radius: 3px; overflow: hidden; }
+    .crewBar .track i { display: block; height: 100%; background: #4caf50; }
+    .crewBar .track i.mid { background: #c9a227; } .crewBar .track i.low { background: #e5534b; }
+    .crewBar .track b { position: absolute; top: 0; bottom: 0; width: 1px; background: #fff8; }
+    .crewBar .v { text-align: right; font: 11px ui-monospace, Consolas, monospace; }
+    .crewBar .rtg { grid-column: 2 / 4; color: #8a8; }
+    #crewDetail { border: 1px solid #333; border-radius: 6px; padding: 8px; background: #161616; }
+    .crewHead { display: flex; gap: 6px; }
+    .crewHead input:first-child { flex: 1; font: 600 13px system-ui, sans-serif; }
+    #crewDetail input, #crewDetail select { background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px; padding: 3px 5px; font: 12px system-ui, sans-serif; min-width: 0; }
+    #crewDetail input[type=color] { width: 34px; padding: 0 2px; height: 26px; }
+    .crewF { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #aaa; }
+    .crewF.wide { margin-top: 6px; }
+    .crewGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; margin: 6px 0; }
+    .crewGrid input, .crewF select { width: 100%; box-sizing: border-box; }
+    .crewHead input:first-child { width: 100%; box-sizing: border-box; }
+    .crewVerdict { margin: 6px 0 4px; padding: 5px 7px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+    .crewVerdict.ok { background: #1d3320; color: #9be59f; } .crewVerdict.bad { background: #3a1a18; color: #ff9d94; }
+    .crewTab { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    .crewTab td { padding: 2px 0; border-bottom: 1px solid #262626; color: #ccc; }
+    .crewTab td:last-child { text-align: right; color: #eee; font-variant-numeric: tabular-nums; }
+    .crewTab tr.minor td { color: #888; font-size: 11px; }
+    .crewBtns { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .crewBtns button, #winCrew .routeRow button, button.mini { padding: 4px 8px; cursor: pointer; background: #262626; color: #eee; border: 1px solid #444; border-radius: 4px; font: 12px system-ui, sans-serif; }
+    .crewBtns button:disabled { opacity: 0.45; cursor: default; }
+    .crewBtns button.primary { background: #2f6fb3; border-color: #2f6fb3; }
+    .crewBtns button.warnBtn { background: #7a5a12; border-color: #a07818; }
+    .crewBtns button.danger { margin-left: auto; color: #ff9d94; }
+    button.mini { padding: 2px 6px; font-size: 11px; }
+    #winCrew .routeRow select { flex: 1; min-width: 0; background: #1f1f1f; color: #eee; border: 1px solid #444; border-radius: 4px; }
+    #crewLog { max-height: 130px; overflow: auto; font-size: 11px; color: #aaa; }
+    .crewLogRow { padding: 1px 0; } .crewLogRow.warn { color: #e8c35a; } .crewLogRow.danger { color: #ff8a80; }
+    #crewAlerts { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column;
+      gap: 6px; width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+    .crewToast { pointer-events: auto; cursor: pointer; padding: 8px 11px; border-radius: 6px; background: rgba(20, 20, 20, 0.94);
+      border-left: 4px solid #4fc3f7; color: #eee; font: 12.5px/1.35 system-ui, sans-serif; box-shadow: 0 3px 12px #0008; }
+    .crewToast.warn { border-left-color: #e8b85a; } .crewToast.danger { border-left-color: #e5534b; background: rgba(60, 16, 14, 0.96); }
+    .crewToast .to { color: #888; font-size: 10.5px; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -274,6 +461,7 @@
       <button type="button" role="tab" data-win="winLayers" aria-controls="winLayers" title="Map layers"><span class="ico">▤</span>Layers</button>
       <button type="button" role="tab" data-win="winSpots" aria-controls="winSpots" title="Mission spots, tags and the rover road"><span class="ico">◎</span>Spots</button>
       <button type="button" role="tab" data-win="winRoute" aria-controls="winRoute" title="Terrain route planner"><span class="ico">⤳</span>Path</button>
+      <button type="button" role="tab" data-win="winCrew" aria-controls="winCrew" title="Astronauts and rovers: ETA, oxygen / battery, comms, alerts"><span class="ico">☻</span>Crew</button>
     </nav>
     <section class="win" id="winSettings" role="tabpanel">
       <div class="winBody">
@@ -334,7 +522,42 @@
             <option value="250">Within 250 km</option>
           </select>
         </div>
-        <div class="setNote">Far out, pins hide so the planet stays clear. A selected spot always stays visible.</div>
+        <div class="setRow">
+          <span>Behind planet</span>
+          <select id="pinBehind" title="Pins on the far side of Mars (or behind hills when tilted)">
+            <option value="faded" selected>Show, faded</option>
+            <option value="hidden">Hide</option>
+          </select>
+        </div>
+        <div class="setNote">Far out, pins hide so the planet stays clear. Small named features (craters…) appear only closer, in proportion to their size. A selected spot always stays visible.</div>
+
+        <div class="sub">Crew &amp; EVA</div>
+        <div class="setRow">
+          <span>Return reserve</span>
+          <input id="crewReserve" type="range" min="5" max="50" step="1" value="20" title="Oxygen / battery that must be left when back at base" />
+          <span id="crewReserveVal">20%</span>
+        </div>
+        <div class="setRow">
+          <span>Radio range</span>
+          <select id="crewComms" title="Suit / rover radio range to the base (line of sight is also checked against the terrain)">
+            <option value="2">2 km</option><option value="5">5 km</option><option value="10" selected>10 km</option>
+            <option value="20">20 km</option><option value="50">50 km (relay)</option><option value="1000">No limit</option>
+          </select>
+        </div>
+        <div class="setRow">
+          <span>Base antenna</span>
+          <select id="crewMast" title="Height of the base antenna above the ground">
+            <option value="2">2 m</option><option value="3" selected>3 m</option><option value="10">10 m mast</option><option value="30">30 m tower</option>
+          </select>
+        </div>
+        <div class="setRow">
+          <span>Simulation</span>
+          <select id="crewScale" title="How fast EVAs play out">
+            <option value="1">Real time</option><option value="10">10× faster</option><option value="60" selected>60× (1 min = 1 h)</option>
+            <option value="600">600×</option><option value="3600">3600× (1 s = 1 h)</option>
+          </select>
+        </div>
+        <div class="setNote">Max stay at a destination keeps this reserve for the trip back. Alerts fire below it, near the point of no return, and when the radio loses line of sight to the base.</div>
 
         <div class="sub">Performance</div>
         <div class="setRow">
@@ -370,6 +593,7 @@
 
     <section class="win" id="winLayers" role="tabpanel">
       <div class="winBody">
+        <div id="remsBox"><div class="layer"><div class="note">Atmosphere · Gale: loading REMS…</div></div></div>
         <div id="picker">
           <div id="pickRow">
             <select id="layerCat" title="Category"><option value="">All types</option></select>
@@ -393,8 +617,15 @@
           <button id="spotToggle" type="button" aria-pressed="true">Markers on</button>
           <button id="roadToggle" type="button" aria-pressed="false" title="Curiosity's real traverse from the PLACES data (NASA/JPL)">Rover road off</button>
         </div>
+        <button id="addSpotBtn" type="button" title="Add your own spot: name, kind, colour, description, images, tags">＋ Add custom spot</button>
+        <div id="spotMsg" aria-live="polite"></div>
         <div id="spotFilters">
-          <input id="spotSearch" type="search" placeholder="Search names, kinds and tags: rover Gale, lander NASA…" aria-label="Search mission spots" />
+          <input id="spotSearch" type="search" placeholder="Search names, kinds, tags, details: Gale, crater Noachis…" aria-label="Search spots" />
+          <div id="sourceSeg" role="group" aria-label="Which spots">
+            <button type="button" data-src="all">All</button>
+            <button type="button" data-src="global" title="Mission spots and IAU named features">Global</button>
+            <button type="button" data-src="custom" title="Spots you added">Custom <em id="customCount"></em></button>
+          </div>
           <div id="kindHead">
             <span class="kindTitle">Kind<em id="kindSummary"></em></span>
             <button id="kindAll" type="button" title="Select every kind of spot, or none">Select all</button>
@@ -416,6 +647,12 @@
         </div>
         <div id="spotHint" class="spotHint">No spots on the map. Press <b>Select all</b> next to Kind, pick kinds, search, or add a tag.</div>
         <div id="spots"></div>
+        <div id="customIO">
+          Custom spots:
+          <button type="button" id="customExport" title="Download every custom spot (with uploaded images) as one JSON file">Export</button>
+          <button type="button" id="customImport" title="Add spots from an exported JSON file">Import</button>
+          <input type="file" id="customImportFile" accept="application/json,.json" hidden />
+        </div>
       </div>
     </section>
 
@@ -423,22 +660,87 @@
       <div class="winBody">
         <div id="routeControls">
           <div class="sub" style="margin-top:0">Terrain route · MOLA</div>
-          <button id="routeAddBtn" type="button">Add waypoint</button>
-          <button id="routeUndoBtn" type="button">Undo last</button>
-          <button id="routeClearBtn" type="button">Clear</button>
-          <button id="routeWalkBtn" type="button" disabled>Walk this route</button>
-          <div class="hint" id="walkHint">Walk mode uses only the preferred Jezero panorama markers that match this A→B route.</div>
-          <div class="hint">Add points in order; the route visits each one.</div>
-          <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
-          <label class="hint" style="display:block"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
-          <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
-          <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
-          <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
-          <div id="routeStatus" aria-live="polite">Add at least two waypoints in travel order.</div>
+          <div class="routeSect">
+            <div class="routeHead"><span>Stops</span><em id="routeStopsInfo"></em></div>
+            <ol id="routeWaypointList"></ol>
+            <div id="routeEmpty" class="hint">No stops yet. Add spots below, click the map, or press “Add to route” on any spot’s card.</div>
+          </div>
+          <div class="routeSect">
+            <div class="routeHead"><span>Add a stop</span></div>
+            <div class="routeRow">
+              <button id="routeAddBtn" type="button" title="Then click the map where the stop goes">＋ Click on map</button>
+              <button id="routeRandomBtn" type="button" title="A random spot among the first 30 of the list below (nearest first by default)">⚄ Random spot</button>
+            </div>
+            <input id="routeSpotSearch" type="search" placeholder="Find a spot: name, kind, tag…" autocomplete="off" aria-label="Find a spot to add as a stop" />
+            <div class="routeRow">
+              <select id="routeSpotKind" aria-label="Kind of spot"><option value="">All kinds</option></select>
+              <select id="routeSpotSort" aria-label="Sort spots">
+                <option value="last">Nearest to last stop</option>
+                <option value="view">Nearest to view centre</option>
+                <option value="name">Name A–Z</option>
+                <option value="size">Largest first</option>
+              </select>
+            </div>
+            <div id="routeSpotList" role="list"></div>
+          </div>
+          <div class="routeSect">
+            <label class="routeOpt"><input id="routeLoop" type="checkbox" /> Return to start (A → … → A)</label>
+            <label class="routeOpt"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
+            <label class="routeOpt" title="Minimise suited walking time (survival.js speed model) instead of distance"><input id="routeFastest" type="checkbox" /> Fastest walk (time, not distance)</label>
+            <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
+            <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
+            <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
+          </div>
+          <div class="routeActions">
+            <button id="routeCalcBtn" type="button" class="primary">Calculate route</button>
+            <button id="routeWalkBtn" type="button" disabled>Walk this route</button>
+            <button id="routeClearBtn" type="button">Clear</button>
+          </div>
+          <div id="walkHint" class="hint">Walk mode uses only the preferred Jezero panorama markers that match this A→B route.</div>
+          <div id="routeStatus" aria-live="polite">Add at least two stops, then press Calculate route.</div>
+          <div id="routeProgress" hidden>
+            <div class="bar"><i></i></div>
+            <div class="lines"></div>
+          </div>
+          <div id="survivalBox">
+            <div id="integrityChip" class="intChip wait">Data integrity: checking…</div>
+            <div class="svRow">
+              <label title="Same route, different suit condition: shows how the plan refuses an unsafe excursion">Scenario <select id="svScenario"></select></label>
+              <button id="routeExportBtn" type="button" disabled title="Download the computed route, survival budget and terrain excerpt as route.json">⬇ route.json</button>
+            </div>
+            <div class="svRow">
+              <button id="routeDemoBtn" type="button" title="Load the committed demo excursion (public/data/route.json); works without the terrain server">Load demo excursion (boxwork)</button>
+              <label class="hint" style="cursor:pointer"><input id="routeImportFile" type="file" accept=".json,application/json" hidden />⬆ Open route.json…</label>
+              <a href="./vr.html" target="_blank" rel="noopener" title="Three.js WebXR replay of the signed demo excursion (Meta Quest browser or desktop)">🥽 VR replay</a>
+            </div>
+            <div id="survivalCard"></div>
+          </div>
         </div>
       </div>
     </section>
+
+    <section class="win" id="winCrew" role="tabpanel">
+      <div class="winBody">
+        <div class="sub" style="margin-top:0">Crew &amp; rovers</div>
+        <div class="routeRow">
+          <button id="crewAddAstro" type="button">＋ Astronaut</button>
+          <select id="crewRoverKind" aria-label="Rover type">
+            <option value="pressurized">Pressurized crew rover</option>
+            <option value="perseverance">Perseverance</option>
+            <option value="curiosity">Curiosity</option>
+          </select>
+          <button id="crewAddRover" type="button">＋ Rover</button>
+        </div>
+        <div id="crewEmpty" class="hint">Add an astronaut or a rover. Each one appears on the map at the view centre and can be given the route from the Path tab.</div>
+        <div id="crewList"></div>
+        <div id="crewDetail" hidden></div>
+        <div class="routeHead" style="margin-top:10px"><span>Alerts</span><button id="crewDesktop" type="button" class="mini" title="Also show alerts as desktop notifications">Enable desktop alerts</button></div>
+        <div id="crewLog"></div>
+        <div class="hint">Model, not live telemetry: speed falls with slope (Tobler for walking), O₂ use rises uphill, rest uses less. Reserve, radio range and simulation speed are in Settings.</div>
+      </div>
+    </section>
   </div>
+  <div id="crewAlerts" aria-live="assertive"></div>
   <div id="clock">
     <div id="clockTime">--:--:--</div>
     <div id="clockSub">local solar time</div>
@@ -449,14 +751,61 @@
   <div id="probe" hidden></div>
   <section id="spotCard" hidden aria-live="polite">
     <div class="spotHead"><h2 id="spotTitle"></h2><button id="spotClose" type="button" aria-label="Close spot details">×</button></div>
-    <span id="spotKind" class="kindTag big"></span>
+    <div class="spotKindRow"><span id="spotKind" class="kindTag big"></span><span id="spotScope"></span></div>
     <div class="spotType" id="spotType"></div>
     <div id="spotTags"></div>
     <img id="spotImage" hidden alt="" />
     <div id="spotImageCaption" hidden></div>
+    <div id="spotGallery" hidden></div>
     <div id="spotStats"></div><div class="spotNote" id="spotNote"></div>
     <button id="spotVrButton" type="button" hidden>Open street view</button>
+    <button id="spotRouteBtn" type="button" title="Add this spot as the next stop of the terrain route">＋ Add to route</button>
+    <div id="spotOwnActions" hidden><button id="spotEdit" type="button">Edit</button><button id="spotDelete" type="button" class="danger">Delete</button></div>
   </section>
+  <dialog id="spotEditor" aria-labelledby="seTitle">
+    <form id="spotForm" novalidate>
+      <h2 id="seTitle">New custom spot</h2>
+      <label class="seField">Name <input id="seName" maxlength="120" autocomplete="off" /></label>
+      <div class="seRow">
+        <label class="seField">Latitude <input id="seLat" type="number" step="any" min="-90" max="90" /></label>
+        <label class="seField">Longitude (east) <input id="seLon" type="number" step="any" min="-180" max="360" /></label>
+      </div>
+      <div class="seBtns"><button type="button" id="sePick">Pick on map</button><button type="button" id="seCentre">Use view centre</button></div>
+      <label class="seField">Kind <select id="seKind"></select></label>
+      <div class="seRow" id="seNewKind" hidden>
+        <label class="seField">New kind name <input id="seKindName" maxlength="40" placeholder="e.g. EVA stop, Outcrop, Hazard" /></label>
+        <label class="seField seColorField">Colour <input id="seKindColor" type="color" value="#ff66cc" /></label>
+      </div>
+      <label class="seField seInline" id="seKindColorRow" hidden>Colour of this kind <input id="seKindColorEdit" type="color" /></label>
+      <label class="seField seInline"><input id="seOwnColor" type="checkbox" /> Own pin colour for this spot <input id="seColor" type="color" value="#ffffff" disabled /></label>
+      <label class="seField">Subtitle <input id="seSubtitle" maxlength="160" placeholder="e.g. Layered outcrop · candidate EVA stop" /></label>
+      <label class="seField">Description <textarea id="seDesc" rows="4" maxlength="4000" placeholder="What is here, why it matters, notes for the team…"></textarea></label>
+      <div class="seRow">
+        <label class="seField">Date <input id="seDate" maxlength="80" placeholder="e.g. Sol 4700 · 2026-11-15" /></label>
+        <label class="seField">Mission / team <input id="seMission" maxlength="120" /></label>
+      </div>
+      <div class="seField">Tags
+        <div id="seTags" class="seTagBox"><input id="seTagInput" list="seTagList" placeholder="type a tag, Enter to add" autocomplete="off" /></div>
+        <datalist id="seTagList"></datalist>
+      </div>
+      <div class="seField">Images <span class="seHint">(the first is the cover)</span>
+        <div id="seImages"></div>
+        <div class="seRow seAdd"><input id="seImgUrl" placeholder="Image link: https://…" /><button type="button" id="seImgAdd">Add link</button></div>
+        <label class="seUpload">Upload images… <input id="seImgFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple /></label>
+      </div>
+      <div class="seRow">
+        <label class="seField">Source name <input id="seSourceText" maxlength="160" placeholder="e.g. HiRISE ESP_012345" /></label>
+        <label class="seField">Source link <input id="seUrl" type="url" placeholder="https://…" /></label>
+      </div>
+      <div id="seMsg" aria-live="polite"></div>
+      <div class="seActions">
+        <button type="button" id="seDelete" class="danger" hidden>Delete</button>
+        <span></span>
+        <button type="button" id="seCancel">Cancel</button>
+        <button type="submit" id="seSave" class="primary">Save spot</button>
+      </div>
+    </form>
+  </dialog>
   <div id="scale">
     <div id="scaleLabel">–</div>
     <div id="scaleBar" style="width:100px"></div>
@@ -466,6 +815,14 @@
   <!-- CESIUM_BASE_URL must be set before Cesium.js loads: it tells Cesium where its workers live. -->
   <script>window.CESIUM_BASE_URL = "./node_modules/cesium/Build/Cesium/";</script>
   <script src="./node_modules/cesium/Build/Cesium/Cesium.js"></script>
+  <!-- Static hosts have no node_modules: fall back to the same Cesium version, pinned, from jsDelivr. -->
+  <script>
+    if (typeof Cesium === "undefined") {
+      window.CESIUM_BASE_URL = "https://cdn.jsdelivr.net/npm/cesium@1.147.0/Build/Cesium/";
+      document.write('<link rel="stylesheet" href="' + CESIUM_BASE_URL + 'Widgets/widgets.css" />' +
+        '<script src="' + CESIUM_BASE_URL + 'Cesium.js"><\/script>');
+    }
+  </script>
   <script>
   (async function () {
     const statusEl = document.getElementById("status");
@@ -485,7 +842,13 @@
         "Cesium did not load. In the web folder run:  npm install cesium  and reload.";
       return;
     }
-    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg } = await import("./pathfinding.js");
+    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg, steepMask, sampleTerrainHeights } = await import("./pathfinding.js");
+    const RouteIO = await import("./route-io.js");
+    const Survival = await import("./survival.js");
+    const { renderSurvivalCard } = await import("./survival-card.js");
+    const Integrity = await import("./integrity-ui.js");
+    import("./rems.js").then(async ({ loadRems, renderRems }) => renderRems(document.getElementById("remsBox"), await loadRems()))
+      .catch((error) => { document.getElementById("remsBox").textContent = `REMS unavailable: ${error.message}`; });
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -533,6 +896,7 @@
         dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m", ext: "jpg", maxLevel: 7,
         bounds: null, show: true, alpha: 1,
         note: "Global · 232 m/px · Viking Orbiter",
+        kind: "optical", mission: "Viking Orbiters 1 & 2", res: "232 m/px", date: "imaged 1976–1980; MDIM 2.1 mosaic",
         credit: "Viking MDIM 2.1 colorized mosaic: NASA/JPL/USGS, via NASA Trek",
       },
       {
@@ -540,6 +904,7 @@
         dataset: "Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw", ext: "jpg", maxLevel: 8,
         bounds: null, show: false, alpha: 0.7,
         note: "Global · 200 m/px · Mars Global Surveyor MOLA + Mars Express HRSC",
+        kind: "topographic", mission: "MGS MOLA + Mars Express HRSC", res: "200 m/px", date: "blended DEM v2",
         credit: "MOLA/HRSC blended elevation: NASA, DLR, USGS, via NASA Trek",
       },
       {
@@ -547,6 +912,7 @@
         dataset: "Mars_MGS_MOLA_ClrShade_merge_global_463m", ext: "jpg", maxLevel: 7,
         bounds: null, show: false, alpha: 0.7,
         note: "Global · 463 m/px · Mars Global Surveyor MOLA",
+        kind: "topographic", mission: "Mars Global Surveyor MOLA", res: "463 m/px", date: "laser altimetry 1997–2001",
         credit: "MOLA colorized shaded relief: NASA/GSFC, via NASA Trek",
       },
       {
@@ -557,7 +923,18 @@
         // into a grey smear over the Viking colours. Start at 8 (~4 tiles over the box).
         minLevel: 8,
         note: "Gale only (about 36 × 40 km) · ~0.6 m/px at the deepest tile level · Mars Reconnaissance Orbiter HiRISE",
+        kind: "optical", mission: "Mars Reconnaissance Orbiter HiRISE", res: "~0.6 m/px (deepest level)", date: "Curiosity-site mosaic",
         credit: "HiRISE mosaic of Gale: NASA/JPL/University of Arizona/USGS, via NASA Trek",
+      },
+      {
+        // Thermal: daytime infrared brightness (surface temperature contrast: rock vs dust/sand).
+        // Tiles checked on 2026-11-15 through the /trek proxy (level 0 = 200 image/png).
+        name: "THEMIS day infrared",
+        dataset: "THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018", ext: "png", maxLevel: 9,
+        bounds: null, show: false, alpha: 0.8,
+        note: "Global · 100 m/px · Mars Odyssey THEMIS daytime IR (warmer = brighter)",
+        kind: "thermal", mission: "2001 Mars Odyssey THEMIS", res: "100 m/px (Trek tiles to level 9)", date: "controlled mosaic v2, Oct 2018",
+        credit: "THEMIS day IR controlled mosaic: NASA/JPL-Caltech/Arizona State University/USGS, via NASA Trek",
       },
     ];
 
@@ -814,7 +1191,7 @@
     // A layer definition: { dataset, name, ext, maxLevel, minLevel?, bounds, note, credit,
     // show, alpha }. Layers picked from the Trek catalog get theirs from the layer's
     // WMTSCapabilities.xml. The stack is remembered in this browser.
-    const STORE_KEY = "mars-layers-v1";
+    const STORE_KEY = "mars-layers-v2"; // v2: layers carry provenance fields (kind, mission, res, date)
     const active = []; // { def, layer, errors }
     const layersEl = document.getElementById("layers");
     let failed = 0;
@@ -907,7 +1284,18 @@
         const note = document.createElement("div");
         note.className = "note";
         note.textContent = def.note;
-        row.append(head, slider, note);
+        // provenance chip: data kind · dataset · mission · resolution · date · credit
+        const prov = document.createElement("div");
+        prov.className = "note prov";
+        const kind = document.createElement("span");
+        kind.className = `kindChip k-${def.kind ?? "other"}`;
+        kind.textContent = def.kind ?? "Trek layer";
+        const src = document.createElement("a");
+        src.href = `https://trek.nasa.gov/mars/`; src.target = "_blank"; src.rel = "noopener";
+        src.textContent = def.dataset;
+        prov.append(kind, " ", src, document.createTextNode(
+          [def.mission, def.res, def.date].filter(Boolean).map((t) => ` · ${t}`).join("") + (def.credit ? ` · ${def.credit}` : "")));
+        row.append(head, slider, note, prov);
         layersEl.append(row);
       }
     }
@@ -1184,7 +1572,7 @@
     } catch (error) { console.warn("Could not load Jezero virtual viewpoints:", error); }
     const SPOTS = [
       { id: "gale-boxwork", name: "Gale · boxwork target", lon: 137.3931242, lat: -4.78692417,
-        type: "Science target · Glen Torridon", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
+        type: "Science target · boxwork unit, Mount Sharp", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
         category: "Science target", tags: ["Gale", "Geology", "Boxwork", "Curiosity"], vrEnabled: true,
         image: boxworkPhoto, imageSource: "https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/",
         imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork", imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636",
@@ -1274,106 +1662,239 @@
         category: "Rover path", tags: ["Gale", "Curiosity", "MSL", "Rover", "NASA"], vrEnabled: false,
         note: "Curiosity's localized traverse from the PLACES data; selecting this spot turns on the Rover road.",
         source: "MSL Rover PLACES bundle (PDS Imaging Node, JPL)", url: "https://planetarydata.jpl.nasa.gov/img/data/msl/msl_places/" },
-      { id: "aeolis-mons", name: "Aeolis Mons (Mount Sharp)", lon: 137.85, lat: -5.08, range: 90000,
-        type: "Terrain · central mound of Gale crater", mission: "Curiosity's climb", date: "~5.5 km high",
-        category: "Terrain", tags: ["Gale", "Mountain", "Geology"], vrEnabled: false,
-        note: "Layered sedimentary mound Curiosity has been climbing since 2014. Pin at the approximate centre.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
-      { id: "olympus-mons", name: "Olympus Mons", lon: 226.2 - 360, lat: 18.65, range: 2200000,
-        type: "Terrain · shield volcano, Tharsis", mission: "Landmark", date: "~22 km high, ~600 km across",
-        category: "Terrain", tags: ["Tharsis", "Volcano", "Mountain"], vrEnabled: false,
-        note: "Tallest known volcano in the solar system. Pin at the approximate summit caldera.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
-      { id: "valles-marineris", name: "Valles Marineris", lon: 300.8 - 360, lat: -13.9, range: 4500000,
-        type: "Terrain · canyon system", mission: "Landmark", date: "~4,000 km long, up to ~7 km deep",
-        category: "Terrain", tags: ["Canyon", "Tharsis"], vrEnabled: false,
-        note: "The largest canyon system on Mars, running east from Tharsis. Pin at the approximate centre.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
-      { id: "hellas", name: "Hellas Planitia", lon: 70.5, lat: -42.4, range: 4000000,
-        type: "Terrain · impact basin", mission: "Landmark", date: "~2,300 km across, ~7 km deep",
-        category: "Terrain", tags: ["Basin", "Impact crater"], vrEnabled: false,
-        note: "One of the largest impact basins in the solar system and the lowest ground on Mars. Pin at the approximate centre.",
-        source: "USGS Gazetteer of Planetary Nomenclature", url: "https://planetarynames.wr.usgs.gov/" },
     ];
+    // ---------------------------------------------------------------- spots: kinds and sources
     // Every spot has one kind (its `category`), shown as a coloured label on its button, card and
-    // map pin, and usable as a filter. The order here is the order of the groups in the list.
-    const SPOT_KINDS = [
+    // map pin, and usable as a filter. Spots come from three places:
+    //   - mission spots: the curated SPOTS list above (landers, rovers, panoramas...)
+    //   - named features: every IAU-approved Mars name from the USGS Gazetteer of Planetary
+    //     Nomenclature (craters, montes, valles...), converted by scripts/usgs-nomenclature.mjs
+    //   - custom spots: added in the viewer, with their own kinds, colours, tags and images,
+    //     stored by serve.mjs in web/data/custom (or this browser, without the local server)
+    // "Global" means the first two; "Custom" the last.
+    const MISSION_KINDS = [
       { kind: "Rover path", short: "Rover path", color: "#ffd54f" },
       { kind: "Rover landing site", short: "Rover landing", color: "#5ec8ff" },
       { kind: "Lander site", short: "Lander", color: "#7ddc8c" },
       { kind: "Crash site", short: "Crash site", color: "#ff7a6b" },
       { kind: "Science target", short: "Science", color: "#ffa64d" },
       { kind: "Panorama", short: "Panorama", color: "#c99bff" },
-      { kind: "Terrain", short: "Terrain", color: "#4fd6c8" },
+    ].map((k) => ({ ...k, group: "mission" }));
+    const USGS_KINDS = [
+      { kind: "Crater", short: "Crater", color: "#d9a066" },
+      { kind: "Mountain & volcano", short: "Mountain", color: "#ff8fa3" },
+      { kind: "Valley & canyon", short: "Valley", color: "#4fd6c8" },
+      { kind: "Plain & plateau", short: "Plain", color: "#b8cc6e" },
+      { kind: "Ridge & cliff", short: "Ridge", color: "#9fb3ff" },
+      { kind: "Chaos & pit", short: "Chaos", color: "#e07ad1" },
+      { kind: "Dune & flow", short: "Dune", color: "#f2d39b" },
+      { kind: "Albedo feature", short: "Albedo", color: "#c4c4c4" },
+    ].map((k) => ({ ...k, group: "usgs" }));
+    let customKinds = []; // { kind, short, color, group: "custom" }
+    const KIND_GROUPS = [
+      { id: "mission", title: "Missions & sites" },
+      { id: "usgs", title: "Named features · USGS" },
+      { id: "custom", title: "My kinds" },
     ];
-    const kindOf = (spot) => SPOT_KINDS.find((k) => k.kind === spot.category) ??
-      { kind: spot.category, short: spot.category, color: "#bbbbbb" };
-    const spotButtons = new Map();
-    const spotEntities = new Map();
+    const allKinds = () => [...MISSION_KINDS, ...USGS_KINDS, ...customKinds];
+    function kindOf(spot) {
+      return allKinds().find((k) => k.kind === spot.category) ??
+        { kind: spot.category, short: spot.category, color: "#bbbbbb", group: "custom" };
+    }
+    // Colours typed by people end up in SVG and CSS: only plain #rrggbb is accepted.
+    const safeColor = (c, fallback = "#bbbbbb") => (/^#[0-9a-f]{6}$/i.test(c ?? "") ? c.toLowerCase() : fallback);
+    const pinColor = (spot) => safeColor(spot.color, kindOf(spot).color);
+    for (const s of SPOTS) { s.scope = "global"; s.provider = "mission"; }
+
+    // Named features (IAU / USGS). Small ones only show when the camera is close: a pin appears
+    // within ~35x the feature's diameter (at least 150 km), capped by Settings > Show pins.
+    let NAMED = [];
+    try {
+      const r = await fetch("./public/data/nomenclature/mars_named_features.json");
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      NAMED = (await r.json()).features.map((f) => {
+        const d = f.diameterKm ?? 0;
+        return {
+          id: `usgs-${f.id}`, name: f.display ?? f.name, lon: f.lon, lat: f.lat, category: f.kind,
+          scope: "global", provider: "usgs", small: true, sizeKm: d,
+          type: `${f.type}${f.quad ? ` · ${f.quad}` : ""}`, mission: "IAU-approved name",
+          date: f.approved ? `Named ${f.approved}` : "", note: "",
+          tags: [f.type, f.quad].filter(Boolean),
+          source: "USGS Gazetteer of Planetary Nomenclature", url: `https://planetarynames.wr.usgs.gov/Feature/${f.id}`,
+          details: [
+            ["Feature type", f.type],
+            d ? ["Diameter", `${d.toLocaleString()} km`] : null,
+            f.origin ? ["Name origin", f.origin] : null,
+            f.status ? ["IAU status", `${f.status}${f.approved ? ` · ${f.approved}` : ""}`] : null,
+            f.quad ? ["Quadrangle", `${f.quad}${f.quadCode ? ` (${f.quadCode})` : ""}`] : null,
+          ].filter(Boolean),
+          range: Math.min(6_000_000, Math.max(12_000, d * 2600)),
+          pinFarKm: Math.max(150, d * 35),
+        };
+      });
+    } catch (err) { console.warn("Could not load the USGS named features:", err); }
+
+    // Custom spots: one document { kinds: [...], spots: [...] }, saved whole on every change.
+    const CUSTOM_LOCAL_KEY = "mars-custom-spots-v1";
+    const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+      const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = () => reject(fr.error); fr.readAsDataURL(blob);
+    });
+    const customStore = {
+      async load() {
+        if (USE_PROXY) {
+          const r = await fetch("./api/custom-spots", { cache: "no-store" });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        }
+        return JSON.parse(localStorage.getItem(CUSTOM_LOCAL_KEY) || "null") ?? { version: 1, kinds: [], spots: [] };
+      },
+      async save(doc) {
+        if (USE_PROXY) {
+          const r = await fetch("./api/custom-spots", {
+            method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc),
+          });
+          if (!r.ok) throw new Error(await r.text());
+          return;
+        }
+        localStorage.setItem(CUSTOM_LOCAL_KEY, JSON.stringify(doc));
+      },
+      async uploadImage(blob) {
+        if (USE_PROXY) {
+          const r = await fetch("./api/custom-images", { method: "POST", headers: { "Content-Type": blob.type }, body: blob });
+          if (!r.ok) throw new Error(await r.text());
+          return (await r.json()).url;
+        }
+        if (blob.size > 1_500_000) throw new Error("Without the local server, uploaded images must be under 1.5 MB (or add an image link)");
+        return blobToDataUrl(blob);
+      },
+    };
+    let customDoc = { version: 1, kinds: [], spots: [] };
+    try {
+      const doc = await customStore.load();
+      if (Array.isArray(doc?.spots) && Array.isArray(doc?.kinds)) customDoc = doc;
+    } catch (err) { console.warn("Custom spots unavailable:", err); }
+    customKinds = customDoc.kinds.map((k) => ({ kind: k.kind, short: k.short || k.kind, color: safeColor(k.color), group: "custom" }));
+    // Image and link addresses typed by people: only web links, uploaded files and data images.
+    const safeImageUrl = (u) => (/^(https?:\/\/|\.\/data\/custom\/images\/|data:image\/(png|jpeg|webp|gif);base64,)/i.test(u ?? "") ? u : "");
+    const safeLink = (u) => (/^https?:\/\//i.test(u ?? "") ? u : "");
+    function customSpotView(c) {
+      const images = (c.images ?? []).map((im) => ({ url: safeImageUrl(im.url), caption: im.caption ?? "" })).filter((im) => im.url);
+      return {
+        id: c.id, name: c.name, lat: c.lat, lon: c.lon, category: c.category, color: c.color,
+        scope: "custom", provider: "custom",
+        type: c.subtitle || "Custom spot", mission: c.mission || "", date: c.date || "", note: c.description || "",
+        tags: c.tags ?? [], images, image: images[0]?.url, imageCredit: images[0]?.caption || "Custom image",
+        source: c.sourceText || (c.url ? "Link" : ""), url: safeLink(c.url), range: 60_000,
+      };
+    }
+
+    let allSpots = [];
+    const spotById = new Map();
+    function rebuildSpotIndex() {
+      allSpots = [...SPOTS, ...NAMED, ...customDoc.spots.map(customSpotView)];
+      spotById.clear();
+      for (const s of allSpots) spotById.set(s.id, s);
+    }
+    rebuildSpotIndex();
+
+    // ---------------------------------------------------------------- spots: map pins (made on demand)
+    const spotEntities = new Map(); // id -> Cesium entity, created the first time a spot is shown
+    const spotButtons = new Map();  // id -> list button, created the first time it is listed
     const activeSpotTags = new Set();
     let spotsVisible = true;
     let selectedSpot = null;
     const spotToggle = document.getElementById("spotToggle");
     const spotsEl = document.getElementById("spots");
-    // The list: one dropdown per kind. Its header shows the colour, name and how many spots
-    // match; click it to open or close that kind's spots. Which kinds are open is remembered.
-    // While a search or tag filter is in use every matching kind opens, so results are visible.
-    const GROUPS_OPEN_KEY = "mars-spot-groups-open-v1";
-    let openGroups = new Set();
-    try { openGroups = new Set(JSON.parse(localStorage.getItem(GROUPS_OPEN_KEY) || "[]")); } catch { /* all closed */ }
-    const spotGroups = new Map(); // kind -> { el, head, grid, count }
-    function makeSpotGroup(k) {
-      const el = document.createElement("div"); el.className = "spotGroup"; el.style.setProperty("--k", k.color);
-      const head = document.createElement("button"); head.type = "button"; head.className = "spotGroupHead";
-      head.innerHTML = `<span class="chev">▸</span><i></i><span class="gName"></span><em></em>`;
-      head.querySelector(".gName").textContent = k.kind;
-      const grid = document.createElement("div"); grid.className = "spotGrid";
-      grid.id = `spotGroup-${k.kind.replace(/\W+/g, "-")}`;
-      head.setAttribute("aria-controls", grid.id);
-      head.addEventListener("click", () => {
-        if (openGroups.has(k.kind)) openGroups.delete(k.kind); else openGroups.add(k.kind);
-        try { localStorage.setItem(GROUPS_OPEN_KEY, JSON.stringify([...openGroups])); } catch { /* ignore */ }
-        syncGroupOpen();
-      });
-      el.append(head, grid); spotsEl.append(el);
-      const g = { el, head, grid, count: head.querySelector("em") };
-      spotGroups.set(k.kind, g);
-      return g;
+    const pinImages = new Map();
+    function pinImage(color, small) {
+      const key = `${color}${small ? "s" : ""}`;
+      if (!pinImages.has(key)) {
+        const svg = small
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5" fill="#151413" fill-opacity=".9" stroke="${color}" stroke-width="2.2"/><circle cx="9" cy="9" r="2.4" fill="${color}"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46"><path d="M19 2C9.6 2 3 8.8 3 17.2 3 28 19 44 19 44s16-16 16-26.8C35 8.8 28.4 2 19 2Z" fill="#171614" fill-opacity=".96" stroke="${color}" stroke-width="2.4"/><circle cx="19" cy="17" r="7" fill="${color}" fill-opacity=".35" stroke="${color}" stroke-width="1.6"/><circle cx="19" cy="17" r="2.5" fill="#fff"/></svg>`;
+        pinImages.set(key, `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+      }
+      return pinImages.get(key);
     }
-    function syncGroupOpen() {
-      const searching = activeSpotTags.size > 0 || document.getElementById("spotSearch").value.trim() !== "";
-      for (const [kind, g] of spotGroups) {
-        const open = searching || openGroups.has(kind);
-        g.el.classList.toggle("open", open);
-        g.head.setAttribute("aria-expanded", String(open));
-        g.head.disabled = searching; // results stay open while searching
+    let pinRangeKm = 5000; // Settings > Map spots > Show pins (0 = always)
+    function pinCondition(spot) {
+      if (!spot || spot.id === selectedSpot?.id) return undefined; // the selected pin always shows
+      const km = Math.min(pinRangeKm > 0 ? pinRangeKm : Infinity, spot.pinFarKm ?? Infinity);
+      return Number.isFinite(km) ? new Cesium.DistanceDisplayCondition(0, km * 1000) : undefined;
+    }
+    function refreshPinRanges() {
+      for (const [id, e] of spotEntities) e.billboard.distanceDisplayCondition = pinCondition(spotById.get(id));
+    }
+    // Pins behind the planet: "faded" draws them through Mars at 35% opacity (and pins behind
+    // hills when tilted stay visible too); "hidden" lets the planet and terrain cover them.
+    // Settings > Map spots > Behind the planet.
+    let pinsBehind = "faded";
+    const pinDepthOff = () => (pinsBehind === "faded" ? Number.POSITIVE_INFINITY : 50_000);
+    const pinOccluder = new Cesium.EllipsoidalOccluder(MARS, Cesium.Cartesian3.ZERO);
+    const PIN_SOLID = Cesium.Color.WHITE, PIN_FADED = new Cesium.Color(1, 1, 1, 0.35);
+    const pinWorld = new Map(); // id -> Cartesian3 on the ellipsoid, for the far-side test
+    function updatePinFading() {
+      pinOccluder.cameraPosition = viewer.camera.positionWC;
+      for (const [id, e] of spotEntities) {
+        if (!e.show) continue;
+        const behind = pinsBehind === "faded" && !pinOccluder.isPointVisible(pinWorld.get(id));
+        if (e._behind !== behind) { e._behind = behind; e.billboard.color = behind ? PIN_FADED : PIN_SOLID; }
       }
     }
-    for (const k of SPOT_KINDS) makeSpotGroup(k);
-    for (const spot of SPOTS) {
-      const pin = kindOf(spot).color;
-      const entity = viewer.entities.add({
-        id: `spot-${spot.id}`, position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS),
-        show: spotsVisible,
-        properties: { spotId: spot.id, category: spot.category, tags: spot.tags ?? [], vrEnabled: !!spot.vrEnabled },
+    function setPinsBehind(mode) {
+      pinsBehind = mode;
+      for (const e of spotEntities.values()) e.billboard.disableDepthTestDistance = pinDepthOff();
+      updatePinFading();
+    }
+    { // re-check after the camera moves (at most ~7 times a second)
+      const last = new Cesium.Cartesian3();
+      let at = 0;
+      viewer.scene.postRender.addEventListener(() => {
+        const now = performance.now();
+        if (now - at < 150 || Cesium.Cartesian3.equalsEpsilon(last, viewer.camera.positionWC, 0, 1)) return;
+        at = now;
+        Cesium.Cartesian3.clone(viewer.camera.positionWC, last);
+        updatePinFading();
+      });
+    }
+    function ensureEntity(spot) {
+      let e = spotEntities.get(spot.id);
+      if (e) return e;
+      pinWorld.set(spot.id, Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS));
+      const small = !!spot.small;
+      e = viewer.entities.add({
+        id: `spot-${spot.id}`, position: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, 0, MARS), show: false,
+        properties: { spotId: spot.id },
         billboard: {
-          image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46"><path d="M19 2C9.6 2 3 8.8 3 17.2 3 28 19 44 19 44s16-16 16-26.8C35 8.8 28.4 2 19 2Z" fill="#171614" fill-opacity=".96" stroke="${pin}" stroke-width="2.4"/><circle cx="19" cy="17" r="7" fill="${pin}" fill-opacity=".35" stroke="${pin}" stroke-width="1.6"/><circle cx="19" cy="17" r="2.5" fill="#fff"/></svg>`
-          )}`,
-          width: 38, height: 46, verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          image: pinImage(pinColor(spot), small), width: small ? 18 : 38, height: small ? 18 : 46,
+          verticalOrigin: small ? Cesium.VerticalOrigin.CENTER : Cesium.VerticalOrigin.BOTTOM,
           scaleByDistance: new Cesium.NearFarScalar(2e4, 1, 1e7, 0.8),
-          // Keep nearby pins from being depth-culled into the terrain at close zoom.
-          disableDepthTestDistance: 50_000,
+          // never hidden by terrain or the planet in "faded" mode; within 50 km otherwise
+          disableDepthTestDistance: pinDepthOff(),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          distanceDisplayCondition: pinCondition(spot),
         },
         label: { text: spot.name, show: false, font: "12px sans-serif", fillColor: Cesium.Color.WHITE,
           outlineColor: Cesium.Color.fromCssColorString("#151515"), outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          pixelOffset: new Cesium.Cartesian2(0, -14), verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, small ? -12 : -14), verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: 50000, distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 1800000) },
       });
-      spotEntities.set(spot.id, entity);
-      const b = document.createElement("button");
-      b.style.setProperty("--k", pin);
+      spotEntities.set(spot.id, e);
+      return e;
+    }
+    function forgetSpotUi(id) { // after a custom spot changes or goes: rebuilt on next use
+      const e = spotEntities.get(id);
+      if (e) { viewer.entities.remove(e); spotEntities.delete(id); }
+      spotButtons.get(id)?.remove();
+      spotButtons.delete(id);
+    }
+    function spotButton(spot) {
+      let b = spotButtons.get(spot.id);
+      if (b) return b;
+      b = document.createElement("button");
+      b.type = "button";
+      b.style.setProperty("--k", pinColor(spot));
       const name = document.createElement("span"); name.className = "spotName"; name.textContent = spot.name;
       const kindTag = document.createElement("span"); kindTag.className = "kindTag"; kindTag.textContent = kindOf(spot).short;
       b.append(name, kindTag);
@@ -1381,15 +1902,78 @@
         const badge = document.createElement("span"); badge.className = "spotBadge"; badge.textContent = "VR";
         kindTag.append(badge);
       }
-      b.title = `${spot.name} · ${spot.category}`;
-      b.addEventListener("click", () => { setSpotsVisible(true); selectSpot(spot); });
-      let group = spotGroups.get(spot.category);
-      if (!group) { // a kind missing from SPOT_KINDS still gets listed
-        const k = kindOf(spot); SPOT_KINDS.push(k);
-        group = makeSpotGroup(k);
+      if (spot.scope === "custom") {
+        const badge = document.createElement("span"); badge.className = "spotBadge"; badge.textContent = "mine";
+        kindTag.append(badge);
       }
-      group.grid.append(b); spotButtons.set(spot.id, b);
+      b.title = `${spot.name} · ${spot.category}`;
+      const id = spot.id;
+      b.addEventListener("click", () => { setSpotsVisible(true); const s = spotById.get(id); if (s) selectSpot(s); });
+      spotButtons.set(spot.id, b);
+      return b;
     }
+
+    // ---------------------------------------------------------------- spots: list (a dropdown per kind)
+    // Each kind is a dropdown showing its colour, name and how many spots match; click to open
+    // it. Which kinds are open is remembered. While searching, every kind with results opens.
+    // Long kinds (1,200+ craters) list 120 at a time with a "show more" button.
+    const GROUPS_OPEN_KEY = "mars-spot-groups-open-v1";
+    let openGroups = new Set();
+    try { openGroups = new Set(JSON.parse(localStorage.getItem(GROUPS_OPEN_KEY) || "[]")); } catch { /* all closed */ }
+    const LIST_STEP = 120;
+    const spotGroups = new Map(); // kind -> { el, head, grid, count, limit }
+    let lastMatches = new Map();  // kind -> matching spots, from the last filter pass
+    function makeSpotGroup(k) {
+      const el = document.createElement("div"); el.className = "spotGroup"; el.style.setProperty("--k", k.color);
+      const head = document.createElement("button"); head.type = "button"; head.className = "spotGroupHead";
+      head.innerHTML = `<span class="chev">▸</span><i></i><span class="gName"></span><em></em>`;
+      head.querySelector(".gName").textContent = k.kind;
+      const grid = document.createElement("div"); grid.className = "spotGrid";
+      head.addEventListener("click", () => {
+        if (openGroups.has(k.kind)) openGroups.delete(k.kind); else openGroups.add(k.kind);
+        try { localStorage.setItem(GROUPS_OPEN_KEY, JSON.stringify([...openGroups])); } catch { /* ignore */ }
+        syncGroupOpen();
+      });
+      el.append(head, grid); spotsEl.append(el);
+      const g = { el, head, grid, count: head.querySelector("em"), limit: LIST_STEP };
+      spotGroups.set(k.kind, g);
+      return g;
+    }
+    function rebuildGroups() {
+      spotsEl.replaceChildren();
+      spotGroups.clear();
+      const present = new Set(allSpots.map((s) => s.category));
+      for (const k of allKinds()) if (present.has(k.kind)) makeSpotGroup(k);
+      for (const kind of present) if (!spotGroups.has(kind)) makeSpotGroup(kindOf({ category: kind }));
+    }
+    function renderGroup(g, kind) {
+      const list = lastMatches.get(kind) ?? [];
+      const shown = list.slice(0, g.limit);
+      const buttons = shown.map((s) => {
+        const b = spotButton(s);
+        b.classList.toggle("active", s.id === selectedSpot?.id);
+        return b;
+      });
+      if (list.length > shown.length) {
+        const more = document.createElement("button");
+        more.type = "button"; more.className = "spotMore";
+        more.textContent = `Show ${Math.min(LIST_STEP, list.length - shown.length)} more (${(list.length - shown.length).toLocaleString()} left)`;
+        more.addEventListener("click", () => { g.limit += LIST_STEP; renderGroup(g, kind); });
+        buttons.push(more);
+      }
+      g.grid.replaceChildren(...buttons);
+    }
+    function syncGroupOpen() {
+      const searching = activeSpotTags.size > 0 || document.getElementById("spotSearch").value.trim() !== "";
+      for (const [kind, g] of spotGroups) {
+        const open = !g.el.hidden && (searching || openGroups.has(kind));
+        g.el.classList.toggle("open", open);
+        g.head.setAttribute("aria-expanded", String(open));
+        g.head.disabled = searching; // results stay open while searching
+        if (open) renderGroup(g, kind); else if (g.grid.firstChild) g.grid.replaceChildren();
+      }
+    }
+
     const spotCard = document.getElementById("spotCard");
     const spotStats = document.getElementById("spotStats");
     const spotImage = document.getElementById("spotImage");
@@ -1400,112 +1984,194 @@
       k.textContent = key; v.textContent = value; spotStats.append(k, v);
       return v;
     }
+    let onSelectionChange = () => {}; // set by the route planner (its "Add to list" button)
+    function closeSpotCard() {
+      onSelectionChangeSoon();
+      spotCard.hidden = true;
+      const was = selectedSpot;
+      selectedSpot = null;
+      if (was) {
+        spotButtons.get(was.id)?.classList.remove("active");
+        const e = spotEntities.get(was.id);
+        if (e) { e.label.show = false; e.billboard.distanceDisplayCondition = pinCondition(was); }
+      }
+    }
     function setSpotsVisible(visible) {
       spotsVisible = visible;
-      if (!visible) {
-        selectedSpot = null;
-        spotCard.hidden = true;
-        for (const entity of spotEntities.values()) entity.label.show = false;
-        for (const b of spotButtons.values()) b.classList.remove("active");
-      }
+      if (!visible) closeSpotCard();
       applySpotFilters();
       spotToggle.textContent = visible ? "Markers on" : "Markers off";
       spotToggle.classList.toggle("on", visible);
       spotToggle.setAttribute("aria-pressed", String(visible));
     }
-    const activeKinds = new Set(); // empty = every kind
+
+    // ---------------------------------------------------------------- spots: filters
+    // Source (All / Global / Custom), kinds, a word search and tags. Spots show on the map and
+    // in the list only for the chosen kinds; with no kind chosen a search or tag still finds
+    // spots across every kind; with nothing chosen at all, none show.
+    const activeKinds = new Set();
     let tagMatchAny = false;       // false: a spot needs every chosen tag; true: at least one
     const KINDS_KEY = "mars-spot-kinds-v1";
-    try {
-      const saved = JSON.parse(localStorage.getItem(KINDS_KEY) || "null");
-      for (const k of saved ?? SPOT_KINDS.map((x) => x.kind)) activeKinds.add(k);
-    } catch { for (const x of SPOT_KINDS) activeKinds.add(x.kind); }
-    function spotMatches(spot) {
-      const query = document.getElementById("spotSearch").value.trim().toLowerCase();
-      const haystack = [spot.name, spot.type, spot.mission, spot.note, spot.category, kindOf(spot).short, spot.date,
-        ...(spot.tags ?? [])].join(" ").toLowerCase();
-      // every word must match somewhere, so "rover gale" or "lander nasa" narrow things down
-      const words = query.split(/\s+/).filter(Boolean);
-      return words.every((w) => haystack.includes(w)) && (!activeKinds.size || activeKinds.has(spot.category)) &&
+    {
+      // Saved as { active, known }. Kinds that did not exist at the last visit start switched on.
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(KINDS_KEY) || "null"); } catch { /* defaults */ }
+      const active = Array.isArray(saved) ? saved : saved?.active;
+      const known = new Set(Array.isArray(saved) ? MISSION_KINDS.map((k) => k.kind) : saved?.known ?? []);
+      for (const k of allKinds()) if (!saved || active.includes(k.kind) || !known.has(k.kind)) activeKinds.add(k.kind);
+    }
+    const saveKinds = () => {
+      try { localStorage.setItem(KINDS_KEY, JSON.stringify({ active: [...activeKinds], known: allKinds().map((k) => k.kind) })); } catch { /* ignore */ }
+    };
+    const SOURCE_KEY = "mars-spot-source-v1";
+    let sourceFilter = "all";
+    try { const v = localStorage.getItem(SOURCE_KEY); if (["all", "global", "custom"].includes(v)) sourceFilter = v; } catch { /* all */ }
+    const inSource = (spot) => sourceFilter === "all" || spot.scope === sourceFilter;
+    function haystack(spot) {
+      return (spot._hay ??= [spot.name, spot.type, spot.mission, spot.note, spot.category, kindOf(spot).short, spot.date,
+        ...(spot.tags ?? []), ...(spot.details ?? []).map((d) => d[1])].join(" ").toLowerCase());
+    }
+    function spotMatches(spot, words) {
+      return inSource(spot) && (!activeKinds.size || activeKinds.has(spot.category)) &&
+        words.every((w) => haystack(spot).includes(w)) &&
         (!activeSpotTags.size || [...activeSpotTags][tagMatchAny ? "some" : "every"]((tag) => spot.tags?.includes(tag)));
     }
-    // Spots show (on the map and in the list) only for the chosen kinds. With no kind chosen,
-    // a search or tag still finds spots across every kind; with nothing at all, none show.
     const spotFiltering = () => activeKinds.size > 0 || activeSpotTags.size > 0 ||
       document.getElementById("spotSearch").value.trim() !== "";
     function applySpotFilters() {
-      let count = 0;
       const filtering = spotFiltering();
-      for (const spot of SPOTS) {
-        const matches = spotMatches(spot);
-        if (matches) count++;
-        spotButtons.get(spot.id).hidden = !matches || !filtering;
-        spotEntities.get(spot.id).show = spotsVisible && matches && filtering;
-        if (!matches && selectedSpot?.id === spot.id) {
-          selectedSpot = null; spotCard.hidden = true;
-          spotEntities.get(spot.id).label.show = false;
-          spotButtons.get(spot.id).classList.remove("active");
+      // every word must match somewhere, so "rover gale" or "crater noachis" narrow things down
+      const words = document.getElementById("spotSearch").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      let count = 0, total = 0;
+      const matches = new Map();
+      viewer.entities.suspendEvents();
+      try {
+        for (const spot of allSpots) {
+          if (inSource(spot)) total++;
+          const m = filtering && spotMatches(spot, words);
+          if (m) {
+            count++;
+            let list = matches.get(spot.category);
+            if (!list) matches.set(spot.category, (list = []));
+            list.push(spot);
+            if (spotsVisible) ensureEntity(spot).show = true;
+            else { const e = spotEntities.get(spot.id); if (e) e.show = false; }
+          } else {
+            const e = spotEntities.get(spot.id);
+            if (e) e.show = false;
+            if (selectedSpot?.id === spot.id) closeSpotCard();
+          }
         }
-      }
+      } finally { viewer.entities.resumeEvents(); }
+      updatePinFading();
+      lastMatches = matches;
       for (const [kind, g] of spotGroups) {
-        const shown = SPOTS.filter((sp) => sp.category === kind && !spotButtons.get(sp.id).hidden).length;
-        g.el.hidden = !shown;
-        g.count.textContent = String(shown);
+        const n = matches.get(kind)?.length ?? 0;
+        g.el.hidden = !n;
+        g.count.textContent = n.toLocaleString();
       }
       syncGroupOpen();
       document.getElementById("spotHint").hidden = filtering;
-      document.getElementById("spotFilterCount").textContent = !filtering ? `No spots shown (${SPOTS.length} available)`
-        : count ? `${count} of ${SPOTS.length} spots` : "No spots match. Clear the search or filters.";
+      document.getElementById("spotFilterCount").textContent = !filtering ? `No spots shown (${total.toLocaleString()} available)`
+        : count ? `${count.toLocaleString()} of ${total.toLocaleString()} spots` : "No spots match. Clear the search or filters.";
       syncKindChips();
     }
-    // Kind chips: coloured like the pins, so they double as the map legend. Several can be on.
+
+    // Source switch: All / Global / Custom
+    const sourceButtons = [...document.querySelectorAll("#sourceSeg button")];
+    function syncSource() {
+      for (const b of sourceButtons) {
+        b.classList.toggle("on", b.dataset.src === sourceFilter);
+        b.setAttribute("aria-pressed", String(b.dataset.src === sourceFilter));
+      }
+      const nCustom = allSpots.filter((s) => s.scope === "custom").length;
+      document.getElementById("customCount").textContent = nCustom ? String(nCustom) : "";
+    }
+    for (const b of sourceButtons) {
+      b.addEventListener("click", () => {
+        sourceFilter = b.dataset.src;
+        try { localStorage.setItem(SOURCE_KEY, sourceFilter); } catch { /* ignore */ }
+        syncSource();
+        renderKindChips();
+        applySpotFilters();
+      });
+    }
+
+    // Kind chips, in sections (missions / USGS named features / my kinds), coloured like the
+    // pins so they double as the map legend. "Select all / none" next to the title covers
+    // every kind; each section has its own all / none.
     const kindFilters = document.getElementById("spotKinds");
-    const kindSyncs = [];
-    const usedKinds = SPOT_KINDS.filter((k) => SPOTS.some((sp) => sp.category === k.kind)).map((k) => k.kind);
-    const saveKinds = () => { try { localStorage.setItem(KINDS_KEY, JSON.stringify([...activeKinds])); } catch { /* ignore */ } };
-    // "Select all" / "Select none" next to the Kind title: turns every kind on, or (when they all
-    // are) every kind off, so no spots show on Mars.
     const kindAll = document.getElementById("kindAll");
     const kindSummary = document.getElementById("kindSummary");
-    kindAll.addEventListener("click", () => {
-      const all = usedKinds.every((k) => activeKinds.has(k));
-      activeKinds.clear();
-      if (!all) for (const k of usedKinds) activeKinds.add(k);
-      saveKinds();
-      applySpotFilters();
-    });
-    kindSyncs.push(() => {
+    let chipSyncs = [];
+    let usedKinds = [];
+    function renderKindChips() {
+      kindFilters.replaceChildren();
+      chipSyncs = [];
+      const counts = new Map();
+      for (const s of allSpots) if (inSource(s)) counts.set(s.category, (counts.get(s.category) ?? 0) + 1);
+      const kinds = allKinds().filter((k) => counts.has(k.kind));
+      for (const kind of counts.keys()) if (!kinds.some((k) => k.kind === kind)) kinds.push(kindOf({ category: kind }));
+      usedKinds = kinds.map((k) => k.kind);
+      for (const grp of KIND_GROUPS) {
+        const inGroup = kinds.filter((k) => (k.group ?? "custom") === grp.id);
+        if (!inGroup.length) continue;
+        const sec = document.createElement("div"); sec.className = "kindSection";
+        const head = document.createElement("div"); head.className = "kindSectionHead";
+        const title = document.createElement("span"); title.textContent = grp.title;
+        const toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "kindSectionAll";
+        toggle.addEventListener("click", () => {
+          const all = inGroup.every((k) => activeKinds.has(k.kind));
+          for (const k of inGroup) all ? activeKinds.delete(k.kind) : activeKinds.add(k.kind);
+          saveKinds(); applySpotFilters();
+        });
+        chipSyncs.push(() => { toggle.textContent = inGroup.every((k) => activeKinds.has(k.kind)) ? "none" : "all"; });
+        head.append(title, toggle);
+        const chips = document.createElement("div"); chips.className = "kindChips";
+        for (const k of inGroup) {
+          const b = document.createElement("button"); b.type = "button"; b.className = "kindFilter";
+          b.style.setProperty("--k", k.color);
+          b.innerHTML = `<i></i><span></span><em></em>`;
+          b.querySelector("span").textContent = k.short;
+          b.querySelector("em").textContent = counts.get(k.kind).toLocaleString();
+          b.title = `${k.kind}: show or hide`;
+          chipSyncs.push(() => {
+            b.classList.toggle("on", activeKinds.has(k.kind));
+            b.setAttribute("aria-pressed", String(activeKinds.has(k.kind)));
+          });
+          b.addEventListener("click", () => {
+            if (activeKinds.has(k.kind)) activeKinds.delete(k.kind); else activeKinds.add(k.kind);
+            saveKinds(); applySpotFilters();
+          });
+          chips.append(b);
+        }
+        sec.append(head, chips);
+        kindFilters.append(sec);
+      }
+      syncKindChips();
+    }
+    function syncKindChips() {
+      for (const f of chipSyncs) f();
       const on = usedKinds.filter((k) => activeKinds.has(k));
-      const all = on.length === usedKinds.length;
+      const all = usedKinds.length > 0 && on.length === usedKinds.length;
       kindAll.textContent = all ? "Select none" : "Select all";
       kindSummary.textContent = all ? `all ${usedKinds.length}` : !on.length ? "none"
         : on.length <= 2 ? on.map((k) => kindOf({ category: k }).short).join(", ") : `${on.length} of ${usedKinds.length}`;
-    });
-    function syncKindChips() { for (const f of kindSyncs) f(); }
-    for (const k of SPOT_KINDS) {
-      const n = SPOTS.filter((sp) => sp.category === k.kind).length;
-      if (!n) continue;
-      const b = document.createElement("button"); b.type = "button"; b.className = "kindFilter";
-      b.style.setProperty("--k", k.color); b.setAttribute("aria-pressed", "false");
-      b.innerHTML = `<i></i><span></span><em></em>`;
-      b.querySelector("span").textContent = k.short; b.querySelector("em").textContent = n;
-      b.title = `Show only: ${k.kind}`;
-      const sync = () => {
-        b.classList.toggle("on", activeKinds.has(k.kind));
-        b.setAttribute("aria-pressed", String(activeKinds.has(k.kind)));
-      };
-      kindSyncs.push(sync);
-      b.addEventListener("click", () => {
-        if (activeKinds.has(k.kind)) activeKinds.delete(k.kind); else activeKinds.add(k.kind);
-        saveKinds();
-        applySpotFilters();
-      });
-      kindFilters.append(b);
     }
+    kindAll.addEventListener("click", () => {
+      const all = usedKinds.length > 0 && usedKinds.every((k) => activeKinds.has(k));
+      for (const k of usedKinds) all ? activeKinds.delete(k) : activeKinds.add(k);
+      saveKinds();
+      applySpotFilters();
+    });
+
     // Tag filter: type to get a dropdown of matching tags (with how many spots carry each), pick
     // one to add it as a chip; "all tags" / "any tag" sets how several chips combine.
-    const tagCounts = new Map();
-    for (const sp of SPOTS) for (const t of sp.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+    let tagCounts = new Map();
+    function recountTags() {
+      tagCounts = new Map();
+      for (const sp of allSpots) for (const t of sp.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+    }
     const tagSearch = document.getElementById("tagSearch");
     const tagSuggest = document.getElementById("tagSuggest");
     const tagChosen = document.getElementById("tagChosen");
@@ -1541,7 +2207,8 @@
         .sort((a, b) => {
           const sa = a.toLowerCase().startsWith(q) ? 0 : 1, sb = b.toLowerCase().startsWith(q) ? 0 : 1;
           return sa - sb || tagCounts.get(b) - tagCounts.get(a) || a.localeCompare(b);
-        });
+        })
+        .slice(0, 80);
       tagHl = 0;
       tagSuggest.replaceChildren();
       if (!tagOptions.length) {
@@ -1557,7 +2224,7 @@
           const b = document.createElement("b"); b.textContent = t.slice(at, at + q.length);
           name.append(t.slice(0, at), b, t.slice(at + q.length));
         } else name.textContent = t;
-        const n = document.createElement("em"); n.textContent = `${tagCounts.get(t)} spot${tagCounts.get(t) === 1 ? "" : "s"}`;
+        const n = document.createElement("em"); n.textContent = `${tagCounts.get(t).toLocaleString()} spot${tagCounts.get(t) === 1 ? "" : "s"}`;
         opt.append(name, n);
         opt.addEventListener("mousedown", (e) => { e.preventDefault(); addTag(t); }); // before the input blurs
         opt.addEventListener("mousemove", () => highlightTag(i));
@@ -1603,8 +2270,25 @@
         applySpotFilters();
       });
     }
-    document.getElementById("spotSearch").addEventListener("input", applySpotFilters);
-    applySpotFilters();
+    let searchTimer = 0; // 2,000+ spots: wait for a pause in typing
+    document.getElementById("spotSearch").addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(applySpotFilters, 120);
+    });
+
+    // Everything that depends on the set of spots, after custom spots change.
+    let routeKindsRefresh = () => {}; // set by the route planner further down
+    function onSelectionChangeSoon() { queueMicrotask(() => onSelectionChange()); } // after state settles
+    function rebuildSpots() {
+      rebuildSpotIndex();
+      recountTags();
+      rebuildGroups();
+      syncSource();
+      renderKindChips();
+      applySpotFilters();
+      routeKindsRefresh();
+    }
+    rebuildSpots();
     spotToggle.addEventListener("click", () => setSpotsVisible(!spotsVisible));
     setSpotsVisible(true);
 
@@ -1682,31 +2366,50 @@
     roadToggle.addEventListener("click", () =>
       setTraverseVisible(!(traverseEntity && traverseEntity.show)));
     spotVrButton.addEventListener("click", () => {
-      if (selectedSpot?.vrUrl) {
-        window.open(selectedSpot.vrUrl, "_blank", "noopener,noreferrer");
-        return;
-      }
-      statusEl.textContent = "Street-view mode is planned for this spot but is not available yet.";
+      // boxwork -> the WebXR replay of the demo excursion; other spots -> their NASA source page
+      const target = selectedSpot?.vrUrl ?? (selectedSpot?.id === "gale-boxwork" ? "./vr.html" : selectedSpot?.url);
+      if (target) { window.open(target, "_blank", "noopener,noreferrer"); return; }
+      statusEl.textContent = "No street view or source page for this spot.";
     });
-    document.getElementById("spotClose").addEventListener("click", () => {
-      spotCard.hidden = true;
-      selectedSpot = null;
-      onSpotSelected();
-      for (const b of spotButtons.values()) b.classList.remove("active");
-      for (const entity of spotEntities.values()) entity.label.show = false;
-    });
-    let onSpotSelected = () => {}; // set by the pin-distance setting further down
+    document.getElementById("spotClose").addEventListener("click", closeSpotCard);
     async function selectSpot(spot) {
       closeProbe();
+      const previous = selectedSpot;
       selectedSpot = spot;
-      onSpotSelected();
-      for (const [id, b] of spotButtons) b.classList.toggle("active", id === spot.id);
+      if (previous && previous.id !== spot.id) {
+        const pe = spotEntities.get(previous.id);
+        if (pe) { pe.label.show = false; pe.billboard.distanceDisplayCondition = pinCondition(previous); }
+        spotButtons.get(previous.id)?.classList.remove("active");
+      }
+      const entity = ensureEntity(spot);
+      entity.show = spotsVisible;
+      entity.label.show = true;
+      entity.billboard.distanceDisplayCondition = undefined; // the selected pin always shows
+      spotButtons.get(spot.id)?.classList.add("active");
+      onSelectionChangeSoon();
       if (!openGroups.has(spot.category)) { openGroups.add(spot.category); syncGroupOpen(); }
-      for (const [id, entity] of spotEntities) entity.label.show = id === spot.id;
       document.getElementById("spotTitle").textContent = spot.name;
       const kindEl = document.getElementById("spotKind");
-      kindEl.textContent = spot.category; kindEl.style.setProperty("--k", kindOf(spot).color);
-      document.getElementById("spotType").textContent = `${spot.type} · ${spot.mission}`;
+      kindEl.textContent = spot.category; kindEl.style.setProperty("--k", pinColor(spot));
+      document.getElementById("spotScope").textContent =
+        spot.scope === "custom" ? "Custom spot" : spot.provider === "usgs" ? "IAU named feature" : "Mission spot";
+      document.getElementById("spotType").textContent = [spot.type, spot.mission].filter(Boolean).join(" · ");
+      document.getElementById("spotOwnActions").hidden = spot.scope !== "custom";
+      // several images (custom spots): thumbnails that switch the main image
+      const gallery = document.getElementById("spotGallery");
+      gallery.replaceChildren();
+      gallery.hidden = !(spot.images?.length > 1);
+      for (const im of spot.images ?? []) {
+        if (!(spot.images.length > 1)) break;
+        const t = document.createElement("img"); t.src = im.url; t.alt = im.caption || spot.name;
+        t.addEventListener("click", () => {
+          spotImage.hidden = false; spotImage.src = im.url; spotImage.alt = im.caption || spot.name;
+          spotImageCaption.hidden = false; spotImageCaption.textContent = im.caption ? `Image: ${im.caption}` : "";
+          gallery.querySelectorAll("img").forEach((x) => x.classList.toggle("on", x === t));
+        });
+        gallery.append(t);
+      }
+      gallery.querySelector("img")?.classList.add("on");
       const spotTags = document.getElementById("spotTags");
       spotTags.replaceChildren();
       for (const tag of spot.tags ?? []) {
@@ -1729,12 +2432,18 @@
         spotImage.removeAttribute("src"); spotImage.alt = ""; spotImageCaption.textContent = "";
       }
       spotVrButton.hidden = !spot.vrEnabled;
-      spotVrButton.textContent = spot.vrUrl ? "Open 360° / VR view" : "Open street view";
+      spotVrButton.textContent = spot.vrUrl ? "Open 360° / VR view"
+        : spot.id === "gale-boxwork" ? "Open VR replay" : spot.url ? "Open NASA source page" : "Open street view";
       const note = document.getElementById("spotNote");
-      note.replaceChildren(document.createTextNode(`${spot.date}. ${spot.note} Source: `));
-      const source = document.createElement("a");
-      source.textContent = spot.source; source.href = spot.url; source.target = "_blank"; source.rel = "noopener noreferrer";
-      source.style.color = "#9fd3ff"; note.append(source, document.createTextNode("."));
+      note.replaceChildren();
+      const text = [spot.date, spot.note].filter(Boolean).map((t) => t.replace(/\.$/, "")).join(". ");
+      if (text) note.append(document.createTextNode(`${text}. `));
+      if (spot.url) {
+        note.append(document.createTextNode("Source: "));
+        const source = document.createElement("a");
+        source.textContent = spot.source || spot.url; source.href = spot.url; source.target = "_blank"; source.rel = "noopener noreferrer";
+        source.style.color = "#9fd3ff"; note.append(source, document.createTextNode("."));
+      } else if (spot.source) note.append(document.createTextNode(`Source: ${spot.source}.`));
       spotStats.replaceChildren();
       const ns = spot.lat >= 0 ? "N" : "S", ew = spot.lon >= 0 ? "E" : "W";
       addSpotStat("Latitude", `${Math.abs(spot.lat).toFixed(4)}° ${ns}`);
@@ -1749,6 +2458,7 @@
         addSpotStat("Drive · heading", `${spot.drive} · ${spot.heading}°`);
         addSpotStat("Projection", spot.projection);
       }
+      for (const [k, v] of spot.details ?? []) addSpotStat(k, v);
       const elevation = addSpotStat("MOLA elevation", "loading…");
       const galeDistance = surfaceDistance(
         Cesium.Cartesian3.fromDegrees(GALE.lon, GALE.lat, 0, MARS),
@@ -1767,6 +2477,324 @@
         .catch(() => { if (spotStats.contains(elevation)) elevation.textContent = "unavailable"; });
       else elevation.textContent = "local server required";
     }
+
+    // ---------------------------------------------------------------- custom spots: editor
+    // "+ Add spot" (Spots tab) or "Edit" on a custom spot's card opens this form: name, position
+    // (typed, picked on the map, or the view centre), kind (any existing one, or a new kind with
+    // its own colour), an optional pin colour, subtitle, description, date, mission, tags,
+    // images (links or uploads) and a source link. Saved through customStore (see above).
+    const editor = document.getElementById("spotEditor");
+    const spotMsgEl = document.getElementById("spotMsg");
+    const seForm = document.getElementById("spotForm");
+    const se = (id) => document.getElementById(id);
+    let editingId = null;     // null: a new spot
+    let editTags = [];
+    let editImages = [];      // [{ url, caption }]
+    let spotPickPending = false;
+    const NEW_KIND = "__new__";
+
+    function fillKindSelect(selected) {
+      const sel = se("seKind");
+      sel.replaceChildren();
+      for (const grp of KIND_GROUPS) {
+        const kinds = allKinds().filter((k) => k.group === grp.id);
+        if (!kinds.length) continue;
+        const og = document.createElement("optgroup"); og.label = grp.title;
+        for (const k of kinds) {
+          const o = document.createElement("option"); o.value = k.kind; o.textContent = k.kind; og.append(o);
+        }
+        sel.append(og);
+      }
+      const o = document.createElement("option"); o.value = NEW_KIND; o.textContent = "＋ New kind…"; sel.append(o);
+      sel.value = selected && allKinds().some((k) => k.kind === selected) ? selected : (customKinds[0]?.kind ?? NEW_KIND);
+      syncKindFields();
+    }
+    function syncKindFields() {
+      const v = se("seKind").value;
+      se("seNewKind").hidden = v !== NEW_KIND;
+      const custom = customKinds.find((k) => k.kind === v);
+      se("seKindColorRow").hidden = !custom;
+      if (custom) se("seKindColorEdit").value = custom.color;
+    }
+    se("seKind").addEventListener("change", syncKindFields);
+    se("seOwnColor").addEventListener("change", () => { se("seColor").disabled = !se("seOwnColor").checked; });
+
+    function renderEditTags() {
+      const box = se("seTags");
+      box.querySelectorAll(".tagChip").forEach((c) => c.remove());
+      for (const t of editTags) {
+        const chip = document.createElement("span"); chip.className = "tagChip";
+        chip.append(document.createTextNode(t));
+        const x = document.createElement("button"); x.type = "button"; x.textContent = "×";
+        x.setAttribute("aria-label", `Remove tag ${t}`);
+        x.addEventListener("click", () => { editTags = editTags.filter((y) => y !== t); renderEditTags(); });
+        chip.append(x);
+        box.insertBefore(chip, se("seTagInput"));
+      }
+      const list = se("seTagList");
+      list.replaceChildren(...[...tagCounts.keys()].filter((t) => !editTags.includes(t)).sort()
+        .map((t) => Object.assign(document.createElement("option"), { value: t })));
+    }
+    function addEditTag(raw) {
+      for (const t of raw.split(",").map((x) => x.trim().slice(0, 40)).filter(Boolean)) {
+        if (!editTags.some((y) => y.toLowerCase() === t.toLowerCase())) editTags.push(t);
+      }
+      se("seTagInput").value = "";
+      renderEditTags();
+    }
+    se("seTagInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addEditTag(se("seTagInput").value); }
+      else if (e.key === "Backspace" && !se("seTagInput").value && editTags.length) { editTags.pop(); renderEditTags(); }
+    });
+    se("seTagInput").addEventListener("change", () => { if (se("seTagInput").value.trim()) addEditTag(se("seTagInput").value); });
+
+    function renderEditImages() {
+      const box = se("seImages");
+      box.replaceChildren();
+      editImages.forEach((im, i) => {
+        const card = document.createElement("div"); card.className = "seImg";
+        const img = document.createElement("img"); img.src = im.url; img.alt = im.caption || `Image ${i + 1}`;
+        const cap = document.createElement("input"); cap.placeholder = "Caption / credit"; cap.value = im.caption ?? "";
+        cap.addEventListener("input", () => { im.caption = cap.value.slice(0, 160); });
+        const btns = document.createElement("div");
+        if (i > 0) {
+          const first = document.createElement("button"); first.type = "button"; first.textContent = "Make cover";
+          first.addEventListener("click", () => { editImages.unshift(...editImages.splice(i, 1)); renderEditImages(); });
+          btns.append(first);
+        } else {
+          const tag = document.createElement("span"); tag.className = "seCover"; tag.textContent = "Cover"; btns.append(tag);
+        }
+        const del = document.createElement("button"); del.type = "button"; del.textContent = "Remove";
+        del.addEventListener("click", () => { editImages.splice(i, 1); renderEditImages(); });
+        btns.append(del);
+        card.append(img, cap, btns);
+        box.append(card);
+      });
+    }
+    const editorMsg = (text, bad = false) => { se("seMsg").textContent = text; se("seMsg").classList.toggle("bad", bad); };
+    se("seImgAdd").addEventListener("click", () => {
+      const u = se("seImgUrl").value.trim();
+      if (!/^https?:\/\//i.test(u)) { editorMsg("Image links must start with http:// or https://", true); return; }
+      editImages.push({ url: u, caption: "" });
+      se("seImgUrl").value = "";
+      editorMsg("");
+      renderEditImages();
+    });
+    se("seImgFile").addEventListener("change", async () => {
+      const files = [...se("seImgFile").files];
+      se("seImgFile").value = "";
+      for (const f of files) {
+        if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) { editorMsg(`${f.name}: only PNG, JPEG, WebP or GIF`, true); continue; }
+        editorMsg(`Uploading ${f.name}…`);
+        try {
+          editImages.push({ url: await customStore.uploadImage(f), caption: f.name.replace(/\.[^.]+$/, "") });
+          renderEditImages();
+          editorMsg("");
+        } catch (err) { editorMsg(`${f.name}: ${err.message}`, true); }
+      }
+    });
+
+    function setEditorPosition(lat, lon) {
+      se("seLat").value = lat.toFixed(5);
+      se("seLon").value = lon.toFixed(5);
+    }
+    se("seCentre").addEventListener("click", () => {
+      const c = MARS.cartesianToCartographic(viewCentre());
+      if (c) setEditorPosition(deg(c.latitude), deg(c.longitude));
+    });
+    se("sePick").addEventListener("click", () => {
+      spotPickPending = true;
+      editor.close();
+      spotMsgEl.textContent = "Click the map where the spot goes (Esc to cancel).";
+      viewer.scene.canvas.style.cursor = "crosshair";
+    });
+    // called by the map click handler while picking
+    function finishSpotPick(world) {
+      spotPickPending = false;
+      viewer.scene.canvas.style.cursor = "";
+      spotMsgEl.textContent = "";
+      if (world) {
+        const c = MARS.cartesianToCartographic(world);
+        setEditorPosition(deg(c.latitude), deg(c.longitude));
+      }
+      editor.showModal();
+    }
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && spotPickPending) finishSpotPick(null); });
+
+    function openSpotEditor(spot = null, at = null) {
+      editingId = spot?.id ?? null;
+      const c = spot ? customDoc.spots.find((s) => s.id === spot.id) : null;
+      se("seTitle").textContent = c ? `Edit · ${c.name}` : "New custom spot";
+      se("seName").value = c?.name ?? "";
+      const pos = c ?? at ?? (() => {
+        const cc = MARS.cartesianToCartographic(viewCentre());
+        return cc ? { lat: deg(cc.latitude), lon: deg(cc.longitude) } : { lat: 0, lon: 0 };
+      })();
+      setEditorPosition(pos.lat, pos.lon);
+      fillKindSelect(c?.category);
+      se("seKindName").value = "";
+      se("seKindColor").value = "#ff66cc";
+      se("seOwnColor").checked = !!c?.color;
+      se("seColor").value = safeColor(c?.color, "#ffffff");
+      se("seColor").disabled = !c?.color;
+      se("seSubtitle").value = c?.subtitle ?? "";
+      se("seDesc").value = c?.description ?? "";
+      se("seDate").value = c?.date ?? "";
+      se("seMission").value = c?.mission ?? "";
+      se("seSourceText").value = c?.sourceText ?? "";
+      se("seUrl").value = c?.url ?? "";
+      editTags = [...(c?.tags ?? [])];
+      editImages = (c?.images ?? []).map((im) => ({ ...im }));
+      se("seDelete").hidden = !c;
+      editorMsg(USE_PROXY ? "" : "No local server: custom spots are saved in this browser only.");
+      renderEditTags();
+      renderEditImages();
+      editor.showModal();
+      se("seName").focus();
+    }
+    se("seCancel").addEventListener("click", () => editor.close());
+    document.getElementById("addSpotBtn").addEventListener("click", () => openSpotEditor());
+
+    async function persistCustom(message) {
+      // keep only custom kinds still used by a custom spot
+      const used = new Set(customDoc.spots.map((s) => s.category));
+      customKinds = customKinds.filter((k) => used.has(k.kind));
+      customDoc.kinds = customKinds.map(({ kind, short, color }) => ({ kind, short, color }));
+      await customStore.save(customDoc);
+      rebuildSpots();
+      if (message) spotMsgEl.textContent = message;
+    }
+
+    seForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = se("seName").value.trim();
+      const lat = Number(se("seLat").value);
+      let lon = Number(se("seLon").value);
+      if (!name) { editorMsg("Give the spot a name.", true); return; }
+      if (!(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 360)) { editorMsg("Latitude must be -90..90 and longitude -180..360.", true); return; }
+      if (lon > 180) lon -= 360;
+      let category = se("seKind").value;
+      if (category === NEW_KIND) {
+        category = se("seKindName").value.trim().slice(0, 40);
+        if (!category) { editorMsg("Name the new kind.", true); return; }
+        const existing = allKinds().find((k) => k.kind.toLowerCase() === category.toLowerCase());
+        if (existing) category = existing.kind;
+        else customKinds.push({ kind: category, short: category, color: safeColor(se("seKindColor").value, "#ff66cc"), group: "custom" });
+      } else {
+        const ck = customKinds.find((k) => k.kind === category);
+        if (ck) ck.color = safeColor(se("seKindColorEdit").value, ck.color);
+      }
+      if (se("seTagInput").value.trim()) addEditTag(se("seTagInput").value);
+      const now = new Date().toISOString();
+      const old = customDoc.spots.find((s) => s.id === editingId);
+      const spot = {
+        id: old?.id ?? `custom-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        name: name.slice(0, 120), lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, category,
+        color: se("seOwnColor").checked ? safeColor(se("seColor").value) : undefined,
+        subtitle: se("seSubtitle").value.trim().slice(0, 160) || undefined,
+        description: se("seDesc").value.trim().slice(0, 4000) || undefined,
+        date: se("seDate").value.trim().slice(0, 80) || undefined,
+        mission: se("seMission").value.trim().slice(0, 120) || undefined,
+        tags: editTags,
+        images: editImages.filter((im) => safeImageUrl(im.url)),
+        sourceText: se("seSourceText").value.trim().slice(0, 160) || undefined,
+        url: safeLink(se("seUrl").value.trim()) || undefined,
+        created: old?.created ?? now, updated: now,
+      };
+      se("seSave").disabled = true;
+      editorMsg("Saving…");
+      const before = JSON.stringify(customDoc);
+      if (old) customDoc.spots[customDoc.spots.indexOf(old)] = spot; else customDoc.spots.push(spot);
+      try {
+        forgetSpotUi(spot.id);
+        activeKinds.add(category); saveKinds();          // make sure the new spot is visible
+        if (sourceFilter === "global") { sourceFilter = "all"; try { localStorage.setItem(SOURCE_KEY, "all"); } catch { /* ignore */ } }
+        await persistCustom(old ? `Saved ${spot.name}.` : `Added ${spot.name}.`);
+        editor.close();
+        selectSpot(spotById.get(spot.id));
+      } catch (err) {
+        customDoc = JSON.parse(before);
+        customKinds = customDoc.kinds.map((k) => ({ ...k, group: "custom" }));
+        editorMsg(`Could not save: ${err.message}`, true);
+      } finally { se("seSave").disabled = false; }
+    });
+
+    async function deleteCustomSpot(id) {
+      const c = customDoc.spots.find((s) => s.id === id);
+      if (!c || !confirm(`Delete the custom spot "${c.name}"? This cannot be undone.`)) return false;
+      const before = JSON.stringify(customDoc);
+      customDoc.spots = customDoc.spots.filter((s) => s.id !== id);
+      try {
+        if (selectedSpot?.id === id) closeSpotCard();
+        forgetSpotUi(id);
+        await persistCustom(`Deleted ${c.name}.`);
+        return true;
+      } catch (err) {
+        customDoc = JSON.parse(before);
+        spotMsgEl.textContent = `Could not delete: ${err.message}`;
+        return false;
+      }
+    }
+    se("seDelete").addEventListener("click", async () => { if (await deleteCustomSpot(editingId)) editor.close(); });
+    document.getElementById("spotEdit").addEventListener("click", () => { if (selectedSpot?.scope === "custom") openSpotEditor(selectedSpot); });
+    document.getElementById("spotDelete").addEventListener("click", () => { if (selectedSpot?.scope === "custom") deleteCustomSpot(selectedSpot.id); });
+
+    // Export: one JSON file with every custom spot and kind; uploaded images are embedded so
+    // the file is complete on another machine. Import merges a file (same id = replaced).
+    document.getElementById("customExport").addEventListener("click", async () => {
+      const doc = JSON.parse(JSON.stringify(customDoc));
+      spotMsgEl.textContent = "Preparing export…";
+      for (const s of doc.spots) {
+        for (const im of s.images ?? []) {
+          if (im.url?.startsWith("./data/custom/images/")) {
+            try { im.url = await blobToDataUrl(await (await fetch(im.url)).blob()); } catch { /* keep the path */ }
+          }
+        }
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], { type: "application/json" }));
+      a.download = `mars-custom-spots-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      spotMsgEl.textContent = `Exported ${doc.spots.length} custom spot${doc.spots.length === 1 ? "" : "s"}.`;
+    });
+    document.getElementById("customImport").addEventListener("click", () => document.getElementById("customImportFile").click());
+    document.getElementById("customImportFile").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      const before = JSON.stringify(customDoc);
+      try {
+        const doc = JSON.parse(await file.text());
+        if (!Array.isArray(doc?.spots)) throw new Error("not a custom spots file");
+        for (const k of doc.kinds ?? []) {
+          if (typeof k?.kind === "string" && !allKinds().some((x) => x.kind === k.kind))
+            customKinds.push({ kind: k.kind.slice(0, 40), short: (k.short || k.kind).slice(0, 40), color: safeColor(k.color, "#ff66cc"), group: "custom" });
+        }
+        let n = 0;
+        for (const s of doc.spots) {
+          if (typeof s?.name !== "string" || !Number.isFinite(s.lat) || !Number.isFinite(s.lon)) continue;
+          for (const im of s.images ?? []) { // embedded images go back to the server as files
+            if (USE_PROXY && /^data:image\//.test(im.url ?? "")) im.url = await customStore.uploadImage(await (await fetch(im.url)).blob());
+          }
+          const id = typeof s.id === "string" && s.id.startsWith("custom-") ? s.id : `custom-${Date.now().toString(36)}${n}`;
+          const clean = { ...s, id, category: String(s.category || "Imported").slice(0, 40), tags: (s.tags ?? []).map(String) };
+          if (!allKinds().some((k) => k.kind === clean.category))
+            customKinds.push({ kind: clean.category, short: clean.category, color: "#ff66cc", group: "custom" });
+          const at = customDoc.spots.findIndex((x) => x.id === id);
+          if (at >= 0) customDoc.spots[at] = clean; else customDoc.spots.push(clean);
+          forgetSpotUi(id);
+          activeKinds.add(clean.category);
+          n++;
+        }
+        saveKinds();
+        await persistCustom(`Imported ${n} custom spot${n === 1 ? "" : "s"}.`);
+      } catch (err) {
+        customDoc = JSON.parse(before);
+        customKinds = customDoc.kinds.map((k) => ({ ...k, group: "custom" }));
+        spotMsgEl.textContent = `Import failed: ${err.message}`;
+      }
+    });
 
     // ---------------------------------------------------------------- distances
     const fmtDist = (m) =>
@@ -2177,12 +3205,13 @@
     const detailMode = document.getElementById("detailMode");
     const resMode = document.getElementById("resMode");
     const pinRange = document.getElementById("pinRange");
+    const pinBehind = document.getElementById("pinBehind");
     const GFX_KEY = "mars-graphics-v1";
     try {
       const g = JSON.parse(localStorage.getItem(GFX_KEY) || "null");
       if (g) {
         const pick = (sel, v) => { if ([...sel.options].some((o) => o.value === String(v))) sel.value = String(v); };
-        pick(dayMode, g.dayMode); pick(detailMode, g.detail); pick(resMode, g.res); pick(pinRange, g.pins);
+        pick(dayMode, g.dayMode); pick(detailMode, g.detail); pick(resMode, g.res); pick(pinRange, g.pins); pick(pinBehind, g.behind);
         if (Number.isFinite(g.dayHour)) dayHour.value = g.dayHour;
       }
     } catch { /* storage blocked: defaults */ }
@@ -2197,7 +3226,7 @@
       try {
         localStorage.setItem(GFX_KEY, JSON.stringify({
           dayMode: dayMode.value, dayHour: Number(dayHour.value), detail: detailMode.value, res: resMode.value,
-          pins: pinRange.value,
+          pins: pinRange.value, behind: pinBehind.value,
         }));
       } catch { /* ignore */ }
     }
@@ -2229,15 +3258,14 @@
     // Spot pins only within a distance of the camera (Cesium hides a billboard outside its
     // DistanceDisplayCondition). The selected spot ignores it so its pin stays under its card.
     function applyPinRange() {
-      const km = Number(pinRange.value);
-      const far = km > 0 ? new Cesium.DistanceDisplayCondition(0, km * 1000) : undefined;
-      for (const [id, entity] of spotEntities)
-        entity.billboard.distanceDisplayCondition = id === selectedSpot?.id ? undefined : far;
+      pinRangeKm = Number(pinRange.value);
+      refreshPinRanges();
       saveGraphics();
     }
     pinRange.addEventListener("change", applyPinRange);
     applyPinRange();
-    onSpotSelected = applyPinRange;
+    pinBehind.addEventListener("change", () => { setPinsBehind(pinBehind.value); saveGraphics(); });
+    setPinsBehind(pinBehind.value);
     detailMode.addEventListener("change", applyPerformance);
     resMode.addEventListener("change", applyPerformance);
     applyPerformance();
@@ -2395,13 +3423,11 @@
     function closeProbe() {
       probe = null;
       probeEl.hidden = markerEl.hidden = true;
+      onSelectionChangeSoon();
     }
 
     async function openProbe(screen) {
-      selectedSpot = null;
-      spotCard.hidden = true;
-      for (const entity of spotEntities.values()) entity.label.show = false;
-      for (const b of spotButtons.values()) b.classList.remove("active");
+      closeSpotCard();
       const world = surfaceAt(screen.x, screen.y);
       if (!world) return closeProbe();
       const carto = MARS.cartesianToCartographic(world);
@@ -2414,6 +3440,7 @@
         place: placeLines(lat, lon),
         lines: [],
       });
+      onSelectionChangeSoon();
       const elev = { name: "MOLA elevation", text: "…", sect: true };
       me.lines.push(elev);
       // top of the stack first, the same order as the panel
@@ -2447,6 +3474,13 @@
     const routeAddButton = document.getElementById("routeAddBtn");
     const routeWalkButton = document.getElementById("routeWalkBtn");
     const walkHint = document.getElementById("walkHint");
+    const routeCalcBtn = document.getElementById("routeCalcBtn");
+    const routeLoopBox = document.getElementById("routeLoop");
+    const routeFastestBox = document.getElementById("routeFastest");
+    if (!USE_PROXY) { routeFastestBox.disabled = true; routeFastestBox.parentElement.title = "Needs the server (route planning is not available in the static demo)."; }
+    let routeRunning = false;
+    let crew = null; // crew.js, set up below
+    const routeLegCache = new Map(); // planned legs, see planSequence
     const routeSmoothBox = document.getElementById("routeSmooth");
     let walkRoute = null;
     const maxSlopeSlider = document.getElementById("maxSlope");
@@ -2457,11 +3491,130 @@
       const risePer100m = Math.round(Math.tan(maxSlopeDeg() * Math.PI / 180) * 100);
       slopeMeaning.textContent = `At ${maxSlopeDeg()}°, allow up to ${risePer100m} m elevation change per 100 m.`;
     };
+    // The add button: with a spot card or a clicked point open it reads "Add to list" and adds
+    // that selection; otherwise "Click on map" waits for the next map click.
+    function routeSelection() {
+      if (selectedSpot && !spotCard.hidden)
+        return { label: selectedSpot.name, spotId: selectedSpot.id, point: () => stopFromSpot(selectedSpot) };
+      if (probe)
+        return { label: `${probe.lat.toFixed(3)}°, ${probe.lon.toFixed(3)}°`, point: () => ({ lat: probe.lat, lon: probe.lon, world: probe.world }) };
+      return null;
+    }
+    function syncRouteAddButton() {
+      const sel = routePickMode ? null : routeSelection();
+      routeAddButton.textContent = sel ? "＋ Add to list" : routePickMode === "waypoint" ? "Click the map… (cancel)" : "＋ Click on map";
+      routeAddButton.title = sel ? `Add ${sel.label} as stop ${routePoints.length + 1}` : "Then click the map where the stop goes";
+      routeAddButton.classList.toggle("ready", !!sel);
+    }
     function setRoutePickMode(mode) {
       routePickMode = mode;
       routeAddButton.classList.toggle("on", mode === "waypoint");
-      routeStatus.textContent = mode === "waypoint" ? `Click the map to add waypoint ${routePoints.length + 1}.` :
-        routePoints.length < 2 ? "Add at least two waypoints in travel order." : "";
+      syncRouteAddButton();
+      if (mode === "waypoint") setRouteStatus(`Click the map to add stop ${routePoints.length + 1}.`);
+      else routeNeedsCalc();
+    }
+    function setRouteStatus(text, stale = false) {
+      routeStatus.textContent = text;
+      routeStatus.classList.toggle("stale", stale);
+    }
+    // Stops changed (or the slope): the drawn route no longer matches. Nothing is computed
+    // until Calculate route is pressed, so editing stops stays instant.
+    function routeNeedsCalc() {
+      routeCalcBtn.disabled = !routeRunning && routePoints.length < 2;
+      if (routeRunning) return;
+      if (routePoints.length < 2) setRouteStatus("Add at least two stops, then press Calculate route.");
+      else if (routeGraphic) setRouteStatus("Stops or settings changed: press Calculate route to update.", true);
+      else setRouteStatus(`${routePoints.length} stops${routeLoopBox.checked ? " + back to start" : ""}. Press Calculate route.`);
+    }
+    function routeStopsChanged() {
+      routeRequest++;          // cancels a calculation in progress
+      setRouteRunning(false);
+      clearRouteGraphics();
+      syncRoutePins();
+      routeNeedsCalc();
+      renderRouteSpots();
+    }
+    // Live progress while a route is calculated: the stage, height tiles ready vs still being
+    // prepared, which leg A* is on and how many cells it has explored, and what the server is
+    // still downloading from NASA PDS (MOLA) and USGS S3 (HRSC) to answer those tiles.
+    const routeProgressEl = document.getElementById("routeProgress");
+    const prog = { stage: "", tiles: null, leg: null, expanded: 0, reused: 0, server: null, started: 0 };
+    let progTimer = 0, progPoll = 0;
+    const demLabel = (ppd) => (Number(ppd) > 200 ? "HRSC 200 m block" : `MOLA ${ppd} px/° chunk`);
+    function renderRouteProgress() {
+      if (routeProgressEl.hidden) return;
+      const lines = [];
+      lines.push([`${prog.stage} · ${Math.round((performance.now() - prog.started) / 1000)} s`]);
+      let frac = null;
+      if (prog.tiles) {
+        const t = prog.tiles;
+        frac = t.total ? t.done / t.total : null;
+        lines.push([`Height tiles (detail z${t.level}): ${t.done} of ${t.total} ready`]);
+        if (t.preparing) lines.push([`${t.preparing} tile${t.preparing === 1 ? "" : "s"} waiting while the server downloads their source elevation`, "wait"]);
+      }
+      if (prog.leg) {
+        lines.push([`Leg ${prog.leg.i} of ${prog.leg.n}: ${prog.leg.from} → ${prog.leg.to}` +
+          (prog.expanded ? ` · ${prog.expanded.toLocaleString()} cells explored` : "")]);
+        if (prog.reused) lines.push([`${prog.reused} unchanged leg${prog.reused === 1 ? "" : "s"} reused`]);
+        if (!prog.tiles) frac = (prog.leg.i - 1) / prog.leg.n;
+      }
+      const down = Object.entries(prog.server?.downloading ?? {});
+      if (down.length) {
+        const q = prog.server.queues;
+        lines.push([`Server downloading: ${down.map(([ppd, n]) => `${n} ${demLabel(ppd)}${n === 1 ? "" : "s"}`).join(", ")}`, "wait"]);
+        if (q) lines.push([`NASA PDS: ${q.pds.active} active, ${q.pds.waiting} queued · USGS S3: ${q.s3.active} active, ${q.s3.waiting} queued`]);
+      } else if (prog.server && !prog.server.ready) {
+        lines.push([`Server is still preparing the base MOLA map (${Math.round((prog.server.progress || 0) * 100)}%)`, "wait"]);
+      }
+      routeProgressEl.querySelector(".lines").replaceChildren(...lines.map(([text, cls]) => {
+        const d = document.createElement("div"); d.textContent = text; if (cls) d.className = cls; return d;
+      }));
+      const bar = routeProgressEl.querySelector(".bar");
+      bar.classList.toggle("indeterminate", frac == null);
+      bar.querySelector("i").style.width = frac == null ? "" : `${Math.round(frac * 100)}%`;
+    }
+    async function pollRouteServer() {
+      try { prog.server = await (await fetch("./terrain/status", { cache: "no-store" })).json(); } catch { /* keep the last */ }
+    }
+    function setRouteStage(stage) {
+      prog.stage = stage; prog.tiles = null; prog.leg = null; prog.expanded = 0;
+      renderRouteProgress();
+    }
+    const tileProgress = (t) => { prog.tiles = t; };
+    function setRouteRunning(on) {
+      if (on && !routeRunning) {
+        Object.assign(prog, { stage: "Starting", tiles: null, leg: null, expanded: 0, reused: 0, server: null, started: performance.now() });
+        routeProgressEl.hidden = false;
+        pollRouteServer();
+        progTimer = setInterval(renderRouteProgress, 400);
+        progPoll = setInterval(pollRouteServer, 1000);
+        renderRouteProgress();
+      } else if (!on) {
+        clearInterval(progTimer); clearInterval(progPoll);
+        routeProgressEl.hidden = true;
+      }
+      routeRunning = on;
+      routeCalcBtn.classList.toggle("running", on);
+      routeCalcBtn.textContent = on ? "Cancel" : "Calculate route";
+      routeCalcBtn.disabled = !on && routePoints.length < 2;
+    }
+    const surfaceKm = (a, b) => { // great-circle distance on Mars, km
+      const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+      return 2 * 3389.5 * Math.asin(Math.min(1, Math.sqrt(h)));
+    };
+    const fmtKm = (km) => (km >= 100 ? `${Math.round(km).toLocaleString()} km` : km >= 1 ? `${km.toFixed(1)} km` : `${Math.round(km * 1000)} m`);
+    function addRouteStop(point, { announce = true } = {}) {
+      routePoints.push(point);
+      routeStopsChanged();
+      if (announce) setRouteStatus(`Added stop ${routePoints.length}: ${point.name ?? `${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}°`}. ` +
+        (routePoints.length < 2 ? "Add another stop." : "Press Calculate route when ready."));
+    }
+    function stopFromSpot(spot) {
+      const carto = Cesium.Cartographic.fromDegrees(spot.lon, spot.lat);
+      const h = terrainReady && reliefBox.checked ? globe.getHeight(carto) : 0;
+      return { lon: spot.lon, lat: spot.lat, name: spot.name, spotId: spot.id,
+        world: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, Number.isFinite(h) ? h : 0, MARS) };
     }
     function clearRouteGraphics() {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
@@ -2470,10 +3623,12 @@
       routeWalkButton.disabled = true;
       walkHint.textContent = "Walk mode uses only the preferred Jezero panorama markers that match this A→B route.";
       routePinPositions = null;
+      crew?.routeCleared();
       for (const pin of routePins) viewer.entities.remove(pin);
       routePins.length = 0;
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
+      clearSurvival();
     }
     function makeRoutePin(point, color, label) {
       return viewer.entities.add({
@@ -2500,18 +3655,43 @@
       routePins.length = 0;
       const list = document.getElementById("routeWaypointList");
       list.replaceChildren();
+      const loop = routeLoopBox.checked && routePoints.length >= 2;
+      let straight = 0;
       routePoints.forEach((point, index) => {
         const isFirst = index === 0, isLast = index === routePoints.length - 1;
-        const color = isFirst ? Cesium.Color.LIME : isLast ? Cesium.Color.ORANGE : Cesium.Color.YELLOW;
+        const color = isFirst ? Cesium.Color.LIME : isLast && !loop ? Cesium.Color.ORANGE : Cesium.Color.YELLOW;
         routePins.push(makeRoutePin(routePinPositions?.[index] ?? point, color, String(index + 1)));
         const item = document.createElement("li");
-        item.style.cssText = "color:#ccc;font-size:11px;margin:2px 0";
-        item.append(`${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}° `);
-        const remove = document.createElement("button");
-        remove.type = "button"; remove.textContent = "×"; remove.title = `Remove waypoint ${index + 1}`;
-        remove.dataset.waypointIndex = String(index);
-        item.append(remove); list.append(item);
+        const n = document.createElement("span"); n.className = "n"; n.textContent = String(index + 1);
+        n.style.background = color.toCssColorString();
+        const nm = document.createElement("span"); nm.className = "nm";
+        nm.textContent = point.name ?? `${point.lat.toFixed(3)}°, ${point.lon.toFixed(3)}°`;
+        nm.title = `${nm.textContent} (${point.lat.toFixed(4)}°, ${point.lon.toFixed(4)}°)`;
+        const leg = document.createElement("span"); leg.className = "leg";
+        if (index > 0) { const km = surfaceKm(routePoints[index - 1], point); straight += km; leg.textContent = `+${fmtKm(km)}`; }
+        const btn = (text, title, action, disabled = false) => {
+          const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.title = title;
+          b.dataset.action = action; b.dataset.index = String(index); b.disabled = disabled; return b;
+        };
+        const grip = document.createElement("span"); grip.className = "grip"; grip.textContent = "⠿";
+        grip.tabIndex = 0; grip.dataset.index = String(index);
+        grip.title = "Drag to reorder (or Alt + ↑ / ↓)";
+        grip.setAttribute("aria-label", `Reorder stop ${index + 1}: drag, or Alt + arrow keys`);
+        item.dataset.index = String(index);
+        item.append(grip, n, nm, leg, btn("×", `Remove stop ${index + 1}`, "remove"));
+        list.append(item);
       });
+      if (loop) {
+        const km = surfaceKm(routePoints.at(-1), routePoints[0]); straight += km;
+        const item = document.createElement("li"); item.className = "loop";
+        const n = document.createElement("span"); n.className = "n"; n.textContent = "1"; n.style.background = Cesium.Color.LIME.toCssColorString();
+        const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = `back to ${routePoints[0].name ?? "start"}`;
+        const leg = document.createElement("span"); leg.className = "leg"; leg.textContent = `+${fmtKm(km)}`;
+        item.append(n, nm, leg); list.append(item);
+      }
+      document.getElementById("routeEmpty").hidden = routePoints.length > 0;
+      document.getElementById("routeStopsInfo").textContent = routePoints.length
+        ? `${routePoints.length} stop${routePoints.length === 1 ? "" : "s"}${routePoints.length > 1 ? ` · ${fmtKm(straight)} straight-line` : ""}` : "";
       placeRoutePins();
     }
     function placeRoutePins() {
@@ -2740,69 +3920,103 @@
       return true;
     }
 
+    // Red "too steep" mask over the planned area. Painted into ONE image (a sparse corridor
+    // used to become up to 256 separate imagery layers, each costing frames to build and
+    // to draw), with time-sliced painting, and cached per grid + slope limit so redrawing
+    // the same area after a recalculation is instant.
+    const overlayCache = new WeakMap(); // grid -> { slope, parts: [{ blob, west, south, east, north }] }
     async function drawUnwalkableOverlay(grid, isCurrent = () => true) {
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
-      const sparse = heights instanceof Map;
-      const addLayer = async (image, west, south, east, north) => {
-        const blob = await new Promise((resolve) => image.toBlob(resolve, "image/png"));
-        if (!blob) return;
+      const limit = maxSlopeDeg();
+      const addLayer = async ({ blob, west, south, east, north }) => {
         const url = URL.createObjectURL(blob);
         try {
           const provider = await Cesium.SingleTileImageryProvider.fromUrl(url, {
             rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north), ellipsoid: MARS,
           });
+          if (!isCurrent()) return;
           const layer = viewer.imageryLayers.addImageryProvider(provider);
           layer.alpha = 0.58;
           unwalkableLayers.push(layer);
         } finally { URL.revokeObjectURL(url); }
       };
-      const paint = async (canvas, x0, y0) => {
-        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(canvas.width, canvas.height);
-        const x1 = x0 + canvas.width, y1 = y0 + canvas.height;
-        const limit = maxSlopeDeg();
-        for (let y = y0; y < y1; y++) {
-          for (let x = x0; x < x1; x++) {
-            if (x >= width || y >= height || terrainCellSlopeDeg(grid, x, y) <= limit) continue;
-            const px = x - x0, py = y - y0, k = (py * canvas.width + px) * 4;
-            pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+      const cached = overlayCache.get(grid);
+      if (cached && cached.slope === limit) {
+        for (const part of cached.parts) { if (!isCurrent()) return; await addLayer(part); }
+        return;
+      }
+      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
+      const sparse = !(heights instanceof Float32Array);
+      // paint the cells of [x0, x0 + w) x [y0, y0 + h) (grid cells; x may run past the seam)
+      // at (ox, oy) in the image; yields to the browser every ~12 ms
+      let slice = performance.now();
+      const paint = async (pixels, imgW, x0, y0, w, h, ox, oy) => {
+        // dense grids in bands of rows, corridor grids a tile at a time
+        const band = sparse ? h : Math.max(1, Math.floor(200_000 / Math.max(1, w)));
+        for (let j0 = 0; j0 < h; j0 += band) {
+          const bh = Math.min(band, h - j0);
+          const mask = steepMask(grid, limit, x0, y0 + j0, w, bh);
+          for (let j = 0; j < bh; j++) {
+            const rowOut = ((oy + j0 + j) * imgW + ox) * 4, rowIn = j * w;
+            for (let i = 0; i < w; i++) {
+              if (!mask[rowIn + i]) continue;
+              const k = rowOut + i * 4;
+              pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+            }
           }
-          if ((y - y0 + 1) % 32 === 0) {
-            await new Promise((resolve) => requestAnimationFrame(resolve));
+          if (performance.now() - slice > 12) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
             if (!isCurrent()) return false;
+            slice = performance.now();
           }
         }
-        ctx.putImageData(pixels, 0, 0);
         return true;
       };
+      const toParts = async (canvas, west, south, east, north) => { // split at the 180° seam
+        const blobOf = (c) => new Promise((resolve) => c.toBlob(resolve, "image/png"));
+        if (east <= 180) return [{ blob: await blobOf(canvas), west, south, east, north }];
+        const w = canvas.width, h = canvas.height;
+        const split = Math.max(1, Math.min(w - 1, Math.round((180 - west) / (east - west) * w)));
+        const left = document.createElement("canvas"); left.width = split; left.height = h;
+        left.getContext("2d").drawImage(canvas, 0, 0, split, h, 0, 0, split, h);
+        const right = document.createElement("canvas"); right.width = w - split; right.height = h;
+        right.getContext("2d").drawImage(canvas, split, 0, w - split, h, 0, 0, w - split, h);
+        return [{ blob: await blobOf(left), west, south, east: 180, north },
+          { blob: await blobOf(right), west: -180, south, east: east - 360, north }];
+      };
+      let parts;
       if (sparse) {
-        // Sparse worldwide coordinates stay cheap: one full-resolution canvas per loaded tile.
-        for (const [tx, ty] of grid.tileKeys || []) {
-          if (!isCurrent()) return;
-          const x = tx * 64, y = ty * 64, size = 64;
-          const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
-          if (!await paint(canvas, x, y)) return;
-          const west = -180 + x * lonStepDeg, east = west + size * lonStepDeg;
-          const north = 90 + y * latStepDeg, south = north + size * latStepDeg;
-          await addLayer(canvas, west, south, east, north);
-          await new Promise((resolve) => requestAnimationFrame(resolve));
+        // one image over the corridor's tiles: the smallest x span (it may wrap the seam)
+        const T = 64, tilesX = Math.round(width / T);
+        const txs = [...new Set((grid.tileKeys || []).map(([tx]) => tx))].sort((a, b) => a - b);
+        const tys = (grid.tileKeys || []).map(([, ty]) => ty);
+        if (!txs.length) return;
+        let gapAt = txs.length - 1, gap = txs[0] + tilesX - txs.at(-1);
+        for (let i = 0; i + 1 < txs.length; i++) if (txs[i + 1] - txs[i] > gap) { gap = txs[i + 1] - txs[i]; gapAt = i; }
+        const tx0 = txs[(gapAt + 1) % txs.length], spanX = tilesX - gap + 1;
+        const ty0 = Math.min(...tys), spanY = Math.max(...tys) - ty0 + 1;
+        const imgW = spanX * T, imgH = spanY * T;
+        if (imgW * imgH > 64_000_000) return; // absurdly spread corridor: skip the mask
+        const canvas = document.createElement("canvas"); canvas.width = imgW; canvas.height = imgH;
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(imgW, imgH);
+        for (const [tx, ty] of grid.tileKeys) {
+          const ox = ((tx - tx0 + tilesX) % tilesX) * T, oy = (ty - ty0) * T;
+          if (!await paint(pixels, imgW, tx * T, ty * T, T, T, ox, oy)) return;
         }
+        ctx.putImageData(pixels, 0, 0);
+        const west = -180 + tx0 * T * lonStepDeg, north = 90 + ty0 * T * latStepDeg;
+        parts = await toParts(canvas, west, north + imgH * latStepDeg, west + imgW * lonStepDeg, north);
       } else {
         const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
-        if (!await paint(canvas, 0, 0)) return;
-        const south = northDeg + height * latStepDeg, east = westDeg + width * lonStepDeg;
-        if (east > 180) {
-          const split = Math.max(1, Math.min(width - 1, Math.round((180 - westDeg) / (east - westDeg) * width)));
-          const left = document.createElement("canvas"); left.width = split; left.height = height;
-          left.getContext("2d").drawImage(canvas, 0, 0, split, height, 0, 0, split, height);
-          const right = document.createElement("canvas"); right.width = width - split; right.height = height;
-          right.getContext("2d").drawImage(canvas, split, 0, width - split, height, 0, 0, width - split, height);
-          await addLayer(left, westDeg, south, 180, northDeg);
-          await addLayer(right, -180, south, east - 360, northDeg);
-        } else await addLayer(canvas, westDeg, south, east, northDeg);
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(width, height);
+        if (!await paint(pixels, width, 0, 0, width, height, 0, 0)) return;
+        ctx.putImageData(pixels, 0, 0);
+        parts = await toParts(canvas, westDeg, northDeg + height * latStepDeg, westDeg + width * lonStepDeg, northDeg);
       }
+      parts = parts.filter((part) => part.blob);
+      overlayCache.set(grid, { slope: limit, parts });
+      for (const part of parts) { if (!isCurrent()) return; await addLayer(part); }
     }
     async function waitForMola() {
       for (let i = 0; i < 300; i++) {
@@ -2815,14 +4029,137 @@
       }
       throw new Error("MOLA terrain is still loading");
     }
+    // ---------------------------------------------------------------- survival card + route.json
+    // survival.js prices the computed route for a crew of two (O2, cooling water, battery, 20 %
+    // reserve, walk-back limit); route-io.js turns it into route.json (docs/route-schema.md).
+    let currentRoute = null, walkBackPins = [];
+    const svScenario = document.getElementById("svScenario");
+    for (const [key, sc] of Object.entries(Survival.SCENARIOS)) svScenario.add(new Option(sc.label, key));
+    const routeExportBtn = document.getElementById("routeExportBtn");
+    function clearSurvival() {
+      currentRoute = null;
+      routeExportBtn.disabled = true;
+      document.getElementById("survivalCard").innerHTML = "";
+      for (const pin of walkBackPins) viewer.entities.remove(pin);
+      walkBackPins = [];
+    }
+    function scenarioInputs() {
+      const sc = Survival.SCENARIOS[svScenario.value] ?? Survival.SCENARIOS.standard;
+      return { scenario: svScenario.value, crew: sc.apply(Survival.DEFAULT_CREW), params: { ...(sc.params || {}), max_slope_deg: maxSlopeDeg() } };
+    }
+    function showRoute(route, origin = route._origin ?? "live") {
+      route._origin = origin;
+      currentRoute = route;
+      routeExportBtn.disabled = false;
+      renderSurvivalCard(document.getElementById("survivalCard"), route);
+      for (const pin of walkBackPins) viewer.entities.remove(pin);
+      walkBackPins = [];
+      // one marker per distinct walk-back limit (point of no return)
+      const seen = new Set();
+      for (const c of route.survival.crew) {
+        const p = route.path[c.walk_back.index];
+        if (!p || seen.has(c.walk_back.index) || c.walk_back.index >= route.path.length - 1) continue;
+        seen.add(c.walk_back.index);
+        walkBackPins.push(viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 30, MARS),
+          point: { pixelSize: 10, color: Cesium.Color.ORANGE, outlineColor: Cesium.Color.BLACK, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+          label: { text: `Walk-back limit · ${c.name}`, font: "12px sans-serif", pixelOffset: new Cesium.Cartesian2(0, -16), fillColor: Cesium.Color.ORANGE,
+            showBackground: true, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        }));
+      }
+    }
+    function updateSurvival() {
+      if (!routeRawPath || routeRawPath.length < 2) return clearSurvival();
+      const waypoints = routePoints.map((p, k) => ({ name: p.name ?? (k ? `Stop ${k}` : "Haven"), lon: p.lon, lat: p.lat }));
+      if (routeLoopBox.checked) waypoints.push({ ...waypoints[0], name: `${waypoints[0].name} (return)`, role: "haven" });
+      showRoute(RouteIO.buildRoute({ path: routeRawPath, waypoints, grid: routeGrid, ...scenarioInputs() }), "live");
+    }
+    function reevaluateLoaded() { // scenario changed on a route loaded from a file
+      const r = currentRoute;
+      const path = RouteIO.plannerPath(r);
+      const waypoints = r.waypoints.map(({ name, lon, lat, role }) => ({ name, lon, lat, role }));
+      showRoute(RouteIO.buildRoute({ path, waypoints, heightAt: RouteIO.excerptSampler(r.terrain), ...scenarioInputs(),
+        meta: { label: r.label, site: r.site, terrain_source: r.profile?.terrain_source } }), r._origin);
+    }
+    svScenario.addEventListener("change", () => {
+      if (routeRawPath && !routeRawPath.fromFile) updateSurvival();
+      else if (currentRoute) reevaluateLoaded();
+    });
+    routeExportBtn.addEventListener("click", () => {
+      if (!currentRoute) return;
+      const blob = new Blob([JSON.stringify(currentRoute, null, 1)], { type: "application/json" });
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "route.json" });
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    });
+    async function loadRouteFile(route, label, origin = "file") {
+      route = RouteIO.parseRoute(route);
+      route._origin = origin;
+      routeRequest++;
+      clearRouteGraphics();
+      routePoints.length = 0;
+      route.waypoints.filter((w, k) => !(k && w.role === "haven")).forEach((w) => routePoints.push({ name: w.name, lon: w.lon, lat: w.lat }));
+      routeLoopBox.checked = route.waypoints.length > 2 && route.waypoints.at(-1).role === "haven";
+      routeRawPath = Object.assign(RouteIO.plannerPath(route), { fromFile: true });
+      routeRawTurns = [];
+      syncRoutePins();
+      drawRouteLine(null, routeRawPath, []);
+      if (route.profile?.scenario && Survival.SCENARIOS[route.profile.scenario]) svScenario.value = route.profile.scenario;
+      currentRoute = route;
+      reevaluateLoaded();
+      setRouteStatus(`${label} · ${route.label || route.site} · ${(route.distance_m / 1000).toFixed(2)} km · re-checked with this page's survival model`);
+      const lons = route.path.map((p) => p.lon), lats = route.path.map((p) => p.lat);
+      flyToSpot((Math.min(...lons) + Math.max(...lons)) / 2, (Math.min(...lats) + Math.max(...lats)) / 2, 6000);
+      document.getElementById("survivalCard").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    // The demo route is a signed file: its bytes must match the verified manifest, or it is refused.
+    function refuseForIntegrity(message) {
+      routeRequest++;
+      clearRouteGraphics();
+      document.getElementById("survivalCard").innerHTML =
+        `<div class="svCard no" role="status"><div class="svVerdict">REFUSED — integrity: ${message.replace(/[&<>]/g, "")}</div>` +
+        `<div class="svFoot">The route file is not the one the team signed, so no survival budget is computed from it.</div></div>`;
+      setRouteStatus("Demo route refused: data integrity check failed.");
+    }
+    async function loadDemoRoute() {
+      let bytes, origin = "signed";
+      try { bytes = await Integrity.signedBytes("public/data/route.json"); }
+      catch (error) {
+        if (error.code !== "unsupported") return refuseForIntegrity(error.message);
+        const res = await fetch("./public/data/route.json", { cache: "no-cache" });
+        bytes = new Uint8Array(await res.arrayBuffer()); origin = "unchecked";
+      }
+      await loadRouteFile(new TextDecoder().decode(bytes), "Demo excursion", origin);
+    }
+    document.getElementById("routeDemoBtn").addEventListener("click", () =>
+      loadDemoRoute().catch((error) => setRouteStatus(`Could not load the demo route: ${error.message}`)));
+    Integrity.mountIntegrity(document.getElementById("integrityChip"), {
+      // only the route file itself decides the route; another changed file turns the chip red but keeps the route
+      onChange: (st) => {
+        const routeFile = st.report?.files?.find((f) => f.path === "public/data/route.json");
+        if (currentRoute?._origin === "signed" && st.status === "bad" && (!routeFile || routeFile.status !== "ok"))
+          refuseForIntegrity(`public/data/route.json: ${routeFile ? "does not match the signed manifest" : st.report.error.message}`);
+      },
+    });
+    document.getElementById("routeImportFile").addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try { await loadRouteFile(await file.text(), file.name); }
+      catch (error) { setRouteStatus(`Could not open ${file.name}: ${error.message}`); }
+      event.target.value = "";
+    });
+    window.happyfeet = Object.assign(window.happyfeet || {}, { get route() { return currentRoute; }, loadRouteFile });
+
     async function computeTerrainRoute() {
       if (routePoints.length < 2) return;
-      if (!USE_PROXY) { routeStatus.textContent = "Start the local viewer server to load MOLA heights."; return; }
+      if (!USE_PROXY) { setRouteStatus("Start the local viewer server to load MOLA heights."); return; }
       const waypoints = routePoints.slice();
+      if (routeLoopBox.checked) waypoints.push({ ...routePoints[0] }); // A -> ... -> A
       const request = ++routeRequest;
       clearRouteGraphics();
       syncRoutePins();
-      routeStatus.textContent = "Loading MOLA terrain tiles…";
+      setRouteRunning(true);
+      setRouteStatus(`Calculating a route through ${waypoints.length} stops…`);
+      setRouteStage("Waiting for the MOLA base map");
       try {
         await waitForMola();
         if (request !== routeRequest) return;
@@ -2841,20 +4178,50 @@
         let west = ((westUnwrapped + 180) % 360 + 360) % 360 - 180;
         let east = ((eastUnwrapped + 180) % 360 + 360) % 360 - 180;
         if (eastUnwrapped - westUnwrapped >= 359.999) { west = -180; east = 180; }
+        // the great circle between two stops bulges towards the pole: include its latitudes
+        const lats = waypoints.map((p) => p.lat);
+        for (let i = 1; i < waypoints.length; i++) {
+          const r = Math.PI / 180, a = waypoints[i - 1], b = waypoints[i];
+          const va = [Math.cos(a.lat * r) * Math.cos(a.lon * r), Math.cos(a.lat * r) * Math.sin(a.lon * r), Math.sin(a.lat * r)];
+          const vb = [Math.cos(b.lat * r) * Math.cos(b.lon * r), Math.cos(b.lat * r) * Math.sin(b.lon * r), Math.sin(b.lat * r)];
+          const om = Math.acos(Math.max(-1, Math.min(1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2])));
+          if (om < 1e-6 || Math.PI - om < 1e-6) continue;
+          for (let k = 1; k < 32; k++) {
+            const t = k / 32, s0 = Math.sin((1 - t) * om) / Math.sin(om), s1 = Math.sin(t * om) / Math.sin(om);
+            lats.push(Math.asin(Math.max(-1, Math.min(1, s0 * va[2] + s1 * vb[2]))) / r);
+          }
+        }
         const patchBounds = {
           west, east,
-          south: Math.max(-90, Math.min(...waypoints.map((p) => p.lat)) - pad),
-          north: Math.min(90, Math.max(...waypoints.map((p) => p.lat)) + pad),
+          south: Math.max(-90, Math.min(...lats) - pad),
+          north: Math.min(90, Math.max(...lats) + pad),
         };
+        // A leg that has not changed (same two stops, slope limit and kind of grid) is not
+        // planned again: adding, removing or reordering stops only plans the new legs.
+        const legKey = (grid, a, b) => `${grid.level}|${grid.heights instanceof Float32Array ? "patch" : "corridor"}|${maxSlopeDeg()}|${routeFastestBox.checked ? "t" : "d"}|` +
+          `${a.lon.toFixed(6)},${a.lat.toFixed(6)}|${b.lon.toFixed(6)},${b.lat.toFixed(6)}`;
         const planSequence = async (grid) => {
           const combined = { path: [], displayPath: [], turnIndices: [], waypointPositions: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
           for (let i = 1; i < waypoints.length; i++) {
             if (request !== routeRequest) return null;
             const a = lonLatToTerrainCell(grid, waypoints[i - 1].lon, waypoints[i - 1].lat);
             const b = lonLatToTerrainCell(grid, waypoints[i].lon, waypoints[i].lat);
-            const leg = a && b ? await planTerrainRoute(grid, a, b, {
-              maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
-            }) : null;
+            const nameOf = (pt, k) => pt.name ?? `stop ${k}`;
+            prog.tiles = null; prog.expanded = 0;
+            prog.leg = { i, n: waypoints.length - 1, from: nameOf(waypoints[i - 1], i),
+              to: i === routePoints.length ? nameOf(waypoints[i], 1) : nameOf(waypoints[i], i + 1) };
+            const key = legKey(grid, waypoints[i - 1], waypoints[i]);
+            let leg = routeLegCache.get(key);
+            if (leg === undefined) {
+              leg = a && b ? await planTerrainRoute(grid, a, b, {
+                maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
+                ...(routeFastestBox.checked ? { speedAt: (grade) => Survival.walkingSpeed(grade) } : {}),
+                onProgress: ({ expanded }) => { prog.expanded = expanded; },
+              }) : null;
+              if (request !== routeRequest) return null;          // cancelled: do not cache
+              routeLegCache.set(key, leg);
+              while (routeLegCache.size > 300) routeLegCache.delete(routeLegCache.keys().next().value);
+            } else prog.reused++;
             if (!leg) return null;
             const legDisplayPath = leg.displayPath.map((point) => ({ ...point }));
             legDisplayPath[0] = { ...legDisplayPath[0], lon: waypoints[i - 1].lon, lat: waypoints[i - 1].lat };
@@ -2877,7 +4244,9 @@
           routeStatus.textContent = `Finding a broad route through ${waypoints.length} waypoints, then refining…`;
           let coarseLevel = 4;
           while (coarseLevel > 0 && estimateTerrainPatchCells(patchBounds, coarseLevel) > 300_000) coarseLevel--;
-          const coarseGrid = await loadTerrainPatch({ ...patchBounds, level: coarseLevel });
+          setRouteStage("Loading coarse terrain for a broad route");
+          const coarseGrid = await loadTerrainPatch({ ...patchBounds, level: coarseLevel, onProgress: tileProgress });
+          setRouteStage(`Planning the broad route (MOLA z${coarseLevel})`);
           if (request !== routeRequest) return;
           const coarseResult = await planSequence(coarseGrid);
           if (request !== routeRequest) return;
@@ -2886,7 +4255,9 @@
           detail = `coarse MOLA z${coarseLevel}`;
           if (coarseResult) try {
             routeStatus.textContent = "Loading detailed MOLA tiles along the route corridor…";
-            const fineGrid = await loadTerrainCorridor(coarseResult.path, { level: 6, bufferTiles: 1 });
+            setRouteStage("Loading detailed terrain along the route corridor");
+            const fineGrid = await loadTerrainCorridor(coarseResult.path, { level: 6, bufferTiles: 1, onProgress: tileProgress });
+            setRouteStage("Refining the route on detailed terrain (z6)");
             if (request !== routeRequest) return;
             const refined = await planSequence(fineGrid);
             if (request !== routeRequest) return;
@@ -2899,7 +4270,8 @@
         } else {
           let tooLarge;
           for (let level = 6; level >= 0; level--) {
-            try { grid = await loadTerrainPatch({ ...patchBounds, level }); break; }
+            setRouteStage(`Loading terrain for the route area (z${level})`);
+            try { grid = await loadTerrainPatch({ ...patchBounds, level, onProgress: tileProgress }); break; }
             catch (error) {
               if (!error.message.includes("Terrain patch is too large")) throw error;
               tooLarge = error;
@@ -2908,6 +4280,7 @@
           }
           if (!grid) throw tooLarge || new Error("Could not load a terrain patch");
           if (request !== routeRequest) return;
+          setRouteStage(`Planning the route (MOLA z${grid.level})`);
           result = await planSequence(grid);
           if (request !== routeRequest) return;
         }
@@ -2916,35 +4289,96 @@
         routeRawTurns = result?.turnIndices ?? [];
         routePinPositions = result?.waypointPositions ?? null;
         syncRoutePins();
-        try { await drawUnwalkableOverlay(grid, () => request === routeRequest); }
-        catch (error) { console.warn("Could not draw slope mask:", error); }
         if (request !== routeRequest) return;
-        if (!result) { routeStatus.textContent = "No walkable route found at this slope limit."; return; }
+        // the route first; the red slope mask is painted afterwards without blocking
+        drawUnwalkableOverlay(grid, () => request === routeRequest)
+          .catch((error) => console.warn("Could not draw slope mask:", error));
+        if (!result) { setRouteStatus("No walkable route found at this slope limit."); crew?.routeComputed(false); return; }
         drawRouteLine(grid, routeRawPath, routeRawTurns);
         prepareWalkRoute();
-        routeStatus.textContent = `${routeRawPath.length.toLocaleString()} samples · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
+        try { updateSurvival(); } catch (error) { console.warn("Survival budget failed:", error); }
+        crew?.routeComputed(true);
+        setRouteStatus(`${routeLoopBox.checked ? "Loop · " : ""}terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${routeRawPath.length.toLocaleString()} samples · ${detail}` +
+          (prog.reused ? ` · ${prog.reused} leg${prog.reused === 1 ? "" : "s"} reused` : ""));
       } catch (error) {
-        if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
+        if (request === routeRequest) setRouteStatus(`Route failed: ${error.message}`);
+      } finally {
+        if (request === routeRequest) setRouteRunning(false);
       }
     }
-    document.getElementById("routeAddBtn").addEventListener("click", () => setRoutePickMode("waypoint"));
-    document.getElementById("routeUndoBtn").addEventListener("click", () => {
-      if (!routePoints.length) return;
-      routeRequest++; routePoints.pop();
-      clearRouteGraphics(); syncRoutePins();
-      if (routePoints.length >= 2) computeTerrainRoute();
-      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+    routeAddButton.addEventListener("click", () => {
+      const sel = routePickMode ? null : routeSelection();
+      if (!sel) { setRoutePickMode(routePickMode === "waypoint" ? null : "waypoint"); return; }
+      if (sel.spotId && routePoints.some((p) => p.spotId === sel.spotId)) { setRouteStatus(`${sel.label} is already a stop.`); return; }
+      addRouteStop(sel.point());
+      if (!sel.spotId) closeProbe(); // a plain point is used up; the button goes back to "Click on map"
+      else syncRouteAddButton();
     });
+    onSelectionChange = syncRouteAddButton;
     document.getElementById("routeWaypointList").addEventListener("click", (event) => {
-      const index = Number(event.target.closest("button")?.dataset.waypointIndex);
-      if (!Number.isInteger(index) || index < 0 || index >= routePoints.length) return;
-      routeRequest++; routePoints.splice(index, 1);
-      clearRouteGraphics(); syncRoutePins();
-      if (routePoints.length >= 2) computeTerrainRoute();
-      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+      const b = event.target.closest("button");
+      const index = Number(b?.dataset.index);
+      if (!b || !Number.isInteger(index) || index < 0 || index >= routePoints.length) return;
+      if (b.dataset.action !== "remove") return;
+      routePoints.splice(index, 1);
+      routeStopsChanged();
     });
+    // Drag to reorder: grab a stop's grip, move it up or down, let go. Pointer events, so it
+    // works with a mouse, a pen or a finger; Alt + arrow keys on a grip do the same.
+    {
+      const listEl = document.getElementById("routeWaypointList");
+      let drag = null; // { from, li, startY, to }
+      const moveStop = (from, to) => {
+        if (to === from || to < 0 || to >= routePoints.length) return false;
+        routePoints.splice(to, 0, ...routePoints.splice(from, 1));
+        routeStopsChanged();
+        return true;
+      };
+      listEl.addEventListener("pointerdown", (e) => {
+        const grip = e.target.closest(".grip");
+        if (!grip || e.button > 0) return;
+        const li = grip.closest("li");
+        drag = { from: Number(li.dataset.index), li, startY: e.clientY, to: Number(li.dataset.index) };
+        li.classList.add("dragging");
+        listEl.classList.add("sorting");
+        grip.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      listEl.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        drag.li.style.transform = `translateY(${e.clientY - drag.startY}px)`;
+        // drop slot: how many other stops' midpoints are above the pointer
+        const items = [...listEl.querySelectorAll("li[data-index]")].filter((x) => x !== drag.li);
+        let to = 0;
+        for (const it of items) { const r = it.getBoundingClientRect(); if (e.clientY > r.top + r.height / 2) to++; }
+        drag.to = to;
+        items.forEach((it, i) => {
+          it.classList.toggle("dropBefore", i === to);
+          it.classList.toggle("dropAfter", to === items.length && i === items.length - 1);
+        });
+      });
+      const endDrag = () => {
+        if (!drag) return;
+        const { from, to, li } = drag;
+        drag = null;
+        li.style.transform = "";
+        li.classList.remove("dragging");
+        listEl.classList.remove("sorting");
+        listEl.querySelectorAll(".dropBefore, .dropAfter").forEach((x) => x.classList.remove("dropBefore", "dropAfter"));
+        moveStop(from, to);
+      };
+      listEl.addEventListener("pointerup", endDrag);
+      listEl.addEventListener("pointercancel", () => { if (drag) { drag.to = drag.from; endDrag(); } });
+      listEl.addEventListener("keydown", (e) => {
+        const grip = e.target.closest(".grip");
+        if (!grip || !e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+        const from = Number(grip.dataset.index), to = from + (e.key === "ArrowUp" ? -1 : 1);
+        if (moveStop(from, to)) listEl.querySelector(`.grip[data-index="${to}"]`)?.focus();
+        e.preventDefault();
+      });
+    }
     document.getElementById("routeClearBtn").addEventListener("click", () => {
-      routeRequest++; routePoints.length = 0; clearRouteGraphics(); syncRoutePins(); setRoutePickMode(null);
+      routePoints.length = 0; setRoutePickMode(null); routeStopsChanged();
     });
     routeWalkButton.addEventListener("click", () => {
       if (!walkRoute && !prepareWalkRoute()) {
@@ -2959,13 +4393,112 @@
       }
       location.href = "./walk/?v=20261115-enter-vr-eye-arrow-v2";
     });
-    let slopeDebounce;
+    routeCalcBtn.addEventListener("click", () => {
+      if (routeRunning) { routeRequest++; setRouteRunning(false); setRouteStatus("Calculation cancelled."); return; }
+      computeTerrainRoute();
+    });
+    routeLoopBox.addEventListener("change", () => { routeStopsChanged(); });
+    routeFastestBox.addEventListener("change", () => { routeStopsChanged(); });
     maxSlopeSlider.addEventListener("input", () => {
       maxSlopeValue.textContent = `${maxSlopeDeg()}°`;
       updateSlopeMeaning();
-      clearTimeout(slopeDebounce);
-      slopeDebounce = setTimeout(() => { if (routePoints.length >= 2) computeTerrainRoute(); }, 250);
+      if (routeGraphic || routeRunning) { routeRequest++; setRouteRunning(false); clearRouteGraphics(); syncRoutePins(); }
+      routeNeedsCalc();
     });
+
+    // Spot finder for stops: search, kind and sort over every spot (mission, USGS, custom).
+    const routeSpotSearch = document.getElementById("routeSpotSearch");
+    const routeSpotKind = document.getElementById("routeSpotKind");
+    const routeSpotSort = document.getElementById("routeSpotSort");
+    const routeSpotList = document.getElementById("routeSpotList");
+    function fillRouteKinds() {
+      const keep = routeSpotKind.value;
+      const present = new Set(allSpots.map((sp) => sp.category));
+      routeSpotKind.replaceChildren(Object.assign(document.createElement("option"), { value: "", textContent: "All kinds" }));
+      for (const k of allKinds()) if (present.has(k.kind))
+        routeSpotKind.append(Object.assign(document.createElement("option"), { value: k.kind, textContent: k.kind }));
+      routeSpotKind.value = [...routeSpotKind.options].some((o) => o.value === keep) ? keep : "";
+    }
+    function routeCandidates() {
+      const words = routeSpotSearch.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const kind = routeSpotKind.value;
+      const used = new Set(routePoints.map((p) => p.spotId).filter(Boolean));
+      return allSpots.filter((sp) => !used.has(sp.id) && (!kind || sp.category === kind) &&
+        words.every((w) => haystack(sp).includes(w)));
+    }
+    function sortCandidates(list) {
+      const mode = routeSpotSort.value;
+      let ref = null;
+      if (mode === "last" && routePoints.length) ref = routePoints.at(-1);
+      else if (mode === "view" || mode === "last") {
+        const c = MARS.cartesianToCartographic(viewCentre());
+        if (c) ref = { lat: deg(c.latitude), lon: deg(c.longitude) };
+      }
+      const dist = new Map();
+      if (ref) for (const sp of list) dist.set(sp.id, surfaceKm(ref, sp));
+      // with a search, spots whose *name* matches come first (whole query, then every word),
+      // then the chosen order; otherwise "boxwork target" could list a crater first
+      const q = routeSpotSearch.value.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
+      const rank = (sp) => {
+        if (!q) return 0;
+        const n = sp.name.toLowerCase();
+        return n.includes(q) ? 0 : words.every((w) => n.includes(w)) ? 1 : 2;
+      };
+      const by = mode === "name" ? (a, b) => a.name.localeCompare(b.name)
+        : mode === "size" ? (a, b) => (b.sizeKm ?? 0) - (a.sizeKm ?? 0) || a.name.localeCompare(b.name)
+        : (a, b) => dist.get(a.id) - dist.get(b.id);
+      list.sort((a, b) => rank(a) - rank(b) || by(a, b));
+      return { list, dist, refName: mode === "last" && routePoints.length ? "last stop" : "view centre" };
+    }
+    let routeSpotsTimer = 0;
+    function renderRouteSpots() {
+      if (!document.getElementById("winRoute").classList.contains("active")) return; // only while the tab is open
+      const { list, dist } = sortCandidates(routeCandidates());
+      const MAX = 60;
+      routeSpotList.replaceChildren(...list.slice(0, MAX).map((sp) => {
+        const b = document.createElement("button"); b.type = "button"; b.className = "rs";
+        b.style.setProperty("--k", pinColor(sp));
+        const i = document.createElement("i");
+        const name = document.createElement("span"); name.textContent = sp.name;
+        const meta = document.createElement("em");
+        meta.textContent = dist.has(sp.id) ? `${kindOf(sp).short} · ${fmtKm(dist.get(sp.id))}` : kindOf(sp).short;
+        b.append(i, name, meta);
+        b.title = `Add ${sp.name} as stop ${routePoints.length + 1}`;
+        b.addEventListener("click", () => addRouteStop(stopFromSpot(sp)));
+        return b;
+      }));
+      if (list.length > MAX) {
+        const more = document.createElement("div"); more.className = "rsMore";
+        more.textContent = `${(list.length - MAX).toLocaleString()} more: narrow the search or kind`;
+        routeSpotList.append(more);
+      }
+      if (!list.length) {
+        const none = document.createElement("div"); none.className = "rsMore"; none.textContent = "No spots match.";
+        routeSpotList.append(none);
+      }
+    }
+    routeSpotSearch.addEventListener("input", () => { clearTimeout(routeSpotsTimer); routeSpotsTimer = setTimeout(renderRouteSpots, 120); });
+    routeSpotKind.addEventListener("change", renderRouteSpots);
+    routeSpotSort.addEventListener("change", renderRouteSpots);
+    document.getElementById("routeRandomBtn").addEventListener("click", () => {
+      // random among the first 30 of the current sort (nearest by default), so a random stop
+      // stays within reach instead of landing on the other side of Mars
+      const { list } = sortCandidates(routeCandidates());
+      if (!list.length) { setRouteStatus("No spots match the search and kind to pick from."); return; }
+      const pool = list.slice(0, 30);
+      addRouteStop(stopFromSpot(pool[Math.floor(Math.random() * pool.length)]));
+    });
+    document.querySelector('#tabs [data-win="winRoute"]').addEventListener("click", () => setTimeout(renderRouteSpots, 0));
+    document.getElementById("spotRouteBtn").addEventListener("click", () => {
+      if (!selectedSpot) return;
+      if (routePoints.some((p) => p.spotId === selectedSpot.id)) { setRouteStatus(`${selectedSpot.name} is already a stop.`); }
+      else addRouteStop(stopFromSpot(selectedSpot));
+      showTab("winRoute");
+      renderRouteSpots();
+    });
+    fillRouteKinds();
+    routeKindsRefresh = () => { fillRouteKinds(); renderRouteSpots(); };
+    routeNeedsCalc();
     exagSlider.addEventListener("input", () => {
       if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
     });
@@ -2980,6 +4513,7 @@
       }
     });
     clicker.setInputAction((e) => {
+      if (spotPickPending) { finishSpotPick(surfaceAt(e.position.x, e.position.y)); return; }
       if (routePickMode === "waypoint") {
         const world = surfaceAt(e.position.x, e.position.y);
         if (!world) { routeStatus.textContent = "Click a visible point on Mars."; return; }
@@ -2987,26 +4521,19 @@
         let point = { lon: Cesium.Math.toDegrees(c.longitude), lat: Cesium.Math.toDegrees(c.latitude), world };
         const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
         const id = picked.map((p) => p?.id?.properties?.spotId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
-        const spot = SPOTS.find((s) => s.id === id);
-        if (spot) {
-          const snappedCarto = Cesium.Cartographic.fromDegrees(spot.lon, spot.lat);
-          const snappedHeight = terrainReady && reliefBox.checked ? globe.getHeight(snappedCarto) : 0;
-          point = {
-            lon: spot.lon, lat: spot.lat,
-            world: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, Number.isFinite(snappedHeight) ? snappedHeight : 0, MARS),
-          };
-        }
-        routeRequest++;
-        routePoints.push(point);
-        syncRoutePins();
-        setRoutePickMode(null);
-        if (routePoints.length >= 2) computeTerrainRoute();
-        else routeStatus.textContent = `${spot ? `Snapped to ${spot.name}. ` : ""}Waypoint 1 set. Add another waypoint to route.`;
+        const spot = spotById.get(id);
+        if (spot) point = stopFromSpot(spot); // clicked a pin: snap to that spot
+        routePickMode = null;
+        routeAddButton.classList.remove("on");
+        addRouteStop(point);
+        syncRouteAddButton();
         return;
       }
+      const crewHit = viewer.scene.drillPick(e.position, 4).map((p) => p?.id?.properties?.crewId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
+      if (crewHit && crew) { crew.pick(crewHit); return; }
       const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
       const id = picked.map((p) => p?.id?.properties?.spotId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
-      const spot = SPOTS.find((s) => s.id === id);
+      const spot = spotById.get(id);
       if (spot) selectSpot(spot);
       else openProbe(e.position);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -3051,6 +4578,29 @@
       showTab(next.dataset.win);
       e.preventDefault();
     });
+
+    // ---------------------------------------------------------------- crew & rovers
+    try {
+      const { initCrew } = await import("./crew.js");
+      crew = initCrew({
+        Cesium, viewer, MARS, sampleTerrainHeights,
+        getRoute: () => (routeRawPath && routePinPositions?.length >= 2
+          ? { path: routeRawPath, stops: routePinPositions, loop: routeLoopBox.checked } : null),
+        visualHeight: (elevationM) => (terrainReady && reliefBox.checked ? elevationM * viewer.scene.verticalExaggeration : 0),
+        onReliefChange: (fn) => reliefHooks.push(fn),
+        viewCentre: () => {
+          const c = MARS.cartesianToCartographic(viewCentre());
+          return c ? { lon: Cesium.Math.toDegrees(c.longitude), lat: Cesium.Math.toDegrees(c.latitude) } : null;
+        },
+        planWithSlope: (deg) => {
+          maxSlopeSlider.value = String(Math.max(5, Math.min(45, Math.round(deg))));
+          maxSlopeSlider.dispatchEvent(new Event("input"));
+          if (routePoints.length < 2) { showTab("winRoute"); setRouteStatus("Add at least two stops (stop 1 = base), then press Calculate route."); return; }
+          computeTerrainRoute();
+        },
+        showCrewTab: () => showTab("winCrew"),
+      });
+    } catch (error) { console.error("Crew panel failed:", error); }
 
     // ---------------------------------------------------------------- cache info
     const cacheInfo = document.getElementById("cacheInfo");

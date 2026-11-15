@@ -14,6 +14,8 @@ import { createGzip } from "node:zlib";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT) || 8080;
+// 127.0.0.1 by default (only this machine). A hosted deploy sets HOST=0.0.0.0 (see Dockerfile).
+const host = process.env.HOST || "127.0.0.1";
 const TREK_TILES = "https://trek.nasa.gov/tiles";
 const JEZERO_VTOUR_HOST = "https://maps.planet.fu-berlin.de/vtour";
 // Mastcam-Z full panoramas live on an ASU host that does not send CORS headers, so the
@@ -39,6 +41,7 @@ const types = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".gif": "image/gif",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".wasm": "application/wasm",
@@ -703,6 +706,10 @@ function serveTerrain(url, res) {
       progress: DEMS[0].progress,
       error: terrain.error,
       cached: Object.fromEntries(DEMS.map((d) => [d.ppd, d.progress])),
+      // source data being fetched right now: chunks/blocks per dataset, and the two queues
+      downloading: Object.fromEntries(DEMS.map((d) => [d.ppd,
+        d.files ? d.files.reduce((n, f) => n + f.pending.size, 0) : d.pending?.size ?? 0]).filter(([, n]) => n > 0)),
+      queues: { pds: { active: net.active, waiting: net.stack.length }, s3: { active: s3.active, waiting: s3.queue.length } },
     }));
   }
   const m = /^\/terrain\/(\d{1,2})\/(\d{1,8})\/(\d{1,8})$/.exec(url.pathname);
@@ -795,9 +802,96 @@ async function proxyJezeroVtour(url, res) {
   res.end(body);
 }
 
+// ---------------------------------------------------------------- custom spots
+// The viewer's "custom spots" (name, kind, colour, description, tags, images...) are kept in
+// web/data/custom/spots.json, and uploaded images in web/data/custom/images/. Both are
+// git-ignored: use the viewer's Export / Import to share them. Only this machine can reach the
+// server (it listens on 127.0.0.1), and writes must come from the viewer page itself (Origin
+// check), so another website open in the browser cannot change them.
+const CUSTOM_DIR = path.join(root, "data", "custom");
+const CUSTOM_FILE = path.join(CUSTOM_DIR, "spots.json");
+const CUSTOM_IMG_DIR = path.join(CUSTOM_DIR, "images");
+const IMAGE_EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+const MAX_JSON = 2 * 1024 * 1024, MAX_IMAGE = 15 * 1024 * 1024;
+
+function sameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return req.headers["sec-fetch-site"] !== "cross-site";
+  return origin === `http://localhost:${port}` || origin === `http://127.0.0.1:${port}`;
+}
+function readBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > limit) { reject(Object.assign(new Error("Too large"), { status: 413 })); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+function sendJson(res, status, obj) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(JSON.stringify(obj));
+}
+async function customSpotsApi(req, res, url) {
+  if (url.pathname === "/api/custom-spots" && req.method === "GET") {
+    try { return sendJson(res, 200, JSON.parse(await readFile(CUSTOM_FILE, "utf8"))); }
+    catch { return sendJson(res, 200, { version: 1, kinds: [], spots: [] }); }
+  }
+  if (!sameOrigin(req)) return send(res, 403, "Forbidden");
+  if (url.pathname === "/api/custom-spots" && req.method === "PUT") {
+    const doc = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8"));
+    if (!doc || !Array.isArray(doc.spots) || !Array.isArray(doc.kinds)) return send(res, 400, "Expected { kinds: [], spots: [] }");
+    await mkdir(CUSTOM_DIR, { recursive: true });
+    const tmp = CUSTOM_FILE + ".tmp";
+    await writeFile(tmp, JSON.stringify({ version: 1, kinds: doc.kinds, spots: doc.spots }, null, 1));
+    await rename(tmp, CUSTOM_FILE); // atomic: a crash never leaves half a file
+    return sendJson(res, 200, { ok: true, spots: doc.spots.length });
+  }
+  if (url.pathname === "/api/custom-images" && req.method === "POST") {
+    const ext = IMAGE_EXT[(req.headers["content-type"] || "").split(";")[0].trim()];
+    if (!ext) return send(res, 415, "Images only: PNG, JPEG, WebP or GIF");
+    const body = await readBody(req, MAX_IMAGE);
+    await mkdir(CUSTOM_IMG_DIR, { recursive: true });
+    const name = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    await writeFile(path.join(CUSTOM_IMG_DIR, name), body);
+    return sendJson(res, 200, { url: `./data/custom/images/${name}` });
+  }
+  return send(res, 405, "Method not allowed");
+}
+
+// ---------------------------------------------------------------- REMS (Curiosity weather)
+// The public REMS JSON is not CORS-readable from every origin, so the page asks us; we keep
+// the latest 30 sols in memory for an hour. The page falls back to a committed snapshot.
+const REMS_URL = "https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json";
+const rems = { at: 0, body: null, job: null };
+async function serveRems(res) {
+  try {
+    if (!rems.body || Date.now() - rems.at > 3600_000) {
+      rems.job ??= fetch(REMS_URL, { signal: AbortSignal.timeout(20000) })
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then((d) => { rems.body = JSON.stringify({ source: REMS_URL, fetched_utc: new Date().toISOString(), soles: d.soles.slice(0, 30) }); rems.at = Date.now(); })
+        .finally(() => { rems.job = null; });
+      await rems.job;
+    }
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=600" });
+    res.end(rems.body);
+  } catch (err) {
+    if (rems.body) { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(rems.body); }
+    send(res, 502, `REMS feed unreachable: ${err.message}`);
+  }
+}
+
 const server = http.createServer((req, res) => {
-  if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "Method not allowed");
   const url = new URL(req.url, "http://localhost");
+  if (url.pathname.startsWith("/api/custom-")) {
+    return customSpotsApi(req, res, url).catch((err) =>
+      res.headersSent ? res.destroy() : send(res, err.status || (err instanceof SyntaxError ? 400 : 500), err.message));
+  }
+  if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "Method not allowed");
   if (url.pathname === "/__proxy") return send(res, 200, "ok"); // lets the page detect this server
   if (url.pathname === "/favicon.ico") {
     res.writeHead(204, { "Cache-Control": "public, max-age=86400" });
@@ -808,6 +902,11 @@ const server = http.createServer((req, res) => {
   }
   if (url.pathname.startsWith("/fu-vtour/")) {
     return proxyJezeroVtour(url, res).catch((err) => send(res, 502, `Could not load Jezero panorama asset: ${err.message}`));
+  }
+  if (url.pathname === "/rems") return serveRems(res);
+  if (url.pathname === "/healthz") {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    return res.end(JSON.stringify({ ok: true, terrain: terrain.ready, terrainError: terrain.error }));
   }
   if (url.pathname === "/catalog") {
     return getCatalog().then(
@@ -834,7 +933,7 @@ server.on("error", (err) => {
   process.exit(1);
 });
 
-server.listen(port, "127.0.0.1", () => {
+server.listen(port, host, () => {
   const url = `http://localhost:${port}/`;
   console.log(`Mars viewer running at ${url}  (Ctrl+C to stop)`);
   if (process.platform === "win32" && !process.argv.includes("--no-open")) {

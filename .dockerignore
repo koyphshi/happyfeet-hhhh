@@ -1,0 +1,13 @@
+.git
+**/node_modules
+web/data
+web/.tile-cache
+data/raw
+forecast
+target
+src
+*.md
+!web/**/*.md
+CLAUDE-BRIEF.md
+AGENT-STATE.md
+EXPERT-REVIEW.md
