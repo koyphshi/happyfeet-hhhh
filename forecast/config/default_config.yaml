@@ -1,0 +1,90 @@
+# Mars Weather Hazard Forecasting Configuration
+# Dual-Mode Decision-Support ML Pipeline
+
+project:
+  name: "mars-hazard-forecasting"
+  version: "1.0.0"
+  description: "Next-sol environmental hazard forecasting across the Martian surface"
+
+grid:
+  lat_bins: 36
+  lon_bins: 72
+  lat_min: -87.5
+  lat_max: 87.5
+  lon_min: 0.0
+  lon_max: 355.0
+  resolution_deg: 5.0
+  crs: "EPSG:104905"
+  proj4: "+proj=longlat +a=3396190 +b=3376200 +no_defs"
+
+data:
+  openmars_zarr_url: "https://huggingface.co/datasets/ananyo01/ARCO-OpenMars/resolve/main/openmars_MY28-35.zarr"
+  nasa_mgcm_base_url: "https://data.nas.nasa.gov/legacygcm/legacygcm/ACTIVECLDS_NCDF"
+  cache_dir: "data/cache"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  timeout_seconds: 30
+  max_retries: 3
+
+thresholds:
+  dust:
+    # Column Dust Optical Depth (CDOD tau at 9.3 um / 610 Pa equivalent)
+    # Source: Montabone et al. (2015, 2020)
+    nominal_max: 0.5
+    moderate_max: 1.2
+    severe_min: 1.2
+    weight: 0.35
+  wind:
+    # Near-surface horizontal wind speed (m/s)
+    # Source: Greeley et al. (2000), Haberle et al. (2017)
+    nominal_max: 10.0
+    moderate_max: 20.0
+    gale_min: 20.0
+    weight: 0.25
+  cold:
+    # Surface skin temperature (Kelvin)
+    # Note: CO2 sublimation/frost point at ~6.1 hPa is ~148 K
+    # Source: Kieffer et al. (1977), Vasavada et al. (2017)
+    nominal_min: 200.0
+    moderate_min: 155.0
+    extreme_max: 155.0
+    weight: 0.20
+  heat:
+    # Surface skin temperature (Kelvin) - Equipment/eva thermal limits
+    # Source: NASA MSL/Perseverance Environmental Science Operations
+    nominal_max: 265.0
+    elevated_max: 285.0
+    extreme_min: 285.0
+    weight: 0.20
+
+model:
+  target_lead_sols: 1
+  time_step_hours: 2.0
+  features:
+    - "sin_ls"
+    - "cos_ls"
+    - "sin_hour"
+    - "cos_hour"
+    - "lat"
+    - "lon"
+    - "lag_tsurf"
+    - "lag_wind_speed"
+    - "lag_dustcol"
+  lightgbm:
+    n_estimators: 100
+    learning_rate: 0.05
+    num_leaves: 31
+    max_depth: 6
+    random_state: 42
+    n_jobs: 4
+
+output:
+  geotiff_dir: "outputs"
+  compression: "DEFLATE"
+  bands:
+    1: "dust_hazard_risk"
+    2: "wind_hazard_risk"
+    3: "cold_hazard_risk"
+    4: "heat_hazard_risk"
+    5: "overall_hazard_risk"
+    6: "model_uncertainty"
