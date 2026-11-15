@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mars · step 1 · globe with Gale imagery</title>
+  <title>Mars · Jezero route planner</title>
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="./node_modules/cesium/Build/Cesium/Widgets/widgets.css" />
   <style>
@@ -426,6 +426,8 @@
           <button id="routeAddBtn" type="button">Add waypoint</button>
           <button id="routeUndoBtn" type="button">Undo last</button>
           <button id="routeClearBtn" type="button">Clear</button>
+          <button id="routeWalkBtn" type="button" disabled>Walk this route</button>
+          <div class="hint" id="walkHint">Walk mode uses only the preferred Jezero panorama markers that match this A→B route.</div>
           <div class="hint">Add points in order; the route visits each one.</div>
           <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
           <label class="hint" style="display:block"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
@@ -1093,6 +1095,7 @@
 
     // ---------------------------------------------------------------- camera
     const GALE = { lon: 137.44, lat: -4.59 };   // Bradbury Landing area, inside the HiRISE mosaic
+    const JEZERO = { lon: 77.4, lat: 18.46 };    // Perseverance / Mastcam-Z panorama field
     const HOME = Cesium.Cartesian3.fromDegrees(-60, 10, 14_000_000, MARS);
     viewer.camera.setView({ destination: HOME });
 
@@ -1166,26 +1169,19 @@
 
     // Curated, static mission/science spots. Coordinates and mission facts are NASA/JPL
     // references; the spot card labels the map-derived values separately from those facts.
-    const BOXWORK_PANORAMAS = [
-      { sol: 4512, date: "16 Apr 2025", lon: 137.3882287, lat: -4.79504357, site: 115, drive: 960, heading: 202, dir: "04", file: "N_R000_4512_EDR115CYLASB0960_AUTOLM1", ext: "PNG" },
-      { sol: 4525, date: "29 Apr 2025", lon: 137.3877473, lat: -4.79641047, site: 115, drive: 1770, heading: 200, dir: "05", file: "N_R000_4525XEDR115CYLASB1770_AUTOLM1", ext: "PNG" },
-      { sol: 4548, date: "23 May 2025", lon: 137.3840451, lat: -4.79879294, site: 116, drive: 1260, heading: 221, dir: "06", file: "N_R000_4548_EDR116CYLASB1260_AUTOLM2", ext: "PNG" },
-      { sol: 4561, date: "6 Jun 2025", lon: 137.3835414, lat: -4.79984723, site: 116, drive: 1944, heading: 179, dir: "06", file: "N_R000_4561XEDR116CYLASB1944_AUTOLM1", ext: "PNG" },
-      { sol: 4580, date: "25 Jun 2025", lon: 137.3812512, lat: -4.80232637, site: 117, drive: 420, heading: 233, dir: "06", file: "N_R000_4580_EDR117CYLASB0420_AUTOLM1", ext: "PNG" },
-      { sol: 4611, date: "27 Jul 2025", lon: 137.3793204, lat: -4.80474015, site: 117, drive: 2730, heading: 239, dir: "07", file: "N_R000_4611XEDR117CYLASB2730_AUTOLM1", ext: "PNG" },
-      { sol: 4647, date: "2 Sep 2025", lon: 137.3798121, lat: -4.80689063, site: 118, drive: 2268, heading: 98, dir: "09", file: "N_R000_4647_EDR118CYLASB2268_AUTOLM1", ext: "PNG" },
-      { sol: 4671, date: "27 Sep 2025", lon: 137.3812695, lat: -4.80827103, site: 119, drive: 486, heading: 119, dir: "09", file: "N_R000_4671_EDR119CYLASB0486_AUTOLM1", ext: "jpg" },
-    ];
-    // A regular MAHLI close-up from the same boxwork traverse (Sol 4636), used as
-    // representative marker-card imagery instead of repeating the 360° Navcam projections.
     const boxworkPhoto = "https://assets.science.nasa.gov/dynamicimage/assets/science/psd/photojournal/pia/pia26/pia26697/PIA26697.jpg?fit=crop&h=540&w=960";
-    const panoramaUrl = (p) => `https://science.nasa.gov/resource/sol-${p.sol}-right-navigation-camera-cylindrical-projection/`;
     let PERSEVERANCE_PANORAMAS = [];
+    let JEZERO_VIRTUAL_VIEWS = [];
     try {
       const response = await fetch("./public/data/panoramas/perseverance_mastcamz.json");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       PERSEVERANCE_PANORAMAS = (await response.json()).panoramas ?? [];
     } catch (error) { console.warn("Could not load Perseverance panorama catalog:", error); }
+    try {
+      const response = await fetch("./public/data/panoramas/jezero_virtual_viewpoints.json");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      JEZERO_VIRTUAL_VIEWS = (await response.json()).viewpoints ?? [];
+    } catch (error) { console.warn("Could not load Jezero virtual viewpoints:", error); }
     const SPOTS = [
       { id: "gale-boxwork", name: "Gale · boxwork target", lon: 137.3931242, lat: -4.78692417,
         type: "Science target · Glen Torridon", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
@@ -1194,15 +1190,18 @@
         imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork", imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636",
         note: "Boxwork ridges and hollows can preserve clues to groundwater history. Marker is an approximate regional target, not a rover position.",
         source: "NASA/JPL · Curiosity’s First 360° View of Boxwork Patterns", url: "https://science.nasa.gov/photojournal/curiositys-first-360-degree-view-of-boxwork-patterns/" },
-      ...BOXWORK_PANORAMAS.map((p) => ({
-        id: `curiosity-sol-${p.sol}`, name: `Boxwork panorama · Sol ${p.sol}`, lon: p.lon, lat: p.lat,
-        type: `Curiosity Navcam · site ${p.site}, drive ${p.drive}`, mission: "Mars Science Laboratory",
-        date: `Sol ${p.sol} · ${p.date}`, category: "Panorama", tags: ["Gale", "Boxwork", "Curiosity", "Navcam", "360°", `Site ${p.site}`],
-        vrEnabled: true, sol: p.sol, site: p.site, drive: p.drive, projection: "360° cylindrical", heading: p.heading,
-        positionNote: `NASA waypoint at site ${p.site}, drive ${p.drive}`,
-        image: boxworkPhoto, imageSource: "https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/",
-        imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork",
-        imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636 boxwork close-up", source: `NASA · Sol ${p.sol} Right Navcam Panorama`, url: panoramaUrl(p),
+      ...JEZERO_VIRTUAL_VIEWS.map((v) => ({
+        id: v.id, name: `Jezero · ${v.name}`, lon: v.lon, lat: v.lat,
+        type: "Pre-rendered virtual panorama · Jezero crater", mission: "FU Berlin Jezero Virtual Hiking Map",
+        date: "Orbital virtual viewpoint", category: "Panorama",
+        tags: ["Jezero", "Virtual panorama", "FU Berlin", "360°", "Perseverance"],
+        vrEnabled: true, vrUrl: `https://maps.planet.fu-berlin.de/jezero/360/${v.panoId}`,
+        image: v.preview, imageSource: "https://maps.planet.fu-berlin.de/jezero/",
+        imageAlt: `${v.title} from the FU Berlin Jezero virtual hike`,
+        imageCredit: "HRSC: ESA/DLR/FU-BERLIN · CTX: NASA/JPL-Caltech/MSSS · HiRISE: NASA/JPL/University of Arizona",
+        source: "FU Berlin Jezero Virtual Hiking Map · original multiresolution scene",
+        url: `https://maps.planet.fu-berlin.de/jezero/360/${v.panoId}`,
+        note: "Original full-resolution multiresolution virtual scene. Open the source view for its complete Quest-quality panorama. This is an orbital virtual viewpoint, not a rover-captured panorama.",
       })),
       ...PERSEVERANCE_PANORAMAS.map((p) => ({
         id: p.id, name: p.name, lon: p.lon, lat: p.lat,
@@ -2187,6 +2186,13 @@
         if (Number.isFinite(g.dayHour)) dayHour.value = g.dayHour;
       }
     } catch { /* storage blocked: defaults */ }
+    // Quest Browser has a tighter WebGL buffer budget than desktop browsers. Keep the Mars
+    // map light enough for waypoint picking; this does not affect panorama image textures.
+    const isQuestBrowser = /OculusBrowser|Quest/i.test(navigator.userAgent);
+    if (isQuestBrowser) {
+      detailMode.value = "5";
+      resMode.value = "0.7";
+    }
     function saveGraphics() {
       try {
         localStorage.setItem(GFX_KEY, JSON.stringify({
@@ -2439,7 +2445,10 @@
     let routeRequest = 0;
     const routeStatus = document.getElementById("routeStatus");
     const routeAddButton = document.getElementById("routeAddBtn");
+    const routeWalkButton = document.getElementById("routeWalkBtn");
+    const walkHint = document.getElementById("walkHint");
     const routeSmoothBox = document.getElementById("routeSmooth");
+    let walkRoute = null;
     const maxSlopeSlider = document.getElementById("maxSlope");
     const maxSlopeValue = document.getElementById("maxSlopeValue");
     const slopeMeaning = document.getElementById("slopeMeaning");
@@ -2457,6 +2466,9 @@
     function clearRouteGraphics() {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
       routeGraphic = routeDisplayPath = routeRawPath = routeRawTurns = routeGrid = null;
+      walkRoute = null;
+      routeWalkButton.disabled = true;
+      walkHint.textContent = "Walk mode uses only the preferred Jezero panorama markers that match this A→B route.";
       routePinPositions = null;
       for (const pin of routePins) viewer.entities.remove(pin);
       routePins.length = 0;
@@ -2560,7 +2572,13 @@
       routeDisplayPath = routeSmoothBox.checked ? smoothRouteCorners(path, turnIndices) : path;
       const radians = Math.PI / 180;
       const showRelief = terrainReady && reliefBox.checked;
-      const visualHeight = (elevationM) => (showRelief ? elevationM * viewer.scene.verticalExaggeration : 0) + 8;
+      const visualHeight = (lon, lat, elevationM) => {
+        if (!showRelief) return 8;
+        // globe.getHeight already includes the scene's vertical exaggeration. Sampling it here
+        // keeps the route line just above the rendered terrain instead of buried inside it.
+        const h = globe.getHeight(Cesium.Cartographic.fromDegrees(lon, lat));
+        return (Number.isFinite(h) ? h : elevationM * viewer.scene.verticalExaggeration) + 20;
+      };
       if (routeDisplayPath.length === 1) {
         const p = routeDisplayPath[0];
         const routeStart = routePoints[0], routeGoal = routePoints.at(-1);
@@ -2571,7 +2589,7 @@
           (routeGoal.lat - routeStart.lat) * radians * 3_396_190);
         if (separation < 0.25) {
           routeGraphic = viewer.entities.add({
-            position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, visualHeight(p.elevationM), MARS),
+            position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, visualHeight(p.lon, p.lat, p.elevationM), MARS),
             point: { pixelSize: 9, color: Cesium.Color.CYAN, outlineColor: Cesium.Color.BLACK, outlineWidth: 2 },
           });
           return;
@@ -2600,11 +2618,11 @@
         const dLat = b.lat - a.lat;
         const distance = Math.hypot(dLon * radians * 3_396_190 * Math.cos((a.lat + b.lat) * radians / 2), dLat * radians * 3_396_190);
         const steps = Math.max(1, Math.ceil(distance / spacing));
-        if (!positions.length) positions.push(Cesium.Cartesian3.fromDegrees(a.lon, a.lat, visualHeight(a.elevationM), MARS));
+        if (!positions.length) positions.push(Cesium.Cartesian3.fromDegrees(a.lon, a.lat, visualHeight(a.lon, a.lat, a.elevationM), MARS));
         for (let j = 1; j <= steps; j++) {
           const t = j / steps, lon = a.lon + dLon * t, lat = a.lat + dLat * t;
           const elevation = a.elevationM + (b.elevationM - a.elevationM) * t;
-          positions.push(Cesium.Cartesian3.fromDegrees(lon, lat, visualHeight(elevation), MARS));
+          positions.push(Cesium.Cartesian3.fromDegrees(lon, lat, visualHeight(lon, lat, elevation), MARS));
         }
       }
       routeGraphic = viewer.entities.add({
@@ -2614,6 +2632,112 @@
           depthFailMaterial: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.18, color: Cesium.Color.CYAN }),
         },
       });
+    }
+
+    const wrapLon = (value) => ((value + 180) % 360 + 360) % 360 - 180;
+    const groundDistanceM = (a, b) => {
+      const rad = Math.PI / 180;
+      const dLon = wrapLon(b.lon - a.lon) * rad;
+      return Math.hypot(
+        dLon * 3_396_190 * Math.cos((a.lat + b.lat) * rad / 2),
+        (b.lat - a.lat) * rad * 3_396_190,
+      );
+    };
+    function routeCumulative(path) {
+      const cumulative = [0];
+      for (let i = 1; i < path.length; i++) {
+        cumulative.push(cumulative[i - 1] + groundDistanceM(path[i - 1], path[i]));
+      }
+      return cumulative;
+    }
+    function nearestOnPath(path, cumulative, point) {
+      if (path.length === 1) {
+        return { distanceM: groundDistanceM(path[0], point), alongM: 0, lon: path[0].lon, lat: path[0].lat };
+      }
+      let best = { distanceM: Infinity, alongM: 0, lon: path[0].lon, lat: path[0].lat };
+      const rad = Math.PI / 180, radius = 3_396_190;
+      for (let i = 1; i < path.length; i++) {
+        const a = path[i - 1], b = path[i];
+        const midLat = (a.lat + b.lat) * rad / 2;
+        const ax = wrapLon(a.lon - point.lon) * Math.cos(midLat) * radius * rad;
+        const ay = (a.lat - point.lat) * radius * rad;
+        const sx = wrapLon(b.lon - a.lon) * Math.cos(midLat) * radius * rad;
+        const sy = (b.lat - a.lat) * radius * rad;
+        const lengthSq = sx * sx + sy * sy;
+        const t = lengthSq ? Math.max(0, Math.min(1, -(ax * sx + ay * sy) / lengthSq)) : 0;
+        const distanceM = Math.hypot(ax + sx * t, ay + sy * t);
+        if (distanceM < best.distanceM) {
+          best = {
+            distanceM,
+            alongM: cumulative[i - 1] + t * Math.hypot(sx, sy),
+            lon: a.lon + wrapLon(b.lon - a.lon) * t,
+            lat: a.lat + (b.lat - a.lat) * t,
+          };
+        }
+      }
+      return best;
+    }
+    function prepareWalkRoute() {
+      const path = routeDisplayPath ?? routeRawPath;
+      walkRoute = null;
+      routeWalkButton.disabled = true;
+      if (!path?.length || routePoints.length < 2) return false;
+      if (!JEZERO_VIRTUAL_VIEWS.length) {
+        walkHint.textContent = "The Jezero virtual-view catalog has not loaded yet.";
+        return false;
+      }
+      const cumulative = routeCumulative(path);
+      const candidates = [];
+      for (const pano of JEZERO_VIRTUAL_VIEWS) {
+        if (!pano.scene || !Number.isFinite(pano.lat) || !Number.isFinite(pano.lon)) continue;
+        const near = nearestOnPath(path, cumulative, pano);
+        candidates.push({ pano, near });
+      }
+      if (!candidates.length) {
+        walkHint.textContent = "No Jezero panorama locations are available.";
+        return false;
+      }
+      // Anchor the stop sequence to the closest panorama at A, then stop at the closest
+      // panorama to B that occurs later along the directed route. This keeps an endpoint
+      // panorama from pulling the tour backward on routes that pass near themselves.
+      const routeStart = routePoints[0], routeEnd = routePoints.at(-1);
+      const startCandidate = candidates.reduce((best, candidate) =>
+        groundDistanceM(candidate.pano, routeStart) < groundDistanceM(best.pano, routeStart) ? candidate : best);
+      const forwardCandidates = candidates.filter((candidate) =>
+        candidate.near.alongM >= startCandidate.near.alongM - 1);
+      const destinationCandidate = forwardCandidates.reduce((best, candidate) =>
+        groundDistanceM(candidate.pano, routeEnd) < groundDistanceM(best.pano, routeEnd) ? candidate : best);
+      const directedCandidates = forwardCandidates.filter((candidate) =>
+        candidate.near.alongM <= destinationCandidate.near.alongM + 1);
+      directedCandidates.sort((a, b) => a.near.alongM - b.near.alongM || a.near.distanceM - b.near.distanceM);
+      const stops = [], seen = new Set();
+      for (const { pano, near } of directedCandidates) {
+        if (seen.has(pano.id)) continue;
+        if (stops.some((stop) => groundDistanceM(stop, pano) < 30)) continue;
+        seen.add(pano.id);
+        const stop = {
+          id: pano.id, panoId: pano.panoId, scene: pano.scene,
+          name: pano.name, title: pano.title, lat: pano.lat, lon: pano.lon,
+          image: pano.preview, url: `https://maps.planet.fu-berlin.de/jezero/360/${pano.panoId}`,
+          imageCredit: "FU Berlin Jezero Virtual Hiking Map",
+          distanceFromRouteM: Math.round(near.distanceM),
+          alongRouteM: Math.round(near.alongM),
+        };
+        stops.push(stop);
+      }
+      if (!stops.length) return false;
+      walkRoute = {
+        version: 1,
+        generatedAt: new Date().toISOString(),
+        stopSelection: "preferred Jezero viewpoints projected onto the A-to-B route and limited to its directed span",
+        start: { lon: routeStart.lon, lat: routeStart.lat },
+        end: { lon: routeEnd.lon, lat: routeEnd.lat },
+        destinationStopId: stops.at(-1).id,
+        stops,
+      };
+      routeWalkButton.disabled = false;
+      walkHint.textContent = `${stops.length} preferred Jezero panorama stop${stops.length === 1 ? "" : "s"} along this A→B route.`;
+      return true;
     }
 
     async function drawUnwalkableOverlay(grid, isCurrent = () => true) {
@@ -2797,6 +2921,7 @@
         if (request !== routeRequest) return;
         if (!result) { routeStatus.textContent = "No walkable route found at this slope limit."; return; }
         drawRouteLine(grid, routeRawPath, routeRawTurns);
+        prepareWalkRoute();
         routeStatus.textContent = `${routeRawPath.length.toLocaleString()} samples · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
       } catch (error) {
         if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
@@ -2821,6 +2946,19 @@
     document.getElementById("routeClearBtn").addEventListener("click", () => {
       routeRequest++; routePoints.length = 0; clearRouteGraphics(); syncRoutePins(); setRoutePickMode(null);
     });
+    routeWalkButton.addEventListener("click", () => {
+      if (!walkRoute && !prepareWalkRoute()) {
+        routeStatus.textContent = "Could not build a walk route from these waypoints.";
+        return;
+      }
+      try {
+        localStorage.setItem("marsWalkRoute", JSON.stringify(walkRoute));
+      } catch (error) {
+        routeStatus.textContent = `Could not save the walk route: ${error.message}`;
+        return;
+      }
+      location.href = "./walk/?v=20261115-enter-vr-eye-arrow-v2";
+    });
     let slopeDebounce;
     maxSlopeSlider.addEventListener("input", () => {
       maxSlopeValue.textContent = `${maxSlopeDeg()}°`;
@@ -2836,7 +2974,10 @@
       syncRoutePins();
     });
     routeSmoothBox.addEventListener("change", () => {
-      if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
+      if (routeGrid && routeRawPath) {
+        drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
+        prepareWalkRoute();
+      }
     });
     clicker.setInputAction((e) => {
       if (routePickMode === "waypoint") {
@@ -2956,24 +3097,22 @@
         : "";
     });
 
-    // Acceptance test for step 1: the page flies to Gale on its own, but only once the whole
-    // planet has painted (or after 10 s). Flying earlier cancels the global tiles and leaves a
-    // bare brown ball.
+    // Open over Jezero so the Perseverance panorama field and its route waypoints are in view.
+    // Wait for the planet tiles (or 10 s) so the flight does not cancel the global imagery.
     let flown = false;
-    const goGale = () => {
+    const goJezero = () => {
       if (flown) return;
       flown = true;
-      // Start with a regional view of Gale, away from individual POI pins.
-      flyToSpot(137.8, -5.4, 400_000);
+      flyToSpot(JEZERO.lon, JEZERO.lat, 140_000);
     };
     const onLoaded = (queued) => {
       if (queued === 0 && globe.tilesLoaded) {
         globe.tileLoadProgressEvent.removeEventListener(onLoaded);
-        setTimeout(goGale, 1500);
+        setTimeout(goJezero, 1500);
       }
     };
     globe.tileLoadProgressEvent.addEventListener(onLoaded);
-    setTimeout(goGale, 10_000);
+    setTimeout(goJezero, 10_000);
   })();
   </script>
 </body>
