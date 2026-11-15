@@ -25,14 +25,14 @@ export const SURVIVAL_PARAMS = Object.freeze({
   tobler_a: 3.5,              // -          Tobler 1993 hiking function exponent
   tobler_b: 0.05,             // -          Tobler 1993 offset (fastest at -2.86 deg)
   max_slope_deg: 25,          // deg        ASSUMED suit mobility limit (hard mask)
-  metabolic_flat_w: 272,      // W          ASSUMED, ~Apollo lunar EVA average (234 kcal/h)
+  metabolic_flat_w: 272,      // W          CITED: Apollo lunar EVA average 234 kcal/h (NASA TN D-7883 range 228-352 W)
   metabolic_stop_w: 230,      // W          ASSUMED sampling work at a stop
   eta_muscle: 0.25,           // -          ASSUMED muscular efficiency for climbing (~0.2-0.25)
   suit_mass_kg: 60,           // kg         ASSUMED suit + life support carried
   e_o2_j_per_kg: 14.07e6,     // J/kg O2    20.1 kJ/L at 1.429 g/L (indirect calorimetry)
   l_sub_j_per_kg: 2.83e6,     // J/kg       latent heat of sublimation of water ice
   f_cool: 0.8,                // -          ASSUMED share of metabolic heat rejected by the sublimator
-  suit_power_w: 55,           // W          ASSUMED fans, pump, radio, heaters average
+  suit_power_w: 49,           // W          DERIVED: 390 Wh battery over the 8 h Apollo 15-17 design EVA
   stop_dwell_s: 1200,         // s          ASSUMED 20 min of sampling per science stop
   reserve_frac: 0.2,          // -          design decision (FIXED)
   blackout_grace_s: 60,       // s          design decision (FIXED)
@@ -41,11 +41,12 @@ export const SURVIVAL_PARAMS = Object.freeze({
   suit_antenna_m: 2,          // m          ASSUMED suit antenna height
 });
 
-// Two suited crew members. Capacities are usable amounts, ASSUMED and of the order of the
-// public NASA EMU figures (see docs/assumptions.md).
+// Two suited crew members. Cooling water and battery follow the Apollo 15-17 PLSS (8 h EVA
+// design: 11.5 lb = 5.2 kg feedwater, 390 Wh battery); usable O2 mass is ASSUMED
+// (docs/assumptions.md).
 export const DEFAULT_CREW = Object.freeze([
-  Object.freeze({ id: "A", name: "Crew A", body_mass_kg: 72, metabolic_scale: 1.0, o2_kg: 0.54, water_kg: 3.6, battery_wh: 450 }),
-  Object.freeze({ id: "B", name: "Crew B", body_mass_kg: 88, metabolic_scale: 1.15, o2_kg: 0.54, water_kg: 3.6, battery_wh: 450 }),
+  Object.freeze({ id: "A", name: "Crew A", body_mass_kg: 72, metabolic_scale: 1.0, o2_kg: 0.54, water_kg: 5.2, battery_wh: 390 }),
+  Object.freeze({ id: "B", name: "Crew B", body_mass_kg: 88, metabolic_scale: 1.15, o2_kg: 0.54, water_kg: 5.2, battery_wh: 390 }),
 ]);
 
 export const CONSUMABLES = Object.freeze([
@@ -285,8 +286,8 @@ const round = (x, n) => Math.round(x * 10 ** n) / 10 ** n;
 export const SCENARIOS = Object.freeze({
   standard: { label: "Standard suits", apply: (crew) => crew },
   degraded_b_water: {
-    label: "Hypothetical: Crew B feedwater at 25 % (sublimator leak)",
-    apply: (crew) => crew.map((c) => (c.id === "B" ? { ...c, water_kg: c.water_kg * 0.25 } : c)),
+    label: "Hypothetical: Crew B feedwater at 18 % (sublimator leak)",
+    apply: (crew) => crew.map((c) => (c.id === "B" ? { ...c, water_kg: c.water_kg * 0.18 } : c)),
   },
   degraded_b_o2: {
     label: "Hypothetical: Crew B oxygen at 30 % (incomplete recharge)",
