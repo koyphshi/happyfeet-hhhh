@@ -297,8 +297,10 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
       anchors.reverse();
       const ids = [];
       const displayPath = [];
+      const turnIndices = [];
       for (let i = 1; i < anchors.length; i++) {
         const from = anchors[i - 1], to = anchors[i], line = segment(from, to).line;
+        if (i > 1) turnIndices.push(displayPath.length - 1);
         ids.push(...line.slice(ids.length ? 1 : 0));
         const ax = from % width, ay = Math.floor(from / width);
         let bx = to % width;
@@ -333,7 +335,7 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
         return { x, y, lon: ll.lon / radians, lat: ll.lat / radians, elevationM: heightAt(at) };
       });
       if (!displayPath.length) displayPath.push(path[0]);
-      return { path, displayPath, horizontalDistanceM, terrainDistanceM: currentCost };
+      return { path, displayPath, turnIndices, horizontalDistanceM, terrainDistanceM: currentCost };
     }
     closed.add(id);
     const x = id % width, y = Math.floor(id / width);
