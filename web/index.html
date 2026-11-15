@@ -310,6 +310,13 @@
     }
     .layer .head button:hover { background: #3a3a3a; color: #fff; }
     .layer .note.err { color: #ff8a80; }
+    .layer .note.prov { font-size: 10.5px; color: #8b95a5; word-break: break-word; }
+    .layer .note.prov a { color: #9cc3ff; }
+    .kindChip { display: inline-block; padding: 0 5px; border-radius: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; background: #334155; color: #e2e8f0; }
+    .kindChip.k-optical { background: #1e3a8a; } .kindChip.k-topographic { background: #14532d; }
+    .kindChip.k-thermal { background: #9a3412; } .kindChip.k-atmo { background: #0e7490; }
+    .remsGrid { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-size: 12px; margin: 4px 0; }
+    .remsBox .head { margin-bottom: 2px; }
 
     /* layer picker: category dropdown + search box + results list */
     #picker { margin: 2px 0 10px; }
@@ -505,6 +512,7 @@
 
     <section class="win" id="winLayers" role="tabpanel">
       <div class="winBody">
+        <div id="remsBox"><div class="layer"><div class="note">Atmosphere · Gale: loading REMS…</div></div></div>
         <div id="picker">
           <div id="pickRow">
             <select id="layerCat" title="Category"><option value="">All types</option></select>
@@ -699,6 +707,14 @@
   <!-- CESIUM_BASE_URL must be set before Cesium.js loads: it tells Cesium where its workers live. -->
   <script>window.CESIUM_BASE_URL = "./node_modules/cesium/Build/Cesium/";</script>
   <script src="./node_modules/cesium/Build/Cesium/Cesium.js"></script>
+  <!-- Static hosts have no node_modules: fall back to the same Cesium version, pinned, from jsDelivr. -->
+  <script>
+    if (typeof Cesium === "undefined") {
+      window.CESIUM_BASE_URL = "https://cdn.jsdelivr.net/npm/cesium@1.147.0/Build/Cesium/";
+      document.write('<link rel="stylesheet" href="' + CESIUM_BASE_URL + 'Widgets/widgets.css" />' +
+        '<script src="' + CESIUM_BASE_URL + 'Cesium.js"><\/script>');
+    }
+  </script>
   <script>
   (async function () {
     const statusEl = document.getElementById("status");
@@ -722,6 +738,8 @@
     const RouteIO = await import("./route-io.js");
     const Survival = await import("./survival.js");
     const { renderSurvivalCard } = await import("./survival-card.js");
+    import("./rems.js").then(async ({ loadRems, renderRems }) => renderRems(document.getElementById("remsBox"), await loadRems()))
+      .catch((error) => { document.getElementById("remsBox").textContent = `REMS unavailable: ${error.message}`; });
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -769,6 +787,7 @@
         dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m", ext: "jpg", maxLevel: 7,
         bounds: null, show: true, alpha: 1,
         note: "Global · 232 m/px · Viking Orbiter",
+        kind: "optical", mission: "Viking Orbiters 1 & 2", res: "232 m/px", date: "imaged 1976–1980; MDIM 2.1 mosaic",
         credit: "Viking MDIM 2.1 colorized mosaic: NASA/JPL/USGS, via NASA Trek",
       },
       {
@@ -776,6 +795,7 @@
         dataset: "Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw", ext: "jpg", maxLevel: 8,
         bounds: null, show: false, alpha: 0.7,
         note: "Global · 200 m/px · Mars Global Surveyor MOLA + Mars Express HRSC",
+        kind: "topographic", mission: "MGS MOLA + Mars Express HRSC", res: "200 m/px", date: "blended DEM v2",
         credit: "MOLA/HRSC blended elevation: NASA, DLR, USGS, via NASA Trek",
       },
       {
@@ -783,6 +803,7 @@
         dataset: "Mars_MGS_MOLA_ClrShade_merge_global_463m", ext: "jpg", maxLevel: 7,
         bounds: null, show: false, alpha: 0.7,
         note: "Global · 463 m/px · Mars Global Surveyor MOLA",
+        kind: "topographic", mission: "Mars Global Surveyor MOLA", res: "463 m/px", date: "laser altimetry 1997–2001",
         credit: "MOLA colorized shaded relief: NASA/GSFC, via NASA Trek",
       },
       {
@@ -793,7 +814,18 @@
         // into a grey smear over the Viking colours. Start at 8 (~4 tiles over the box).
         minLevel: 8,
         note: "Gale only (about 36 × 40 km) · ~0.6 m/px at the deepest tile level · Mars Reconnaissance Orbiter HiRISE",
+        kind: "optical", mission: "Mars Reconnaissance Orbiter HiRISE", res: "~0.6 m/px (deepest level)", date: "Curiosity-site mosaic",
         credit: "HiRISE mosaic of Gale: NASA/JPL/University of Arizona/USGS, via NASA Trek",
+      },
+      {
+        // Thermal: daytime infrared brightness (surface temperature contrast: rock vs dust/sand).
+        // Tiles checked on 2026-11-15 through the /trek proxy (level 0 = 200 image/png).
+        name: "THEMIS day infrared",
+        dataset: "THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018", ext: "png", maxLevel: 9,
+        bounds: null, show: false, alpha: 0.8,
+        note: "Global · 100 m/px · Mars Odyssey THEMIS daytime IR (warmer = brighter)",
+        kind: "thermal", mission: "2001 Mars Odyssey THEMIS", res: "100 m/px (Trek tiles to level 9)", date: "controlled mosaic v2, Oct 2018",
+        credit: "THEMIS day IR controlled mosaic: NASA/JPL-Caltech/Arizona State University/USGS, via NASA Trek",
       },
     ];
 
@@ -1050,7 +1082,7 @@
     // A layer definition: { dataset, name, ext, maxLevel, minLevel?, bounds, note, credit,
     // show, alpha }. Layers picked from the Trek catalog get theirs from the layer's
     // WMTSCapabilities.xml. The stack is remembered in this browser.
-    const STORE_KEY = "mars-layers-v1";
+    const STORE_KEY = "mars-layers-v2"; // v2: layers carry provenance fields (kind, mission, res, date)
     const active = []; // { def, layer, errors }
     const layersEl = document.getElementById("layers");
     let failed = 0;
@@ -1143,7 +1175,18 @@
         const note = document.createElement("div");
         note.className = "note";
         note.textContent = def.note;
-        row.append(head, slider, note);
+        // provenance chip: data kind · dataset · mission · resolution · date · credit
+        const prov = document.createElement("div");
+        prov.className = "note prov";
+        const kind = document.createElement("span");
+        kind.className = `kindChip k-${def.kind ?? "other"}`;
+        kind.textContent = def.kind ?? "Trek layer";
+        const src = document.createElement("a");
+        src.href = `https://trek.nasa.gov/mars/`; src.target = "_blank"; src.rel = "noopener";
+        src.textContent = def.dataset;
+        prov.append(kind, " ", src, document.createTextNode(
+          [def.mission, def.res, def.date].filter(Boolean).map((t) => ` · ${t}`).join("") + (def.credit ? ` · ${def.credit}` : "")));
+        row.append(head, slider, note, prov);
         layersEl.append(row);
       }
     }
