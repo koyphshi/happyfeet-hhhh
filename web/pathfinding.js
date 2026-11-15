@@ -1,8 +1,18 @@
 // Local, terrain-only Theta* over numeric MOLA height tiles served by serve.mjs.
 // Trek's MOLA/HRSC relief layer is color imagery; these heights come from numeric MOLA.
+//
+// Speed notes (results are identical to the straightforward version, see planTerrainRoute):
+//  - height tiles are kept in memory (and requests de-duplicated), and assembled grids are
+//    reused, so re-planning after adding a stop does not fetch or rebuild anything again;
+//  - the sparse corridor grid keeps its ~65x65 tiles as they are instead of copying a
+//    million cells into a Map;
+//  - the search uses typed arrays, per-row trig computed once, no per-step allocations,
+//    and yields to the browser every ~12 ms of work (not every 128 steps through
+//    setTimeout, whose 4 ms minimum made long searches mostly idle).
 const TILE_CELLS = 64;
 const TILE_SAMPLES = TILE_CELLS + 1;
 const MARS_RADIUS_M = 3_396_190;
+const RAD = Math.PI / 180;
 
 function tileColumns(level) { return 2 ** (level + 1); }
 function tileRows(level) { return 2 ** level; }
@@ -27,10 +37,48 @@ export function estimateTerrainPatchCells(bounds, level = 6) {
   return (nx * TILE_CELLS + 1) * ((y1 - y0 + 1) * TILE_CELLS + 1);
 }
 
-async function fetchHeightTile(z, x, y, signal) {
+// Yield to the browser without setTimeout's 4 ms clamp.
+const yieldQueue = [];
+let yieldChannel = null;
+function yieldToBrowser() {
+  if (!yieldChannel && typeof MessageChannel !== "undefined") {
+    yieldChannel = new MessageChannel();
+    yieldChannel.port1.onmessage = () => yieldQueue.shift()?.();
+  }
+  if (!yieldChannel) return new Promise((resolve) => setTimeout(resolve, 0));
+  return new Promise((resolve) => { yieldQueue.push(resolve); yieldChannel.port2.postMessage(0); });
+}
+
+// ---------------------------------------------------------------- height tiles (memory cache)
+const TILE_CACHE_MAX = 2048;                 // ~35 MB of 65x65 float tiles
+const tileCache = new Map();                 // "z/x/y" -> Float32Array (insertion order = LRU)
+const tileInFlight = new Map();              // "z/x/y" -> Promise<Float32Array>
+
+// onWait(true) the first time the server answers 202 ("still downloading this data"),
+// onWait(false) once the tile arrives; used for the route planner's progress report.
+async function fetchHeightTile(z, x, y, signal, onWait) {
+  const key = `${z}/${x}/${y}`;
+  const hit = tileCache.get(key);
+  if (hit) { tileCache.delete(key); tileCache.set(key, hit); return hit; }
+  let job = tileInFlight.get(key);
+  if (!job) {
+    job = downloadHeightTile(z, x, y, signal, onWait)
+      .then((data) => {
+        tileCache.set(key, data);
+        while (tileCache.size > TILE_CACHE_MAX) tileCache.delete(tileCache.keys().next().value);
+        return data;
+      })
+      .finally(() => tileInFlight.delete(key));
+    tileInFlight.set(key, job);
+  }
+  return job;
+}
+async function downloadHeightTile(z, x, y, signal, onWait) {
+  let waited = false;
   for (let attempt = 0; attempt < 120; attempt++) {
     const response = await fetch(`/terrain/${z}/${x}/${y}`, { signal, cache: "force-cache" });
     if (response.status === 202) {
+      if (!waited) { waited = true; onWait?.(true); }
       const delay = Number(response.headers.get("Retry-After") || 1);
       await new Promise((resolve, reject) => {
         const finish = () => { signal?.removeEventListener("abort", abort); resolve(); };
@@ -45,14 +93,38 @@ async function fetchHeightTile(z, x, y, signal) {
     const bytes = await response.arrayBuffer();
     if (bytes.byteLength !== TILE_SAMPLES * TILE_SAMPLES * 4)
       throw new Error(`MOLA height tile ${z}/${x}/${y}: unexpected byte count`);
+    if (waited) onWait?.(false);
     return new Float32Array(bytes);
   }
   throw new Error(`MOLA height tile ${z}/${x}/${y} is still being prepared`);
 }
 
+// Fetch many tiles at once and report onProgress({ done, total, preparing, level }):
+// preparing = tiles the server is still downloading source data for (it answered 202).
+async function fetchTiles(level, list, signal, onProgress) {
+  let done = 0, preparing = 0;
+  const report = () => onProgress?.({ done, total: list.length, preparing, level });
+  report();
+  return Promise.all(list.map(async ([tx, ty]) => {
+    const data = await fetchHeightTile(level, tx, ty, signal, (w) => { preparing += w ? 1 : -1; report(); });
+    done++; report();
+    return data;
+  }));
+}
+
+// A few recent grids, so asking for the same patch / corridor again costs nothing (and the
+// grid object stays the same, which keeps its slope cache and the page's overlay cache).
+const gridCache = new Map();
+function rememberGrid(key, grid) {
+  gridCache.delete(key);
+  gridCache.set(key, grid);
+  while (gridCache.size > 4) gridCache.delete(gridCache.keys().next().value);
+  return grid;
+}
+
 // Bounds are Mars longitude/latitude degrees. Keep the patch local; the source data is
 // fetched only for intersecting Cesium tiles and no whole-planet raster is built.
-export async function loadTerrainPatch({ west, south, east, north, level = 6, signal, maxCells = 4_000_000 }) {
+export async function loadTerrainPatch({ west, south, east, north, level = 6, signal, maxCells = 4_000_000, onProgress }) {
   if (![west, south, east, north].every(Number.isFinite) || south >= north ||
       west < -180 || east > 180 || south < -90 || north > 90)
     throw new RangeError("Expected Mars bounds; west > east is allowed across the longitude seam");
@@ -73,10 +145,13 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
   if (width * height > maxCells)
     throw new RangeError(`Terrain patch is too large (${width}×${height}); narrow the route area or lower level`);
 
-  const tiles = await Promise.all(Array.from({ length: nx * ny }, async (_, i) => {
-    const tx = xs[i % nx], ty = y0 + Math.floor(i / nx);
-    return fetchHeightTile(level, tx, ty, signal);
-  }));
+  // the grid depends only on which tiles it covers, not on the exact bounds asked for
+  const key = `patch|${level}|${xs[0]}|${nx}|${y0}|${ny}`;
+  const cached = gridCache.get(key);
+  if (cached) { onProgress?.({ done: nx * ny, total: nx * ny, preparing: 0, level }); return rememberGrid(key, cached); }
+
+  const tiles = await fetchTiles(level,
+    Array.from({ length: nx * ny }, (_, i) => [xs[i % nx], y0 + Math.floor(i / nx)]), signal, onProgress);
   const heights = new Float32Array(width * height);
   for (let ty = 0; ty < ny; ty++) for (let tx = 0; tx < nx; tx++) {
     const tile = tiles[ty * nx + tx];
@@ -86,7 +161,7 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
     }
   }
 
-  return {
+  return rememberGrid(key, {
     width, height, heights,
     westDeg: -180 + xs[0] * tileLon,
     northDeg: 90 - y0 * tileLat,
@@ -94,12 +169,61 @@ export async function loadTerrainPatch({ west, south, east, north, level = 6, si
     latStepDeg: -tileLat / TILE_CELLS,
     level,
     source: "NASA MGS MOLA numeric topography via PDS; streamed by local terrain service",
-  };
+  });
+}
+
+// Heights of a sparse set of tiles in worldwide cell coordinates, read straight from the
+// tiles (no per-cell copy). get(id) has the same meaning as a Map of id -> height; slot(id)
+// numbers every stored cell 0..cellCount-1 so the planner can use typed arrays.
+class TiledHeights {
+  constructor(level, tiles) { // tiles: [{ x, y, data }]
+    this.tilesX = tileColumns(level);
+    this.worldWidth = this.tilesX * TILE_CELLS;
+    this.slots = new Map(); // tile key -> slot number
+    this.data = [];
+    for (const { x, y, data } of tiles) {
+      this.slots.set(y * this.tilesX + x, this.data.length);
+      this.data.push(data);
+    }
+    this.cellCount = this.data.length * TILE_SAMPLES * TILE_SAMPLES;
+  }
+  // world cell -> stored sample (tile slot, local index); a cell on a tile edge is stored by
+  // both neighbours with the same value: prefer the tile it starts, else the one it ends
+  locate(id) {
+    const W = this.worldWidth, gx = id % W, gy = (id - gx) / W;
+    const tx = Math.floor(gx / TILE_CELLS), ty = Math.floor(gy / TILE_CELLS);
+    const lx = gx - tx * TILE_CELLS, ly = gy - ty * TILE_CELLS;
+    let s = this.slots.get(ty * this.tilesX + tx);
+    if (s !== undefined) return s * TILE_SAMPLES * TILE_SAMPLES + ly * TILE_SAMPLES + lx;
+    if (lx === 0) {
+      const px = (tx - 1 + this.tilesX) % this.tilesX;
+      s = this.slots.get(ty * this.tilesX + px);
+      if (s !== undefined) return s * TILE_SAMPLES * TILE_SAMPLES + ly * TILE_SAMPLES + TILE_CELLS;
+    }
+    if (ly === 0 && ty > 0) {
+      s = this.slots.get((ty - 1) * this.tilesX + tx);
+      if (s !== undefined) return s * TILE_SAMPLES * TILE_SAMPLES + TILE_CELLS * TILE_SAMPLES + lx;
+      if (lx === 0) {
+        const px = (tx - 1 + this.tilesX) % this.tilesX;
+        s = this.slots.get((ty - 1) * this.tilesX + px);
+        if (s !== undefined) return s * TILE_SAMPLES * TILE_SAMPLES + TILE_CELLS * TILE_SAMPLES + TILE_CELLS;
+      }
+    }
+    return -1;
+  }
+  slot(id) { return this.locate(id); }
+  get(id) {
+    const k = this.locate(id);
+    if (k < 0) return undefined;
+    const n = TILE_SAMPLES * TILE_SAMPLES;
+    return this.data[(k / n) | 0][k % n];
+  }
+  has(id) { return this.locate(id) >= 0; }
 }
 
 // Load only fine tiles touched by a coarse route and a one-tile buffer around it.
 // The returned sparse grid lets fine Theta* explore only this local corridor.
-export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles = 1, maxTiles = 256, signal } = {}) {
+export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles = 1, maxTiles = 256, signal, onProgress } = {}) {
   if (!coarsePath?.length) throw new RangeError("A coarse route is required");
   if (!Number.isInteger(bufferTiles) || bufferTiles < 0) throw new RangeError("Invalid tile buffer");
   const nx = tileColumns(level), ny = tileRows(level), keys = new Set();
@@ -117,29 +241,22 @@ export async function loadTerrainCorridor(coarsePath, { level = 6, bufferTiles =
   if (keys.size > maxTiles)
     throw new RangeError(`Detailed route corridor needs ${keys.size} tiles (limit ${maxTiles})`);
 
-  const tiles = await Promise.all([...keys].map(async (key) => {
-    const [x, y] = key.split(",").map(Number);
-    return { x, y, data: await fetchHeightTile(level, x, y, signal) };
-  }));
+  const coords = [...keys].sort().map((key) => key.split(",").map(Number));
+  const cacheKey = `corridor|${level}|${coords.join(";")}`;
+  const cached = gridCache.get(cacheKey);
+  if (cached) { onProgress?.({ done: coords.length, total: coords.length, preparing: 0, level }); return rememberGrid(cacheKey, cached); }
+
+  const datas = await fetchTiles(level, coords, signal, onProgress);
+  const tiles = coords.map(([x, y], i) => ({ x, y, data: datas[i] }));
   const worldWidth = nx * TILE_CELLS, worldHeight = ny * TILE_CELLS;
-  const heights = new Map();
-  for (const { x, y, data } of tiles) {
-    for (let r = 0; r < TILE_SAMPLES; r++) {
-      const gy = y * TILE_CELLS + r;
-      for (let c = 0; c < TILE_SAMPLES; c++) {
-        const gx = (x * TILE_CELLS + c) % worldWidth;
-        heights.set(gy * worldWidth + gx, data[r * TILE_SAMPLES + c]);
-      }
-    }
-  }
-  return {
-    width: worldWidth, height: worldHeight + 1, heights, wrapX: true,
-    tileKeys: [...keys].map((key) => key.split(",").map(Number)),
+  return rememberGrid(cacheKey, {
+    width: worldWidth, height: worldHeight + 1, heights: new TiledHeights(level, tiles), wrapX: true,
+    tileKeys: coords,
     westDeg: -180, northDeg: 90,
     lonStepDeg: 360 / worldWidth, latStepDeg: -180 / worldHeight,
     level,
     source: "NASA MGS MOLA numeric topography via PDS; sparse fine tile corridor",
-  };
+  });
 }
 
 export function lonLatToTerrainCell(grid, lonDeg, latDeg) {
@@ -152,81 +269,171 @@ export function lonLatToTerrainCell(grid, lonDeg, latDeg) {
   return { x, y };
 }
 
+// ---------------------------------------------------------------- per-grid helpers (cached on the grid)
+// Row geometry: cos(latitude) of each row and of the midpoint between each row and the next,
+// so steps never call cos(); plus a cell index for the typed arrays and a slope cache.
+function gridTools(grid) {
+  if (grid._tools) return grid._tools;
+  const { width, height, heights, wrapX, northDeg, latStepDeg, lonStepDeg } = grid;
+  const dense = heights instanceof Float32Array;
+  const cosRow = new Float64Array(height), cosMid = new Float64Array(height);
+  for (let y = 0; y < height; y++) {
+    cosRow[y] = Math.cos((northDeg + y * latStepDeg) * RAD);
+    cosMid[y] = Math.cos((northDeg + (y + 0.5) * latStepDeg) * RAD);
+  }
+  const lonM = lonStepDeg * RAD * MARS_RADIUS_M;          // metres per cell east at the equator (signed)
+  const latM = latStepDeg * RAD * MARS_RADIUS_M;          // metres per cell north (signed)
+  const cellCount = dense ? width * height : heights.cellCount;
+  const slotOf = dense ? (id) => id : (id) => heights.slot(id);
+  const heightAt = dense ? (id) => heights[id] : (id) => heights.get(id);
+  const slopeCache = new Float32Array(cellCount).fill(NaN);
+  const get = (x, y) => {
+    if (wrapX) x = (x + width) % width;
+    if (x < 0 || x >= width || y < 0 || y >= height) return undefined;
+    return heightAt(y * width + x);
+  };
+  // Same formula as terrainCellSlopeDeg: central difference where both neighbours exist,
+  // one-sided otherwise; Infinity where the cell or both neighbours on an axis are missing.
+  const slopeAt = (x, y) => {
+    const h = get(x, y);
+    if (h === undefined) return Infinity;
+    const hx = Math.abs(lonM * cosRow[y]), hy = Math.abs(latM);
+    const w = get(x - 1, y), e = get(x + 1, y), n = get(x, y - 1), s = get(x, y + 1);
+    const deriv = (a, b, d) => (a !== undefined && b !== undefined ? (b - a) / (2 * d)
+      : b !== undefined ? (b - h) / d : a !== undefined ? (h - a) / d : undefined);
+    const dx = deriv(w, e, hx), dy = deriv(n, s, hy);
+    if (dx === undefined || dy === undefined) return Infinity;
+    return Math.atan(Math.hypot(dx, dy)) / RAD;
+  };
+  const cellSlope = (id) => {
+    const k = slotOf(id);
+    if (k < 0) return Infinity;
+    let v = slopeCache[k];
+    if (v !== v) { const x = id % width; v = slopeCache[k] = slopeAt(x, (id - x) / width); }
+    return v;
+  };
+  // horizontal distance of one raster step (dx, dy in -1..1) leaving row y
+  const stepM = (dx, y, dy) => {
+    const c = dy === 0 ? cosRow[y] : cosMid[dy > 0 ? y : y - 1];
+    return Math.hypot(dx * lonM * c, dy * latM);
+  };
+  return (grid._tools = { dense, cellCount, slotOf, heightAt, cellSlope, stepM, cosRow });
+}
+
+// Steep-cell mask of a rectangle of grid cells: 1 where the slope is above limitDeg.
+// Same slope formula as terrainCellSlopeDeg, but read straight from the height array /
+// tile (only tile-edge cells take the general path), so a whole tile costs ~1 ms.
+const tileMaskCache = new Map(); // "level/tx/ty/limit" -> Uint8Array(64*64), corridor tiles
+export function steepMask(grid, limitDeg, x0, y0, w, h) {
+  const T = gridTools(grid);
+  const { width, height, heights } = grid;
+  const out = new Uint8Array(w * h);
+  const lonM = grid.lonStepDeg * RAD * MARS_RADIUS_M, hy = Math.abs(grid.latStepDeg * RAD * MARS_RADIUS_M);
+  const slopeFrom = (hc, wv, ev, nv, sv, hx) => {
+    const dx = (ev - wv) / (2 * hx), dy = (sv - nv) / (2 * hy);
+    return Math.atan(Math.hypot(dx, dy)) / RAD;
+  };
+  if (T.dense) {
+    for (let j = 0; j < h; j++) {
+      const y = y0 + j;
+      if (y >= height) break;
+      const hx = Math.abs(lonM * T.cosRow[y]), row = y * width;
+      for (let i = 0; i < w; i++) {
+        const x = x0 + i;
+        if (x >= width) break;
+        let s;
+        if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
+          const id = row + x;
+          s = slopeFrom(heights[id], heights[id - 1], heights[id + 1], heights[id - width], heights[id + width], hx);
+        } else s = T.cellSlope(row + x);
+        if (s > limitDeg) out[j * w + i] = 1;
+      }
+    }
+    return out;
+  }
+  // sparse corridor: whole 64x64 tiles only (x0, y0 on tile corners, w = h = 64)
+  const S = TILE_SAMPLES, tx = Math.floor((((x0 % width) + width) % width) / TILE_CELLS), ty = Math.floor(y0 / TILE_CELLS);
+  const key = `${grid.level}/${tx}/${ty}/${limitDeg}`;
+  const hit = tileMaskCache.get(key);
+  if (hit && w === TILE_CELLS && h === TILE_CELLS) return hit;
+  const slot = heights.slots?.get(ty * heights.tilesX + tx);
+  const data = slot === undefined ? null : heights.data[slot];
+  for (let j = 0; j < h; j++) {
+    const y = y0 + j;
+    if (y >= height) break;
+    const hx = Math.abs(lonM * T.cosRow[y]);
+    for (let i = 0; i < w; i++) {
+      const x = ((x0 + i) % width + width) % width;
+      let s;
+      if (data && i > 0 && j > 0 && i < TILE_CELLS && j < TILE_CELLS) {
+        const k = j * S + i;
+        s = slopeFrom(data[k], data[k - 1], data[k + 1], data[k - S], data[k + S], hx);
+      } else s = T.cellSlope(y * width + x);
+      if (s > limitDeg) out[j * w + i] = 1;
+    }
+  }
+  if (w === TILE_CELLS && h === TILE_CELLS) {
+    tileMaskCache.set(key, out);
+    while (tileMaskCache.size > 1024) tileMaskCache.delete(tileMaskCache.keys().next().value);
+  }
+  return out;
+}
+
 export function terrainCellSlopeDeg(grid, x, y) {
-  const { width, height, heights, wrapX, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
-  const get = (xx, yy) => {
-    if (wrapX) xx = (xx + width) % width;
-    if (xx < 0 || xx >= width || yy < 0 || yy >= height) return undefined;
-    const id = yy * width + xx;
-    return heights instanceof Map ? heights.get(id) : heights[id];
-  };
-  const h = get(x, y);
-  if (h === undefined) return Infinity;
-  const radians = Math.PI / 180;
-  const lat = (northDeg + y * latStepDeg) * radians;
-  const horizontal = (dx, dy) => Math.hypot(dx * lonStepDeg * radians * MARS_RADIUS_M * Math.cos(lat),
-    dy * latStepDeg * radians * MARS_RADIUS_M);
-  const derivative = (a, b, da, db) => {
-    if (a !== undefined && b !== undefined) return (b - a) / (da + db);
-    if (b !== undefined) return (b - h) / db;
-    if (a !== undefined) return (h - a) / da;
-    return undefined;
-  };
-  const west = get(x - 1, y), east = get(x + 1, y), north = get(x, y - 1), south = get(x, y + 1);
-  const dx = derivative(west, east, horizontal(-1, 0), horizontal(1, 0));
-  const dy = derivative(north, south, horizontal(0, -1), horizontal(0, 1));
-  if (dx === undefined || dy === undefined) return Infinity;
-  return Math.atan(Math.hypot(dx, dy)) / radians;
+  const { width, height, wrapX } = grid;
+  if (wrapX) x = (x + width) % width;
+  if (x < 0 || x >= width || y < 0 || y >= height) return Infinity;
+  return gridTools(grid).cellSlope(y * width + x);
 }
 
 // Weighted Basic Theta*: any-angle shortcuts are checked against the same cell slope
 // mask as the overlay, while edge grades retain the configured climb limit.
-export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity, signal, shouldCancel = () => false } = {}) {
+// Same search, same costs and same tie-breaking as before; only the bookkeeping is faster.
+export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infinity, signal, shouldCancel = () => false, onProgress } = {}) {
   if (!(maxSlopeDeg === Infinity || (Number.isFinite(maxSlopeDeg) && maxSlopeDeg >= 0 && maxSlopeDeg < 90)))
     throw new RangeError("maxSlopeDeg must be between 0 and 90 degrees");
   const { width, height, heights, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
-  const sparse = heights instanceof Map;
-  if (!sparse && (!(heights instanceof Float32Array) || heights.length !== width * height))
-    throw new TypeError("heights must be a matching Float32Array or sparse Map");
+  const dense = heights instanceof Float32Array;
+  if (dense ? heights.length !== width * height : typeof heights?.get !== "function")
+    throw new TypeError("heights must be a matching Float32Array or sparse height set");
   const inBounds = (p) => Number.isInteger(p.x) && Number.isInteger(p.y) &&
     p.x >= 0 && p.x < width && p.y >= 0 && p.y < height;
   if (!inBounds(start) || !inBounds(goal)) throw new RangeError("start/goal outside terrain patch");
 
-  const index = (p) => p.y * width + p.x;
-  const startId = index(start), goalId = index(goal);
-  const heightAt = (id) => sparse ? heights.get(id) : heights[id];
+  const T = gridTools(grid);
+  const { slotOf, heightAt, cellSlope, stepM } = T;
+  const wrapX = !!grid.wrapX;
+  const startId = start.y * width + start.x, goalId = goal.y * width + goal.x;
   if (heightAt(startId) === undefined || heightAt(goalId) === undefined) return null;
-  const radians = Math.PI / 180;
-  const pos = (x, y) => ({
-    lat: (northDeg + y * latStepDeg) * radians,
-    lon: (westDeg + x * lonStepDeg) * radians,
-  });
+  const pos = (x, y) => ({ lat: (northDeg + y * latStepDeg) * RAD, lon: (westDeg + x * lonStepDeg) * RAD });
   const horizontal = (x0, y0, x1, y1) => {
     const a = pos(x0, y0), b = pos(x1, y1), midLat = (a.lat + b.lat) / 2;
     let dLon = b.lon - a.lon;
     if (dLon > Math.PI) dLon -= 2 * Math.PI;
     else if (dLon < -Math.PI) dLon += 2 * Math.PI;
-    const east = dLon * MARS_RADIUS_M * Math.cos(midLat);
-    const north = (b.lat - a.lat) * MARS_RADIUS_M;
-    return Math.hypot(east, north);
+    return Math.hypot(dLon * MARS_RADIUS_M * Math.cos(midLat), (b.lat - a.lat) * MARS_RADIUS_M);
   };
-  const maxSlopeRatio = Math.tan(maxSlopeDeg * radians);
-  const heuristic = (p) => {
-    const a = pos(p.x, p.y), b = pos(goal.x, goal.y);
-    let dLon = b.lon - a.lon;
+  const maxSlopeRatio = Math.tan(maxSlopeDeg * RAD);
+  // great-circle distance to the goal (admissible: never longer than the surface path)
+  const goalLat = (northDeg + goal.y * latStepDeg) * RAD, goalLon = (westDeg + goal.x * lonStepDeg) * RAD;
+  const cosGoal = Math.cos(goalLat);
+  const heuristic = (x, y) => {
+    const lat = (northDeg + y * latStepDeg) * RAD;
+    let dLon = goalLon - (westDeg + x * lonStepDeg) * RAD;
     if (dLon > Math.PI) dLon -= 2 * Math.PI;
     else if (dLon < -Math.PI) dLon += 2 * Math.PI;
-    const dLat = b.lat - a.lat;
-    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat) * Math.cos(b.lat) * Math.sin(dLon / 2) ** 2;
+    const dLat = goalLat - lat;
+    const h = Math.sin(dLat / 2) ** 2 + T.cosRow[y] * cosGoal * Math.sin(dLon / 2) ** 2;
     return 2 * MARS_RADIUS_M * Math.asin(Math.sqrt(Math.min(1, h)));
   };
-  const g = new Map([[startId, 0]]), parent = new Map(), closed = new Set(), slopeCache = new Map();
-  const cellSlope = (id) => {
-    if (!slopeCache.has(id)) slopeCache.set(id, terrainCellSlopeDeg(grid, id % width, Math.floor(id / width)));
-    return slopeCache.get(id);
-  };
 
-  // Binary min-heap, ordered by estimated total terrain distance.
+  // g, parent and closed per cell, in typed arrays indexed by the grid's cell slot
+  const n = T.cellCount;
+  const g = new Float64Array(n).fill(Infinity);
+  const parent = new Int32Array(n).fill(-1);   // world cell id of the parent, -1 = none
+  const closed = new Uint8Array(n);
+
+  // Binary min-heap of [f, g, id], ordered by estimated total terrain distance.
   const heap = [];
   const push = (item) => {
     let i = heap.length; heap.push(item);
@@ -249,9 +456,42 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
     return first;
   };
 
+  // Walk the Bresenham line from -> to (as the old rasterLine did) and return its terrain
+  // cost, or -1 if any cell is too steep / missing or any step climbs too fast. No arrays.
+  const segmentCost = (from, to) => {
+    let x0 = from % width, y0 = (from - x0) / width;
+    let x1 = to % width;
+    const y1 = (to - x1) / width;
+    if (wrapX && Math.abs(x1 - x0) > width / 2) x1 += x1 < x0 ? width : -width;
+    const dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    const dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy, cost = 0;
+    let prevId = -1, prevH = 0, prevY = 0;
+    for (;;) {
+      const id = y0 * width + ((x0 % width + width) % width);
+      if (cellSlope(id) > maxSlopeDeg) return -1;
+      const h = heightAt(id);
+      if (prevId >= 0) {
+        if (h === undefined || prevH === undefined) return -1;
+        const d = stepM(stepX, prevY, y0 - prevY), rise = Math.abs(h - prevH);
+        if (rise > d * maxSlopeRatio) return -1;
+        cost += Math.hypot(d, rise);
+      }
+      prevId = id; prevH = h; prevY = y0;
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      stepX = 0;
+      if (e2 >= dy) { err += dy; x0 += sx; stepX = sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+    return cost;
+  };
+  let stepX = 0; // x step of the last Bresenham move (used by segmentCost)
+  // The cells of a line (only needed to rebuild the final path).
   const rasterLine = (from, to) => {
-    let x0 = from % width, y0 = Math.floor(from / width), x1 = to % width, y1 = Math.floor(to / width);
-    if (grid.wrapX && Math.abs(x1 - x0) > width / 2) x1 += x1 < x0 ? width : -width;
+    let x0 = from % width, y0 = Math.floor(from / width), x1 = to % width;
+    const y1 = Math.floor(to / width);
+    if (wrapX && Math.abs(x1 - x0) > width / 2) x1 += x1 < x0 ? width : -width;
     const line = [], dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
     const dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
     let err = dx + dy;
@@ -264,48 +504,40 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
     }
     return line;
   };
-  const segment = (from, to) => {
-    const line = rasterLine(from, to);
-    let cost = 0;
-    for (let i = 0; i < line.length; i++) {
-      if (cellSlope(line[i]) > maxSlopeDeg) return null;
-      if (!i) continue;
-      const a = line[i - 1], b = line[i], ax = a % width, ay = Math.floor(a / width), bx = b % width, by = Math.floor(b / width);
-      const ha = heightAt(a), hb = heightAt(b);
-      if (ha === undefined || hb === undefined) return null;
-      const d = horizontal(ax, ay, bx, by), rise = Math.abs(hb - ha);
-      if (rise > d * maxSlopeRatio) return null;
-      cost += Math.hypot(d, rise);
-    }
-    return { cost, line };
-  };
+
   if (cellSlope(startId) > maxSlopeDeg || cellSlope(goalId) > maxSlopeDeg) return null;
-  push([heuristic(start), 0, startId]);
-  const moves = [[-1,-1], [0,-1], [1,-1], [-1,0], [1,0], [-1,1], [0,1], [1,1]];
-  let expanded = 0;
+  g[slotOf(startId)] = 0;
+  push([heuristic(start.x, start.y), 0, startId]);
+  const MX = [-1, 0, 1, -1, 1, -1, 0, 1], MY = [-1, -1, -1, 0, 0, 1, 1, 1];
+  let expanded = 0, sliceStart = performance.now();
   while (heap.length) {
     if (signal?.aborted || shouldCancel()) return null;
-    if (++expanded % 128 === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      if (signal?.aborted || shouldCancel()) return null;
+    if ((++expanded & 255) === 0) {
+      if ((expanded & 4095) === 0) onProgress?.({ expanded });
+      if (performance.now() - sliceStart > 12) {          // keep the page responsive
+        await yieldToBrowser();
+        if (signal?.aborted || shouldCancel()) return null;
+        sliceStart = performance.now();
+      }
     }
     const [, currentCost, id] = pop();
-    if (closed.has(id) || currentCost !== g.get(id)) continue;
+    const sid = slotOf(id);
+    if (closed[sid] || currentCost !== g[sid]) continue;
     if (id === goalId) {
       const anchors = [];
-      for (let at = id; at !== undefined; at = parent.get(at)) anchors.push(at);
+      for (let at = id; at !== -1; at = parent[slotOf(at)]) anchors.push(at);
       anchors.reverse();
       const ids = [];
       const displayPath = [];
       const turnIndices = [];
       for (let i = 1; i < anchors.length; i++) {
-        const from = anchors[i - 1], to = anchors[i], line = segment(from, to).line;
+        const from = anchors[i - 1], to = anchors[i], line = rasterLine(from, to);
         if (i > 1) turnIndices.push(displayPath.length - 1);
         ids.push(...line.slice(ids.length ? 1 : 0));
         const ax = from % width, ay = Math.floor(from / width);
         let bx = to % width;
         const by = Math.floor(to / width);
-        if (grid.wrapX && Math.abs(bx - ax) > width / 2) bx += bx < ax ? width : -width;
+        if (wrapX && Math.abs(bx - ax) > width / 2) bx += bx < ax ? width : -width;
         const dx = bx - ax, dy = by - ay, length2 = dx * dx + dy * dy;
         const a = pos(ax, ay), b = pos(to % width, by);
         let dLon = b.lon - a.lon;
@@ -314,14 +546,13 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
         for (let k = displayPath.length ? 1 : 0; k < line.length; k++) {
           const cell = line[k];
           let cx = cell % width;
-          if (grid.wrapX && Math.abs(cx - ax) > width / 2) cx += cx < ax ? width : -width;
+          if (wrapX && Math.abs(cx - ax) > width / 2) cx += cx < ax ? width : -width;
           const cy = Math.floor(cell / width);
           const t = length2 ? Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy) / length2)) : 0;
-          const ll = pos(ax, ay);
           displayPath.push({
             x: cx, y: cy,
-            lon: (ll.lon + dLon * t) / radians,
-            lat: (a.lat + (b.lat - a.lat) * t) / radians,
+            lon: (a.lon + dLon * t) / RAD,
+            lat: (a.lat + (b.lat - a.lat) * t) / RAD,
             elevationM: heightAt(cell),
           });
         }
@@ -332,35 +563,37 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
         const x = at % width, y = Math.floor(at / width);
         if (i) { const prev = ids[i - 1]; horizontalDistanceM += horizontal(prev % width, Math.floor(prev / width), x, y); }
         const ll = pos(x, y);
-        return { x, y, lon: ll.lon / radians, lat: ll.lat / radians, elevationM: heightAt(at) };
+        return { x, y, lon: ll.lon / RAD, lat: ll.lat / RAD, elevationM: heightAt(at) };
       });
       if (!displayPath.length) displayPath.push(path[0]);
-      return { path, displayPath, turnIndices, horizontalDistanceM, terrainDistanceM: currentCost };
+      return { path, displayPath, turnIndices, horizontalDistanceM, terrainDistanceM: currentCost, expanded };
     }
-    closed.add(id);
-    const x = id % width, y = Math.floor(id / width);
-    for (const [ox, oy] of moves) {
-      let nx = x + ox;
-      const ny = y + oy;
-      if (grid.wrapX) nx = (nx + width) % width;
+    closed[sid] = 1;
+    const x = id % width, y = (id - x) / width;
+    const parentId = parent[sid];
+    const parentG = parentId === -1 ? 0 : g[slotOf(parentId)];
+    for (let m = 0; m < 8; m++) {
+      let nx = x + MX[m];
+      const ny = y + MY[m];
+      if (wrapX) nx = (nx + width) % width;
       else if (nx < 0 || nx >= width) continue;
       if (ny < 0 || ny >= height) continue;
       const next = ny * width + nx;
-      if (closed.has(next)) continue;
+      const nsid = slotOf(next);
+      if (nsid < 0 || closed[nsid]) continue;
       if (cellSlope(next) > maxSlopeDeg) continue;
-      const parentId = parent.get(id);
-      let via = id, step = segment(id, next);
-      if (parentId !== undefined) {
-        const shortcut = segment(parentId, next);
-        if (shortcut && g.get(parentId) + shortcut.cost < currentCost + (step?.cost ?? Infinity)) {
-          via = parentId; step = shortcut;
+      let via = id, stepCost = segmentCost(id, next);
+      if (parentId !== -1) {
+        const shortcut = segmentCost(parentId, next);
+        if (shortcut >= 0 && parentG + shortcut < currentCost + (stepCost >= 0 ? stepCost : Infinity)) {
+          via = parentId; stepCost = shortcut;
         }
       }
-      if (!step) continue;
-      const tentative = (via === id ? currentCost : g.get(via)) + step.cost;
-      if (tentative >= (g.get(next) ?? Infinity)) continue;
-      g.set(next, tentative); parent.set(next, via);
-      push([tentative + heuristic({ x: nx, y: ny }), tentative, next]);
+      if (stepCost < 0) continue;
+      const tentative = (via === id ? currentCost : parentG) + stepCost;
+      if (tentative >= g[nsid]) continue;
+      g[nsid] = tentative; parent[nsid] = via;
+      push([tentative + heuristic(nx, ny), tentative, next]);
     }
   }
   return null;
@@ -371,18 +604,17 @@ export async function planTerrainRoute(grid, start, goal, { maxSlopeDeg = Infini
 export function smoothTerrainPath(grid, path, maxSlopeDeg) {
   if (path.length < 3) return path;
   const { width, heights, wrapX, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
-  const sparse = heights instanceof Map;
+  const dense = heights instanceof Float32Array;
   const heightAt = (x, y) => {
     if (wrapX) x = (x + width) % width;
     if (x < 0 || x >= width || y < 0 || y >= grid.height) return undefined;
     const id = y * width + x;
-    return sparse ? heights.get(id) : heights[id];
+    return dense ? heights[id] : heights.get(id);
   };
-  const radians = Math.PI / 180;
   const horizontal = (a, b) => {
-    const latA = (northDeg + a.y * latStepDeg) * radians;
-    const latB = (northDeg + b.y * latStepDeg) * radians;
-    let dLon = (b.x - a.x) * lonStepDeg * radians;
+    const latA = (northDeg + a.y * latStepDeg) * RAD;
+    const latB = (northDeg + b.y * latStepDeg) * RAD;
+    let dLon = (b.x - a.x) * lonStepDeg * RAD;
     if (dLon > Math.PI) dLon -= 2 * Math.PI;
     else if (dLon < -Math.PI) dLon += 2 * Math.PI;
     return Math.hypot(dLon * 3_396_190 * Math.cos((latA + latB) / 2),
@@ -411,7 +643,7 @@ export function smoothTerrainPath(grid, path, maxSlopeDeg) {
       const h0 = heightAt(prev.x, prev.y), h1 = heightAt(next.x, next.y);
       if (h0 === undefined || h1 === undefined) return null;
       const d = horizontal(prev, next), rise = Math.abs(h1 - h0);
-      if (rise > d * Math.tan(maxSlopeDeg * radians)) return null;
+      if (rise > d * Math.tan(maxSlopeDeg * RAD)) return null;
       cost += Math.hypot(d, rise);
     }
     return { cost, run };

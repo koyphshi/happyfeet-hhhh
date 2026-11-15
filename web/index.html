@@ -225,6 +225,65 @@
     #terrainNote { color: #aaa; font-size: 11.5px; margin-top: 2px; }
     #ground { color: #c9e7a7; font: 12px ui-monospace, Consolas, monospace; min-height: 1.3em; }
     #routeControls { margin: 8px 0 0; }
+    .routeSect { margin-top: 8px; padding-top: 7px; border-top: 1px solid #2c2c2c; }
+    .routeHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; color: #bbb; }
+    .routeHead em { color: #888; font-style: normal; font-size: 11px; }
+    .routeRow { display: flex; gap: 5px; margin: 4px 0; }
+    .routeRow > * { flex: 1; min-width: 0; }
+    #routeControls select, #routeSpotSearch { padding: 4px 6px; color: #eee; background: #1f1f1f; border: 1px solid #444;
+      border-radius: 4px; font: 12px system-ui, sans-serif; }
+    #routeSpotSearch { width: 100%; box-sizing: border-box; }
+    #routeControls .routeRow button { margin: 0; }
+    #routeWaypointList { margin: 0; padding: 0; list-style: none; counter-reset: stop; }
+    #routeWaypointList li { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 4px; font-size: 12px; color: #ddd; }
+    #routeWaypointList li:nth-child(odd) { background: #1d1d1d; }
+    #routeWaypointList .n { width: 18px; height: 18px; flex: none; border-radius: 50%; color: #111; font: 700 10.5px/18px system-ui, sans-serif; text-align: center; }
+    #routeWaypointList .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #routeWaypointList .leg { color: #888; font-size: 10.5px; white-space: nowrap; }
+    #routeWaypointList button { margin: 0 !important; padding: 0 5px !important; font-size: 11px; line-height: 17px; color: #bbb;
+      background: #2a2a2a; border: 1px solid #444; border-radius: 3px; cursor: pointer; }
+    #routeWaypointList button:disabled { opacity: 0.3; cursor: default; }
+    #routeWaypointList li.loop { color: #888; font-style: italic; padding-left: 22px; }
+    #routeWaypointList .grip { width: 14px; flex: none; color: #777; cursor: grab; text-align: center; touch-action: none; user-select: none; border-radius: 3px; }
+    #routeWaypointList .grip:hover, #routeWaypointList .grip:focus-visible { color: #ffe0a0; background: #2c2c2c; outline: none; }
+    #routeWaypointList.sorting, #routeWaypointList.sorting .grip { cursor: grabbing; user-select: none; }
+    #routeWaypointList li { position: relative; }
+    #routeWaypointList li.dragging { z-index: 2; background: #2e2a22 !important; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6); }
+    #routeWaypointList li.dropBefore::before, #routeWaypointList li.dropAfter::after {
+      content: ""; position: absolute; left: 4px; right: 4px; height: 2px; background: #e8b85a; border-radius: 1px; }
+    #routeWaypointList li.dropBefore::before { top: -2px; }
+    #routeWaypointList li.dropAfter::after { bottom: -2px; }
+    #routeEmpty[hidden] { display: none; }
+    #routeSpotList { max-height: 190px; overflow: auto; margin-top: 4px; border: 1px solid #333; border-radius: 4px; background: #181818; }
+    #routeSpotList:empty { display: none; }
+    #routeSpotList .rs { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 7px; cursor: pointer; text-align: left;
+      color: #ddd; background: none; border: 0; border-top: 1px solid #222; font: 12px system-ui, sans-serif; margin: 0 !important; }
+    #routeSpotList .rs:first-child { border-top: 0; }
+    #routeSpotList .rs:hover { background: #23384f; }
+    #routeSpotList .rs i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--k); }
+    #routeSpotList .rs span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #routeSpotList .rs em { color: #888; font-style: normal; font-size: 10.5px; white-space: nowrap; }
+    #routeSpotList .rsMore { padding: 4px 7px; color: #777; font-size: 11px; }
+    .routeOpt { display: flex; align-items: center; gap: 6px; margin: 3px 0; color: #ccc; font-size: 12px; }
+    .routeActions { display: flex; gap: 6px; margin-top: 9px; }
+    .routeActions button { margin: 0 !important; }
+    #routeAddBtn.ready { color: #151515; background: #9fd3ff; border-color: #9fd3ff; font-weight: 600; }
+    #routeAddBtn.on { color: #ffe082; border-color: #ffd54f; }
+    #routeCalcBtn { flex: 1; padding: 6px !important; font-weight: 600; color: #151515; background: #e8b85a; border: 1px solid #e8b85a; border-radius: 4px; }
+    #routeCalcBtn:disabled { opacity: 0.45; cursor: default; }
+    #routeCalcBtn.running { color: #ffd8d0; background: #4a2a26; border-color: #8a4a40; }
+    #routeStatus.stale { color: #f0c27a; }
+    #routeProgress { margin-top: 6px; padding: 6px 7px; border: 1px solid #333; border-radius: 5px; background: #181818; }
+    #routeProgress[hidden] { display: none; }
+    #routeProgress .bar { height: 5px; overflow: hidden; border-radius: 3px; background: #2a2a2a; }
+    #routeProgress .bar i { display: block; height: 100%; width: 0; background: #e8b85a; transition: width 0.3s; }
+    #routeProgress .bar.indeterminate i { width: 30% !important; animation: routeBar 1.2s ease-in-out infinite; }
+    @keyframes routeBar { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+    #routeProgress .lines { margin-top: 5px; color: #bbb; font-size: 11px; line-height: 1.45; }
+    #routeProgress .lines div:first-child { color: #eee; font-weight: 600; }
+    #routeProgress .lines .wait { color: #f0c27a; }
+    #spotRouteBtn { margin-top: 7px; margin-right: 6px; padding: 5px 8px; cursor: pointer; color: #9fd3ff; background: #1d2a36;
+      border: 1px solid #3c6a8f; border-radius: 4px; }
     #routeControls button { margin: 2px 4px 2px 0; padding: 4px 7px; cursor: pointer; }
     #routeControls button.on { border-color: #ffd54f; color: #ffe082; }
     #routeStatus { color: #bbb; font-size: 11.5px; min-height: 1.4em; margin-top: 4px; }
@@ -251,6 +310,13 @@
     }
     .layer .head button:hover { background: #3a3a3a; color: #fff; }
     .layer .note.err { color: #ff8a80; }
+    .layer .note.prov { font-size: 10.5px; color: #8b95a5; word-break: break-word; }
+    .layer .note.prov a { color: #9cc3ff; }
+    .kindChip { display: inline-block; padding: 0 5px; border-radius: 8px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; background: #334155; color: #e2e8f0; }
+    .kindChip.k-optical { background: #1e3a8a; } .kindChip.k-topographic { background: #14532d; }
+    .kindChip.k-thermal { background: #9a3412; } .kindChip.k-atmo { background: #0e7490; }
+    .remsGrid { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-size: 12px; margin: 4px 0; }
+    .remsBox .head { margin-bottom: 2px; }
 
     /* layer picker: category dropdown + search box + results list */
     #picker { margin: 2px 0 10px; }
@@ -446,6 +512,7 @@
 
     <section class="win" id="winLayers" role="tabpanel">
       <div class="winBody">
+        <div id="remsBox"><div class="layer"><div class="note">Atmosphere · Gale: loading REMS…</div></div></div>
         <div id="picker">
           <div id="pickRow">
             <select id="layerCat" title="Category"><option value="">All types</option></select>
@@ -512,16 +579,58 @@
       <div class="winBody">
         <div id="routeControls">
           <div class="sub" style="margin-top:0">Terrain route · MOLA</div>
-          <button id="routeAddBtn" type="button">Add waypoint</button>
-          <button id="routeUndoBtn" type="button">Undo last</button>
-          <button id="routeClearBtn" type="button">Clear</button>
-          <div class="hint">Add points in order; the route visits each one.</div>
-          <ol id="routeWaypointList" style="margin:3px 0 5px;padding-left:24px"></ol>
-          <label class="hint" style="display:block"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
-          <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
-          <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
-          <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
-          <div id="routeStatus" aria-live="polite">Add at least two waypoints in travel order.</div>
+          <div class="routeSect">
+            <div class="routeHead"><span>Stops</span><em id="routeStopsInfo"></em></div>
+            <ol id="routeWaypointList"></ol>
+            <div id="routeEmpty" class="hint">No stops yet. Add spots below, click the map, or press “Add to route” on any spot’s card.</div>
+          </div>
+          <div class="routeSect">
+            <div class="routeHead"><span>Add a stop</span></div>
+            <div class="routeRow">
+              <button id="routeAddBtn" type="button" title="Then click the map where the stop goes">＋ Click on map</button>
+              <button id="routeRandomBtn" type="button" title="A random spot among the first 30 of the list below (nearest first by default)">⚄ Random spot</button>
+            </div>
+            <input id="routeSpotSearch" type="search" placeholder="Find a spot: name, kind, tag…" autocomplete="off" aria-label="Find a spot to add as a stop" />
+            <div class="routeRow">
+              <select id="routeSpotKind" aria-label="Kind of spot"><option value="">All kinds</option></select>
+              <select id="routeSpotSort" aria-label="Sort spots">
+                <option value="last">Nearest to last stop</option>
+                <option value="view">Nearest to view centre</option>
+                <option value="name">Name A–Z</option>
+                <option value="size">Largest first</option>
+              </select>
+            </div>
+            <div id="routeSpotList" role="list"></div>
+          </div>
+          <div class="routeSect">
+            <label class="routeOpt"><input id="routeLoop" type="checkbox" /> Return to start (A → … → A)</label>
+            <label class="routeOpt"><input id="routeSmooth" type="checkbox" checked /> Smooth turns (Bezier)</label>
+            <label id="slopeRow">Max slope <input id="maxSlope" type="range" min="5" max="45" step="1" value="25" /><span id="maxSlopeValue">25°</span></label>
+            <div id="slopeMeaning" class="hint">At 25°, allow up to 47 m elevation change per 100 m.</div>
+            <div class="hint">Red cells exceed the slope limit and cannot be used by the route.</div>
+          </div>
+          <div class="routeActions">
+            <button id="routeCalcBtn" type="button" class="primary">Calculate route</button>
+            <button id="routeClearBtn" type="button">Clear</button>
+          </div>
+          <div id="routeStatus" aria-live="polite">Add at least two stops, then press Calculate route.</div>
+          <div id="routeProgress" hidden>
+            <div class="bar"><i></i></div>
+            <div class="lines"></div>
+          </div>
+          <div id="survivalBox">
+            <div id="integrityChip" class="intChip wait">Data integrity: checking…</div>
+            <div class="svRow">
+              <label title="Same route, different suit condition: shows how the plan refuses an unsafe excursion">Scenario <select id="svScenario"></select></label>
+              <button id="routeExportBtn" type="button" disabled title="Download the computed route, survival budget and terrain excerpt as route.json">⬇ route.json</button>
+            </div>
+            <div class="svRow">
+              <button id="routeDemoBtn" type="button" title="Load the committed demo excursion (public/data/route.json); works without the terrain server">Load demo excursion (boxwork)</button>
+              <label class="hint" style="cursor:pointer"><input id="routeImportFile" type="file" accept=".json,application/json" hidden />⬆ Open route.json…</label>
+              <a href="./vr.html" target="_blank" rel="noopener" title="Three.js WebXR replay of the signed demo excursion (Meta Quest browser or desktop)">🥽 VR replay</a>
+            </div>
+            <div id="survivalCard"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -544,6 +653,7 @@
     <div id="spotGallery" hidden></div>
     <div id="spotStats"></div><div class="spotNote" id="spotNote"></div>
     <button id="spotVrButton" type="button" hidden>Open street view</button>
+    <button id="spotRouteBtn" type="button" title="Add this spot as the next stop of the terrain route">＋ Add to route</button>
     <div id="spotOwnActions" hidden><button id="spotEdit" type="button">Edit</button><button id="spotDelete" type="button" class="danger">Delete</button></div>
   </section>
   <dialog id="spotEditor" aria-labelledby="seTitle">
@@ -599,6 +709,14 @@
   <!-- CESIUM_BASE_URL must be set before Cesium.js loads: it tells Cesium where its workers live. -->
   <script>window.CESIUM_BASE_URL = "./node_modules/cesium/Build/Cesium/";</script>
   <script src="./node_modules/cesium/Build/Cesium/Cesium.js"></script>
+  <!-- Static hosts have no node_modules: fall back to the same Cesium version, pinned, from jsDelivr. -->
+  <script>
+    if (typeof Cesium === "undefined") {
+      window.CESIUM_BASE_URL = "https://cdn.jsdelivr.net/npm/cesium@1.147.0/Build/Cesium/";
+      document.write('<link rel="stylesheet" href="' + CESIUM_BASE_URL + 'Widgets/widgets.css" />' +
+        '<script src="' + CESIUM_BASE_URL + 'Cesium.js"><\/script>');
+    }
+  </script>
   <script>
   (async function () {
     const statusEl = document.getElementById("status");
@@ -618,7 +736,13 @@
         "Cesium did not load. In the web folder run:  npm install cesium  and reload.";
       return;
     }
-    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg } = await import("./pathfinding.js");
+    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg, steepMask } = await import("./pathfinding.js");
+    const RouteIO = await import("./route-io.js");
+    const Survival = await import("./survival.js");
+    const { renderSurvivalCard } = await import("./survival-card.js");
+    const Integrity = await import("./integrity-ui.js");
+    import("./rems.js").then(async ({ loadRems, renderRems }) => renderRems(document.getElementById("remsBox"), await loadRems()))
+      .catch((error) => { document.getElementById("remsBox").textContent = `REMS unavailable: ${error.message}`; });
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -666,6 +790,7 @@
         dataset: "Mars_Viking_MDIM21_ClrMosaic_global_232m", ext: "jpg", maxLevel: 7,
         bounds: null, show: true, alpha: 1,
         note: "Global · 232 m/px · Viking Orbiter",
+        kind: "optical", mission: "Viking Orbiters 1 & 2", res: "232 m/px", date: "imaged 1976–1980; MDIM 2.1 mosaic",
         credit: "Viking MDIM 2.1 colorized mosaic: NASA/JPL/USGS, via NASA Trek",
       },
       {
@@ -673,6 +798,7 @@
         dataset: "Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw", ext: "jpg", maxLevel: 8,
         bounds: null, show: false, alpha: 0.7,
         note: "Global · 200 m/px · Mars Global Surveyor MOLA + Mars Express HRSC",
+        kind: "topographic", mission: "MGS MOLA + Mars Express HRSC", res: "200 m/px", date: "blended DEM v2",
         credit: "MOLA/HRSC blended elevation: NASA, DLR, USGS, via NASA Trek",
       },
       {
@@ -680,6 +806,7 @@
         dataset: "Mars_MGS_MOLA_ClrShade_merge_global_463m", ext: "jpg", maxLevel: 7,
         bounds: null, show: false, alpha: 0.7,
         note: "Global · 463 m/px · Mars Global Surveyor MOLA",
+        kind: "topographic", mission: "Mars Global Surveyor MOLA", res: "463 m/px", date: "laser altimetry 1997–2001",
         credit: "MOLA colorized shaded relief: NASA/GSFC, via NASA Trek",
       },
       {
@@ -690,7 +817,18 @@
         // into a grey smear over the Viking colours. Start at 8 (~4 tiles over the box).
         minLevel: 8,
         note: "Gale only (about 36 × 40 km) · ~0.6 m/px at the deepest tile level · Mars Reconnaissance Orbiter HiRISE",
+        kind: "optical", mission: "Mars Reconnaissance Orbiter HiRISE", res: "~0.6 m/px (deepest level)", date: "Curiosity-site mosaic",
         credit: "HiRISE mosaic of Gale: NASA/JPL/University of Arizona/USGS, via NASA Trek",
+      },
+      {
+        // Thermal: daytime infrared brightness (surface temperature contrast: rock vs dust/sand).
+        // Tiles checked on 2026-11-15 through the /trek proxy (level 0 = 200 image/png).
+        name: "THEMIS day infrared",
+        dataset: "THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018", ext: "png", maxLevel: 9,
+        bounds: null, show: false, alpha: 0.8,
+        note: "Global · 100 m/px · Mars Odyssey THEMIS daytime IR (warmer = brighter)",
+        kind: "thermal", mission: "2001 Mars Odyssey THEMIS", res: "100 m/px (Trek tiles to level 9)", date: "controlled mosaic v2, Oct 2018",
+        credit: "THEMIS day IR controlled mosaic: NASA/JPL-Caltech/Arizona State University/USGS, via NASA Trek",
       },
     ];
 
@@ -947,7 +1085,7 @@
     // A layer definition: { dataset, name, ext, maxLevel, minLevel?, bounds, note, credit,
     // show, alpha }. Layers picked from the Trek catalog get theirs from the layer's
     // WMTSCapabilities.xml. The stack is remembered in this browser.
-    const STORE_KEY = "mars-layers-v1";
+    const STORE_KEY = "mars-layers-v2"; // v2: layers carry provenance fields (kind, mission, res, date)
     const active = []; // { def, layer, errors }
     const layersEl = document.getElementById("layers");
     let failed = 0;
@@ -1040,7 +1178,18 @@
         const note = document.createElement("div");
         note.className = "note";
         note.textContent = def.note;
-        row.append(head, slider, note);
+        // provenance chip: data kind · dataset · mission · resolution · date · credit
+        const prov = document.createElement("div");
+        prov.className = "note prov";
+        const kind = document.createElement("span");
+        kind.className = `kindChip k-${def.kind ?? "other"}`;
+        kind.textContent = def.kind ?? "Trek layer";
+        const src = document.createElement("a");
+        src.href = `https://trek.nasa.gov/mars/`; src.target = "_blank"; src.rel = "noopener";
+        src.textContent = def.dataset;
+        prov.append(kind, " ", src, document.createTextNode(
+          [def.mission, def.res, def.date].filter(Boolean).map((t) => ` · ${t}`).join("") + (def.credit ? ` · ${def.credit}` : "")));
+        row.append(head, slider, note, prov);
         layersEl.append(row);
       }
     }
@@ -1323,7 +1472,7 @@
     } catch (error) { console.warn("Could not load Perseverance panorama catalog:", error); }
     const SPOTS = [
       { id: "gale-boxwork", name: "Gale · boxwork target", lon: 137.3931242, lat: -4.78692417,
-        type: "Science target · Glen Torridon", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
+        type: "Science target · boxwork unit, Mount Sharp", mission: "Curiosity / Mars Science Laboratory", date: "Boxwork campaign · 2025",
         category: "Science target", tags: ["Gale", "Geology", "Boxwork", "Curiosity"], vrEnabled: true,
         image: boxworkPhoto, imageSource: "https://science.nasa.gov/photojournal/curiosity-studies-nodules-on-boxwork-formations/",
         imageAlt: "Close-up mosaic of mineral nodules in Gale crater boxwork", imageCredit: "NASA/JPL-Caltech/MSSS · Sol 4636",
@@ -1464,7 +1613,7 @@
         const d = f.diameterKm ?? 0;
         return {
           id: `usgs-${f.id}`, name: f.display ?? f.name, lon: f.lon, lat: f.lat, category: f.kind,
-          scope: "global", provider: "usgs", small: true,
+          scope: "global", provider: "usgs", small: true, sizeKm: d,
           type: `${f.type}${f.quad ? ` · ${f.quad}` : ""}`, mission: "IAU-approved name",
           date: f.approved ? `Named ${f.approved}` : "", note: "",
           tags: [f.type, f.quad].filter(Boolean),
@@ -1732,7 +1881,9 @@
       k.textContent = key; v.textContent = value; spotStats.append(k, v);
       return v;
     }
+    let onSelectionChange = () => {}; // set by the route planner (its "Add to list" button)
     function closeSpotCard() {
+      onSelectionChangeSoon();
       spotCard.hidden = true;
       const was = selectedSpot;
       selectedSpot = null;
@@ -2023,6 +2174,8 @@
     });
 
     // Everything that depends on the set of spots, after custom spots change.
+    let routeKindsRefresh = () => {}; // set by the route planner further down
+    function onSelectionChangeSoon() { queueMicrotask(() => onSelectionChange()); } // after state settles
     function rebuildSpots() {
       rebuildSpotIndex();
       recountTags();
@@ -2030,6 +2183,7 @@
       syncSource();
       renderKindChips();
       applySpotFilters();
+      routeKindsRefresh();
     }
     rebuildSpots();
     spotToggle.addEventListener("click", () => setSpotsVisible(!spotsVisible));
@@ -2130,6 +2284,7 @@
       entity.label.show = true;
       entity.billboard.distanceDisplayCondition = undefined; // the selected pin always shows
       spotButtons.get(spot.id)?.classList.add("active");
+      onSelectionChangeSoon();
       if (!openGroups.has(spot.category)) { openGroups.add(spot.category); syncGroupOpen(); }
       document.getElementById("spotTitle").textContent = spot.name;
       const kindEl = document.getElementById("spotKind");
@@ -3158,13 +3313,11 @@
     function closeProbe() {
       probe = null;
       probeEl.hidden = markerEl.hidden = true;
+      onSelectionChangeSoon();
     }
 
     async function openProbe(screen) {
-      selectedSpot = null;
-      spotCard.hidden = true;
-      for (const entity of spotEntities.values()) entity.label.show = false;
-      for (const b of spotButtons.values()) b.classList.remove("active");
+      closeSpotCard();
       const world = surfaceAt(screen.x, screen.y);
       if (!world) return closeProbe();
       const carto = MARS.cartesianToCartographic(world);
@@ -3177,6 +3330,7 @@
         place: placeLines(lat, lon),
         lines: [],
       });
+      onSelectionChangeSoon();
       const elev = { name: "MOLA elevation", text: "…", sect: true };
       me.lines.push(elev);
       // top of the stack first, the same order as the panel
@@ -3208,6 +3362,10 @@
     let routeRequest = 0;
     const routeStatus = document.getElementById("routeStatus");
     const routeAddButton = document.getElementById("routeAddBtn");
+    const routeCalcBtn = document.getElementById("routeCalcBtn");
+    const routeLoopBox = document.getElementById("routeLoop");
+    let routeRunning = false;
+    const routeLegCache = new Map(); // planned legs, see planSequence
     const routeSmoothBox = document.getElementById("routeSmooth");
     const maxSlopeSlider = document.getElementById("maxSlope");
     const maxSlopeValue = document.getElementById("maxSlopeValue");
@@ -3217,11 +3375,130 @@
       const risePer100m = Math.round(Math.tan(maxSlopeDeg() * Math.PI / 180) * 100);
       slopeMeaning.textContent = `At ${maxSlopeDeg()}°, allow up to ${risePer100m} m elevation change per 100 m.`;
     };
+    // The add button: with a spot card or a clicked point open it reads "Add to list" and adds
+    // that selection; otherwise "Click on map" waits for the next map click.
+    function routeSelection() {
+      if (selectedSpot && !spotCard.hidden)
+        return { label: selectedSpot.name, spotId: selectedSpot.id, point: () => stopFromSpot(selectedSpot) };
+      if (probe)
+        return { label: `${probe.lat.toFixed(3)}°, ${probe.lon.toFixed(3)}°`, point: () => ({ lat: probe.lat, lon: probe.lon, world: probe.world }) };
+      return null;
+    }
+    function syncRouteAddButton() {
+      const sel = routePickMode ? null : routeSelection();
+      routeAddButton.textContent = sel ? "＋ Add to list" : routePickMode === "waypoint" ? "Click the map… (cancel)" : "＋ Click on map";
+      routeAddButton.title = sel ? `Add ${sel.label} as stop ${routePoints.length + 1}` : "Then click the map where the stop goes";
+      routeAddButton.classList.toggle("ready", !!sel);
+    }
     function setRoutePickMode(mode) {
       routePickMode = mode;
       routeAddButton.classList.toggle("on", mode === "waypoint");
-      routeStatus.textContent = mode === "waypoint" ? `Click the map to add waypoint ${routePoints.length + 1}.` :
-        routePoints.length < 2 ? "Add at least two waypoints in travel order." : "";
+      syncRouteAddButton();
+      if (mode === "waypoint") setRouteStatus(`Click the map to add stop ${routePoints.length + 1}.`);
+      else routeNeedsCalc();
+    }
+    function setRouteStatus(text, stale = false) {
+      routeStatus.textContent = text;
+      routeStatus.classList.toggle("stale", stale);
+    }
+    // Stops changed (or the slope): the drawn route no longer matches. Nothing is computed
+    // until Calculate route is pressed, so editing stops stays instant.
+    function routeNeedsCalc() {
+      routeCalcBtn.disabled = !routeRunning && routePoints.length < 2;
+      if (routeRunning) return;
+      if (routePoints.length < 2) setRouteStatus("Add at least two stops, then press Calculate route.");
+      else if (routeGraphic) setRouteStatus("Stops or settings changed: press Calculate route to update.", true);
+      else setRouteStatus(`${routePoints.length} stops${routeLoopBox.checked ? " + back to start" : ""}. Press Calculate route.`);
+    }
+    function routeStopsChanged() {
+      routeRequest++;          // cancels a calculation in progress
+      setRouteRunning(false);
+      clearRouteGraphics();
+      syncRoutePins();
+      routeNeedsCalc();
+      renderRouteSpots();
+    }
+    // Live progress while a route is calculated: the stage, height tiles ready vs still being
+    // prepared, which leg A* is on and how many cells it has explored, and what the server is
+    // still downloading from NASA PDS (MOLA) and USGS S3 (HRSC) to answer those tiles.
+    const routeProgressEl = document.getElementById("routeProgress");
+    const prog = { stage: "", tiles: null, leg: null, expanded: 0, reused: 0, server: null, started: 0 };
+    let progTimer = 0, progPoll = 0;
+    const demLabel = (ppd) => (Number(ppd) > 200 ? "HRSC 200 m block" : `MOLA ${ppd} px/° chunk`);
+    function renderRouteProgress() {
+      if (routeProgressEl.hidden) return;
+      const lines = [];
+      lines.push([`${prog.stage} · ${Math.round((performance.now() - prog.started) / 1000)} s`]);
+      let frac = null;
+      if (prog.tiles) {
+        const t = prog.tiles;
+        frac = t.total ? t.done / t.total : null;
+        lines.push([`Height tiles (detail z${t.level}): ${t.done} of ${t.total} ready`]);
+        if (t.preparing) lines.push([`${t.preparing} tile${t.preparing === 1 ? "" : "s"} waiting while the server downloads their source elevation`, "wait"]);
+      }
+      if (prog.leg) {
+        lines.push([`Leg ${prog.leg.i} of ${prog.leg.n}: ${prog.leg.from} → ${prog.leg.to}` +
+          (prog.expanded ? ` · ${prog.expanded.toLocaleString()} cells explored` : "")]);
+        if (prog.reused) lines.push([`${prog.reused} unchanged leg${prog.reused === 1 ? "" : "s"} reused`]);
+        if (!prog.tiles) frac = (prog.leg.i - 1) / prog.leg.n;
+      }
+      const down = Object.entries(prog.server?.downloading ?? {});
+      if (down.length) {
+        const q = prog.server.queues;
+        lines.push([`Server downloading: ${down.map(([ppd, n]) => `${n} ${demLabel(ppd)}${n === 1 ? "" : "s"}`).join(", ")}`, "wait"]);
+        if (q) lines.push([`NASA PDS: ${q.pds.active} active, ${q.pds.waiting} queued · USGS S3: ${q.s3.active} active, ${q.s3.waiting} queued`]);
+      } else if (prog.server && !prog.server.ready) {
+        lines.push([`Server is still preparing the base MOLA map (${Math.round((prog.server.progress || 0) * 100)}%)`, "wait"]);
+      }
+      routeProgressEl.querySelector(".lines").replaceChildren(...lines.map(([text, cls]) => {
+        const d = document.createElement("div"); d.textContent = text; if (cls) d.className = cls; return d;
+      }));
+      const bar = routeProgressEl.querySelector(".bar");
+      bar.classList.toggle("indeterminate", frac == null);
+      bar.querySelector("i").style.width = frac == null ? "" : `${Math.round(frac * 100)}%`;
+    }
+    async function pollRouteServer() {
+      try { prog.server = await (await fetch("./terrain/status", { cache: "no-store" })).json(); } catch { /* keep the last */ }
+    }
+    function setRouteStage(stage) {
+      prog.stage = stage; prog.tiles = null; prog.leg = null; prog.expanded = 0;
+      renderRouteProgress();
+    }
+    const tileProgress = (t) => { prog.tiles = t; };
+    function setRouteRunning(on) {
+      if (on && !routeRunning) {
+        Object.assign(prog, { stage: "Starting", tiles: null, leg: null, expanded: 0, reused: 0, server: null, started: performance.now() });
+        routeProgressEl.hidden = false;
+        pollRouteServer();
+        progTimer = setInterval(renderRouteProgress, 400);
+        progPoll = setInterval(pollRouteServer, 1000);
+        renderRouteProgress();
+      } else if (!on) {
+        clearInterval(progTimer); clearInterval(progPoll);
+        routeProgressEl.hidden = true;
+      }
+      routeRunning = on;
+      routeCalcBtn.classList.toggle("running", on);
+      routeCalcBtn.textContent = on ? "Cancel" : "Calculate route";
+      routeCalcBtn.disabled = !on && routePoints.length < 2;
+    }
+    const surfaceKm = (a, b) => { // great-circle distance on Mars, km
+      const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+      return 2 * 3389.5 * Math.asin(Math.min(1, Math.sqrt(h)));
+    };
+    const fmtKm = (km) => (km >= 100 ? `${Math.round(km).toLocaleString()} km` : km >= 1 ? `${km.toFixed(1)} km` : `${Math.round(km * 1000)} m`);
+    function addRouteStop(point, { announce = true } = {}) {
+      routePoints.push(point);
+      routeStopsChanged();
+      if (announce) setRouteStatus(`Added stop ${routePoints.length}: ${point.name ?? `${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}°`}. ` +
+        (routePoints.length < 2 ? "Add another stop." : "Press Calculate route when ready."));
+    }
+    function stopFromSpot(spot) {
+      const carto = Cesium.Cartographic.fromDegrees(spot.lon, spot.lat);
+      const h = terrainReady && reliefBox.checked ? globe.getHeight(carto) : 0;
+      return { lon: spot.lon, lat: spot.lat, name: spot.name, spotId: spot.id,
+        world: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, Number.isFinite(h) ? h : 0, MARS) };
     }
     function clearRouteGraphics() {
       if (routeGraphic) viewer.entities.remove(routeGraphic);
@@ -3231,6 +3508,7 @@
       routePins.length = 0;
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
+      clearSurvival();
     }
     function makeRoutePin(point, color, label) {
       return viewer.entities.add({
@@ -3257,18 +3535,43 @@
       routePins.length = 0;
       const list = document.getElementById("routeWaypointList");
       list.replaceChildren();
+      const loop = routeLoopBox.checked && routePoints.length >= 2;
+      let straight = 0;
       routePoints.forEach((point, index) => {
         const isFirst = index === 0, isLast = index === routePoints.length - 1;
-        const color = isFirst ? Cesium.Color.LIME : isLast ? Cesium.Color.ORANGE : Cesium.Color.YELLOW;
+        const color = isFirst ? Cesium.Color.LIME : isLast && !loop ? Cesium.Color.ORANGE : Cesium.Color.YELLOW;
         routePins.push(makeRoutePin(routePinPositions?.[index] ?? point, color, String(index + 1)));
         const item = document.createElement("li");
-        item.style.cssText = "color:#ccc;font-size:11px;margin:2px 0";
-        item.append(`${point.lat.toFixed(2)}°, ${point.lon.toFixed(2)}° `);
-        const remove = document.createElement("button");
-        remove.type = "button"; remove.textContent = "×"; remove.title = `Remove waypoint ${index + 1}`;
-        remove.dataset.waypointIndex = String(index);
-        item.append(remove); list.append(item);
+        const n = document.createElement("span"); n.className = "n"; n.textContent = String(index + 1);
+        n.style.background = color.toCssColorString();
+        const nm = document.createElement("span"); nm.className = "nm";
+        nm.textContent = point.name ?? `${point.lat.toFixed(3)}°, ${point.lon.toFixed(3)}°`;
+        nm.title = `${nm.textContent} (${point.lat.toFixed(4)}°, ${point.lon.toFixed(4)}°)`;
+        const leg = document.createElement("span"); leg.className = "leg";
+        if (index > 0) { const km = surfaceKm(routePoints[index - 1], point); straight += km; leg.textContent = `+${fmtKm(km)}`; }
+        const btn = (text, title, action, disabled = false) => {
+          const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.title = title;
+          b.dataset.action = action; b.dataset.index = String(index); b.disabled = disabled; return b;
+        };
+        const grip = document.createElement("span"); grip.className = "grip"; grip.textContent = "⠿";
+        grip.tabIndex = 0; grip.dataset.index = String(index);
+        grip.title = "Drag to reorder (or Alt + ↑ / ↓)";
+        grip.setAttribute("aria-label", `Reorder stop ${index + 1}: drag, or Alt + arrow keys`);
+        item.dataset.index = String(index);
+        item.append(grip, n, nm, leg, btn("×", `Remove stop ${index + 1}`, "remove"));
+        list.append(item);
       });
+      if (loop) {
+        const km = surfaceKm(routePoints.at(-1), routePoints[0]); straight += km;
+        const item = document.createElement("li"); item.className = "loop";
+        const n = document.createElement("span"); n.className = "n"; n.textContent = "1"; n.style.background = Cesium.Color.LIME.toCssColorString();
+        const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = `back to ${routePoints[0].name ?? "start"}`;
+        const leg = document.createElement("span"); leg.className = "leg"; leg.textContent = `+${fmtKm(km)}`;
+        item.append(n, nm, leg); list.append(item);
+      }
+      document.getElementById("routeEmpty").hidden = routePoints.length > 0;
+      document.getElementById("routeStopsInfo").textContent = routePoints.length
+        ? `${routePoints.length} stop${routePoints.length === 1 ? "" : "s"}${routePoints.length > 1 ? ` · ${fmtKm(straight)} straight-line` : ""}` : "";
       placeRoutePins();
     }
     function placeRoutePins() {
@@ -3385,69 +3688,103 @@
       });
     }
 
+    // Red "too steep" mask over the planned area. Painted into ONE image (a sparse corridor
+    // used to become up to 256 separate imagery layers, each costing frames to build and
+    // to draw), with time-sliced painting, and cached per grid + slope limit so redrawing
+    // the same area after a recalculation is instant.
+    const overlayCache = new WeakMap(); // grid -> { slope, parts: [{ blob, west, south, east, north }] }
     async function drawUnwalkableOverlay(grid, isCurrent = () => true) {
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
-      const sparse = heights instanceof Map;
-      const addLayer = async (image, west, south, east, north) => {
-        const blob = await new Promise((resolve) => image.toBlob(resolve, "image/png"));
-        if (!blob) return;
+      const limit = maxSlopeDeg();
+      const addLayer = async ({ blob, west, south, east, north }) => {
         const url = URL.createObjectURL(blob);
         try {
           const provider = await Cesium.SingleTileImageryProvider.fromUrl(url, {
             rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north), ellipsoid: MARS,
           });
+          if (!isCurrent()) return;
           const layer = viewer.imageryLayers.addImageryProvider(provider);
           layer.alpha = 0.58;
           unwalkableLayers.push(layer);
         } finally { URL.revokeObjectURL(url); }
       };
-      const paint = async (canvas, x0, y0) => {
-        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(canvas.width, canvas.height);
-        const x1 = x0 + canvas.width, y1 = y0 + canvas.height;
-        const limit = maxSlopeDeg();
-        for (let y = y0; y < y1; y++) {
-          for (let x = x0; x < x1; x++) {
-            if (x >= width || y >= height || terrainCellSlopeDeg(grid, x, y) <= limit) continue;
-            const px = x - x0, py = y - y0, k = (py * canvas.width + px) * 4;
-            pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+      const cached = overlayCache.get(grid);
+      if (cached && cached.slope === limit) {
+        for (const part of cached.parts) { if (!isCurrent()) return; await addLayer(part); }
+        return;
+      }
+      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
+      const sparse = !(heights instanceof Float32Array);
+      // paint the cells of [x0, x0 + w) x [y0, y0 + h) (grid cells; x may run past the seam)
+      // at (ox, oy) in the image; yields to the browser every ~12 ms
+      let slice = performance.now();
+      const paint = async (pixels, imgW, x0, y0, w, h, ox, oy) => {
+        // dense grids in bands of rows, corridor grids a tile at a time
+        const band = sparse ? h : Math.max(1, Math.floor(200_000 / Math.max(1, w)));
+        for (let j0 = 0; j0 < h; j0 += band) {
+          const bh = Math.min(band, h - j0);
+          const mask = steepMask(grid, limit, x0, y0 + j0, w, bh);
+          for (let j = 0; j < bh; j++) {
+            const rowOut = ((oy + j0 + j) * imgW + ox) * 4, rowIn = j * w;
+            for (let i = 0; i < w; i++) {
+              if (!mask[rowIn + i]) continue;
+              const k = rowOut + i * 4;
+              pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+            }
           }
-          if ((y - y0 + 1) % 32 === 0) {
-            await new Promise((resolve) => requestAnimationFrame(resolve));
+          if (performance.now() - slice > 12) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
             if (!isCurrent()) return false;
+            slice = performance.now();
           }
         }
-        ctx.putImageData(pixels, 0, 0);
         return true;
       };
+      const toParts = async (canvas, west, south, east, north) => { // split at the 180° seam
+        const blobOf = (c) => new Promise((resolve) => c.toBlob(resolve, "image/png"));
+        if (east <= 180) return [{ blob: await blobOf(canvas), west, south, east, north }];
+        const w = canvas.width, h = canvas.height;
+        const split = Math.max(1, Math.min(w - 1, Math.round((180 - west) / (east - west) * w)));
+        const left = document.createElement("canvas"); left.width = split; left.height = h;
+        left.getContext("2d").drawImage(canvas, 0, 0, split, h, 0, 0, split, h);
+        const right = document.createElement("canvas"); right.width = w - split; right.height = h;
+        right.getContext("2d").drawImage(canvas, split, 0, w - split, h, 0, 0, w - split, h);
+        return [{ blob: await blobOf(left), west, south, east: 180, north },
+          { blob: await blobOf(right), west: -180, south, east: east - 360, north }];
+      };
+      let parts;
       if (sparse) {
-        // Sparse worldwide coordinates stay cheap: one full-resolution canvas per loaded tile.
-        for (const [tx, ty] of grid.tileKeys || []) {
-          if (!isCurrent()) return;
-          const x = tx * 64, y = ty * 64, size = 64;
-          const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
-          if (!await paint(canvas, x, y)) return;
-          const west = -180 + x * lonStepDeg, east = west + size * lonStepDeg;
-          const north = 90 + y * latStepDeg, south = north + size * latStepDeg;
-          await addLayer(canvas, west, south, east, north);
-          await new Promise((resolve) => requestAnimationFrame(resolve));
+        // one image over the corridor's tiles: the smallest x span (it may wrap the seam)
+        const T = 64, tilesX = Math.round(width / T);
+        const txs = [...new Set((grid.tileKeys || []).map(([tx]) => tx))].sort((a, b) => a - b);
+        const tys = (grid.tileKeys || []).map(([, ty]) => ty);
+        if (!txs.length) return;
+        let gapAt = txs.length - 1, gap = txs[0] + tilesX - txs.at(-1);
+        for (let i = 0; i + 1 < txs.length; i++) if (txs[i + 1] - txs[i] > gap) { gap = txs[i + 1] - txs[i]; gapAt = i; }
+        const tx0 = txs[(gapAt + 1) % txs.length], spanX = tilesX - gap + 1;
+        const ty0 = Math.min(...tys), spanY = Math.max(...tys) - ty0 + 1;
+        const imgW = spanX * T, imgH = spanY * T;
+        if (imgW * imgH > 64_000_000) return; // absurdly spread corridor: skip the mask
+        const canvas = document.createElement("canvas"); canvas.width = imgW; canvas.height = imgH;
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(imgW, imgH);
+        for (const [tx, ty] of grid.tileKeys) {
+          const ox = ((tx - tx0 + tilesX) % tilesX) * T, oy = (ty - ty0) * T;
+          if (!await paint(pixels, imgW, tx * T, ty * T, T, T, ox, oy)) return;
         }
+        ctx.putImageData(pixels, 0, 0);
+        const west = -180 + tx0 * T * lonStepDeg, north = 90 + ty0 * T * latStepDeg;
+        parts = await toParts(canvas, west, north + imgH * latStepDeg, west + imgW * lonStepDeg, north);
       } else {
         const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
-        if (!await paint(canvas, 0, 0)) return;
-        const south = northDeg + height * latStepDeg, east = westDeg + width * lonStepDeg;
-        if (east > 180) {
-          const split = Math.max(1, Math.min(width - 1, Math.round((180 - westDeg) / (east - westDeg) * width)));
-          const left = document.createElement("canvas"); left.width = split; left.height = height;
-          left.getContext("2d").drawImage(canvas, 0, 0, split, height, 0, 0, split, height);
-          const right = document.createElement("canvas"); right.width = width - split; right.height = height;
-          right.getContext("2d").drawImage(canvas, split, 0, width - split, height, 0, 0, width - split, height);
-          await addLayer(left, westDeg, south, 180, northDeg);
-          await addLayer(right, -180, south, east - 360, northDeg);
-        } else await addLayer(canvas, westDeg, south, east, northDeg);
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(width, height);
+        if (!await paint(pixels, width, 0, 0, width, height, 0, 0)) return;
+        ctx.putImageData(pixels, 0, 0);
+        parts = await toParts(canvas, westDeg, northDeg + height * latStepDeg, westDeg + width * lonStepDeg, northDeg);
       }
+      parts = parts.filter((part) => part.blob);
+      overlayCache.set(grid, { slope: limit, parts });
+      for (const part of parts) { if (!isCurrent()) return; await addLayer(part); }
     }
     async function waitForMola() {
       for (let i = 0; i < 300; i++) {
@@ -3460,14 +3797,137 @@
       }
       throw new Error("MOLA terrain is still loading");
     }
+    // ---------------------------------------------------------------- survival card + route.json
+    // survival.js prices the computed route for a crew of two (O2, cooling water, battery, 20 %
+    // reserve, walk-back limit); route-io.js turns it into route.json (docs/route-schema.md).
+    let currentRoute = null, walkBackPins = [];
+    const svScenario = document.getElementById("svScenario");
+    for (const [key, sc] of Object.entries(Survival.SCENARIOS)) svScenario.add(new Option(sc.label, key));
+    const routeExportBtn = document.getElementById("routeExportBtn");
+    function clearSurvival() {
+      currentRoute = null;
+      routeExportBtn.disabled = true;
+      document.getElementById("survivalCard").innerHTML = "";
+      for (const pin of walkBackPins) viewer.entities.remove(pin);
+      walkBackPins = [];
+    }
+    function scenarioInputs() {
+      const sc = Survival.SCENARIOS[svScenario.value] ?? Survival.SCENARIOS.standard;
+      return { scenario: svScenario.value, crew: sc.apply(Survival.DEFAULT_CREW), params: { ...(sc.params || {}), max_slope_deg: maxSlopeDeg() } };
+    }
+    function showRoute(route, origin = route._origin ?? "live") {
+      route._origin = origin;
+      currentRoute = route;
+      routeExportBtn.disabled = false;
+      renderSurvivalCard(document.getElementById("survivalCard"), route);
+      for (const pin of walkBackPins) viewer.entities.remove(pin);
+      walkBackPins = [];
+      // one marker per distinct walk-back limit (point of no return)
+      const seen = new Set();
+      for (const c of route.survival.crew) {
+        const p = route.path[c.walk_back.index];
+        if (!p || seen.has(c.walk_back.index) || c.walk_back.index >= route.path.length - 1) continue;
+        seen.add(c.walk_back.index);
+        walkBackPins.push(viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 30, MARS),
+          point: { pixelSize: 10, color: Cesium.Color.ORANGE, outlineColor: Cesium.Color.BLACK, outlineWidth: 2, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+          label: { text: `Walk-back limit · ${c.name}`, font: "12px sans-serif", pixelOffset: new Cesium.Cartesian2(0, -16), fillColor: Cesium.Color.ORANGE,
+            showBackground: true, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        }));
+      }
+    }
+    function updateSurvival() {
+      if (!routeRawPath || routeRawPath.length < 2) return clearSurvival();
+      const waypoints = routePoints.map((p, k) => ({ name: p.name ?? (k ? `Stop ${k}` : "Haven"), lon: p.lon, lat: p.lat }));
+      if (routeLoopBox.checked) waypoints.push({ ...waypoints[0], name: `${waypoints[0].name} (return)`, role: "haven" });
+      showRoute(RouteIO.buildRoute({ path: routeRawPath, waypoints, grid: routeGrid, ...scenarioInputs() }), "live");
+    }
+    function reevaluateLoaded() { // scenario changed on a route loaded from a file
+      const r = currentRoute;
+      const path = RouteIO.plannerPath(r);
+      const waypoints = r.waypoints.map(({ name, lon, lat, role }) => ({ name, lon, lat, role }));
+      showRoute(RouteIO.buildRoute({ path, waypoints, heightAt: RouteIO.excerptSampler(r.terrain), ...scenarioInputs(),
+        meta: { label: r.label, site: r.site, terrain_source: r.profile?.terrain_source } }), r._origin);
+    }
+    svScenario.addEventListener("change", () => {
+      if (routeRawPath && !routeRawPath.fromFile) updateSurvival();
+      else if (currentRoute) reevaluateLoaded();
+    });
+    routeExportBtn.addEventListener("click", () => {
+      if (!currentRoute) return;
+      const blob = new Blob([JSON.stringify(currentRoute, null, 1)], { type: "application/json" });
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "route.json" });
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    });
+    async function loadRouteFile(route, label, origin = "file") {
+      route = RouteIO.parseRoute(route);
+      route._origin = origin;
+      routeRequest++;
+      clearRouteGraphics();
+      routePoints.length = 0;
+      route.waypoints.filter((w, k) => !(k && w.role === "haven")).forEach((w) => routePoints.push({ name: w.name, lon: w.lon, lat: w.lat }));
+      routeLoopBox.checked = route.waypoints.length > 2 && route.waypoints.at(-1).role === "haven";
+      routeRawPath = Object.assign(RouteIO.plannerPath(route), { fromFile: true });
+      routeRawTurns = [];
+      syncRoutePins();
+      drawRouteLine(null, routeRawPath, []);
+      if (route.profile?.scenario && Survival.SCENARIOS[route.profile.scenario]) svScenario.value = route.profile.scenario;
+      currentRoute = route;
+      reevaluateLoaded();
+      setRouteStatus(`${label} · ${route.label || route.site} · ${(route.distance_m / 1000).toFixed(2)} km · re-checked with this page's survival model`);
+      const lons = route.path.map((p) => p.lon), lats = route.path.map((p) => p.lat);
+      flyToSpot((Math.min(...lons) + Math.max(...lons)) / 2, (Math.min(...lats) + Math.max(...lats)) / 2, 6000);
+      document.getElementById("survivalCard").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    // The demo route is a signed file: its bytes must match the verified manifest, or it is refused.
+    function refuseForIntegrity(message) {
+      routeRequest++;
+      clearRouteGraphics();
+      document.getElementById("survivalCard").innerHTML =
+        `<div class="svCard no" role="status"><div class="svVerdict">REFUSED — integrity: ${message.replace(/[&<>]/g, "")}</div>` +
+        `<div class="svFoot">The route file is not the one the team signed, so no survival budget is computed from it.</div></div>`;
+      setRouteStatus("Demo route refused: data integrity check failed.");
+    }
+    async function loadDemoRoute() {
+      let bytes, origin = "signed";
+      try { bytes = await Integrity.signedBytes("public/data/route.json"); }
+      catch (error) {
+        if (error.code !== "unsupported") return refuseForIntegrity(error.message);
+        const res = await fetch("./public/data/route.json", { cache: "no-cache" });
+        bytes = new Uint8Array(await res.arrayBuffer()); origin = "unchecked";
+      }
+      await loadRouteFile(new TextDecoder().decode(bytes), "Demo excursion", origin);
+    }
+    document.getElementById("routeDemoBtn").addEventListener("click", () =>
+      loadDemoRoute().catch((error) => setRouteStatus(`Could not load the demo route: ${error.message}`)));
+    Integrity.mountIntegrity(document.getElementById("integrityChip"), {
+      // only the route file itself decides the route; another changed file turns the chip red but keeps the route
+      onChange: (st) => {
+        const routeFile = st.report?.files?.find((f) => f.path === "public/data/route.json");
+        if (currentRoute?._origin === "signed" && st.status === "bad" && (!routeFile || routeFile.status !== "ok"))
+          refuseForIntegrity(`public/data/route.json: ${routeFile ? "does not match the signed manifest" : st.report.error.message}`);
+      },
+    });
+    document.getElementById("routeImportFile").addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try { await loadRouteFile(await file.text(), file.name); }
+      catch (error) { setRouteStatus(`Could not open ${file.name}: ${error.message}`); }
+      event.target.value = "";
+    });
+    window.happyfeet = Object.assign(window.happyfeet || {}, { get route() { return currentRoute; }, loadRouteFile });
+
     async function computeTerrainRoute() {
       if (routePoints.length < 2) return;
-      if (!USE_PROXY) { routeStatus.textContent = "Start the local viewer server to load MOLA heights."; return; }
+      if (!USE_PROXY) { setRouteStatus("Start the local viewer server to load MOLA heights."); return; }
       const waypoints = routePoints.slice();
+      if (routeLoopBox.checked) waypoints.push({ ...routePoints[0] }); // A -> ... -> A
       const request = ++routeRequest;
       clearRouteGraphics();
       syncRoutePins();
-      routeStatus.textContent = "Loading MOLA terrain tiles…";
+      setRouteRunning(true);
+      setRouteStatus(`Calculating a route through ${waypoints.length} stops…`);
+      setRouteStage("Waiting for the MOLA base map");
       try {
         await waitForMola();
         if (request !== routeRequest) return;
@@ -3491,15 +3951,31 @@
           south: Math.max(-90, Math.min(...waypoints.map((p) => p.lat)) - pad),
           north: Math.min(90, Math.max(...waypoints.map((p) => p.lat)) + pad),
         };
+        // A leg that has not changed (same two stops, slope limit and kind of grid) is not
+        // planned again: adding, removing or reordering stops only plans the new legs.
+        const legKey = (grid, a, b) => `${grid.level}|${grid.heights instanceof Float32Array ? "patch" : "corridor"}|${maxSlopeDeg()}|` +
+          `${a.lon.toFixed(6)},${a.lat.toFixed(6)}|${b.lon.toFixed(6)},${b.lat.toFixed(6)}`;
         const planSequence = async (grid) => {
           const combined = { path: [], displayPath: [], turnIndices: [], waypointPositions: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
           for (let i = 1; i < waypoints.length; i++) {
             if (request !== routeRequest) return null;
             const a = lonLatToTerrainCell(grid, waypoints[i - 1].lon, waypoints[i - 1].lat);
             const b = lonLatToTerrainCell(grid, waypoints[i].lon, waypoints[i].lat);
-            const leg = a && b ? await planTerrainRoute(grid, a, b, {
-              maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
-            }) : null;
+            const nameOf = (pt, k) => pt.name ?? `stop ${k}`;
+            prog.tiles = null; prog.expanded = 0;
+            prog.leg = { i, n: waypoints.length - 1, from: nameOf(waypoints[i - 1], i),
+              to: i === routePoints.length ? nameOf(waypoints[i], 1) : nameOf(waypoints[i], i + 1) };
+            const key = legKey(grid, waypoints[i - 1], waypoints[i]);
+            let leg = routeLegCache.get(key);
+            if (leg === undefined) {
+              leg = a && b ? await planTerrainRoute(grid, a, b, {
+                maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
+                onProgress: ({ expanded }) => { prog.expanded = expanded; },
+              }) : null;
+              if (request !== routeRequest) return null;          // cancelled: do not cache
+              routeLegCache.set(key, leg);
+              while (routeLegCache.size > 300) routeLegCache.delete(routeLegCache.keys().next().value);
+            } else prog.reused++;
             if (!leg) return null;
             const legDisplayPath = leg.displayPath.map((point) => ({ ...point }));
             legDisplayPath[0] = { ...legDisplayPath[0], lon: waypoints[i - 1].lon, lat: waypoints[i - 1].lat };
@@ -3522,7 +3998,9 @@
           routeStatus.textContent = `Finding a broad route through ${waypoints.length} waypoints, then refining…`;
           let coarseLevel = 4;
           while (coarseLevel > 0 && estimateTerrainPatchCells(patchBounds, coarseLevel) > 300_000) coarseLevel--;
-          const coarseGrid = await loadTerrainPatch({ ...patchBounds, level: coarseLevel });
+          setRouteStage("Loading coarse terrain for a broad route");
+          const coarseGrid = await loadTerrainPatch({ ...patchBounds, level: coarseLevel, onProgress: tileProgress });
+          setRouteStage(`Planning the broad route (MOLA z${coarseLevel})`);
           if (request !== routeRequest) return;
           const coarseResult = await planSequence(coarseGrid);
           if (request !== routeRequest) return;
@@ -3531,7 +4009,9 @@
           detail = `coarse MOLA z${coarseLevel}`;
           if (coarseResult) try {
             routeStatus.textContent = "Loading detailed MOLA tiles along the route corridor…";
-            const fineGrid = await loadTerrainCorridor(coarseResult.path, { level: 6, bufferTiles: 1 });
+            setRouteStage("Loading detailed terrain along the route corridor");
+            const fineGrid = await loadTerrainCorridor(coarseResult.path, { level: 6, bufferTiles: 1, onProgress: tileProgress });
+            setRouteStage("Refining the route on detailed terrain (z6)");
             if (request !== routeRequest) return;
             const refined = await planSequence(fineGrid);
             if (request !== routeRequest) return;
@@ -3544,7 +4024,8 @@
         } else {
           let tooLarge;
           for (let level = 6; level >= 0; level--) {
-            try { grid = await loadTerrainPatch({ ...patchBounds, level }); break; }
+            setRouteStage(`Loading terrain for the route area (z${level})`);
+            try { grid = await loadTerrainPatch({ ...patchBounds, level, onProgress: tileProgress }); break; }
             catch (error) {
               if (!error.message.includes("Terrain patch is too large")) throw error;
               tooLarge = error;
@@ -3553,6 +4034,7 @@
           }
           if (!grid) throw tooLarge || new Error("Could not load a terrain patch");
           if (request !== routeRequest) return;
+          setRouteStage(`Planning the route (MOLA z${grid.level})`);
           result = await planSequence(grid);
           if (request !== routeRequest) return;
         }
@@ -3561,42 +4043,200 @@
         routeRawTurns = result?.turnIndices ?? [];
         routePinPositions = result?.waypointPositions ?? null;
         syncRoutePins();
-        try { await drawUnwalkableOverlay(grid, () => request === routeRequest); }
-        catch (error) { console.warn("Could not draw slope mask:", error); }
         if (request !== routeRequest) return;
-        if (!result) { routeStatus.textContent = "No walkable route found at this slope limit."; return; }
+        // the route first; the red slope mask is painted afterwards without blocking
+        drawUnwalkableOverlay(grid, () => request === routeRequest)
+          .catch((error) => console.warn("Could not draw slope mask:", error));
+        if (!result) { setRouteStatus("No walkable route found at this slope limit."); return; }
         drawRouteLine(grid, routeRawPath, routeRawTurns);
-        routeStatus.textContent = `${routeRawPath.length.toLocaleString()} samples · terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${detail}`;
+        try { updateSurvival(); } catch (error) { console.warn("Survival budget failed:", error); }
+        setRouteStatus(`${routeLoopBox.checked ? "Loop · " : ""}terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${routeRawPath.length.toLocaleString()} samples · ${detail}` +
+          (prog.reused ? ` · ${prog.reused} leg${prog.reused === 1 ? "" : "s"} reused` : ""));
       } catch (error) {
-        if (request === routeRequest) routeStatus.textContent = `Route failed: ${error.message}`;
+        if (request === routeRequest) setRouteStatus(`Route failed: ${error.message}`);
+      } finally {
+        if (request === routeRequest) setRouteRunning(false);
       }
     }
-    document.getElementById("routeAddBtn").addEventListener("click", () => setRoutePickMode("waypoint"));
-    document.getElementById("routeUndoBtn").addEventListener("click", () => {
-      if (!routePoints.length) return;
-      routeRequest++; routePoints.pop();
-      clearRouteGraphics(); syncRoutePins();
-      if (routePoints.length >= 2) computeTerrainRoute();
-      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+    routeAddButton.addEventListener("click", () => {
+      const sel = routePickMode ? null : routeSelection();
+      if (!sel) { setRoutePickMode(routePickMode === "waypoint" ? null : "waypoint"); return; }
+      if (sel.spotId && routePoints.some((p) => p.spotId === sel.spotId)) { setRouteStatus(`${sel.label} is already a stop.`); return; }
+      addRouteStop(sel.point());
+      if (!sel.spotId) closeProbe(); // a plain point is used up; the button goes back to "Click on map"
+      else syncRouteAddButton();
     });
+    onSelectionChange = syncRouteAddButton;
     document.getElementById("routeWaypointList").addEventListener("click", (event) => {
-      const index = Number(event.target.closest("button")?.dataset.waypointIndex);
-      if (!Number.isInteger(index) || index < 0 || index >= routePoints.length) return;
-      routeRequest++; routePoints.splice(index, 1);
-      clearRouteGraphics(); syncRoutePins();
-      if (routePoints.length >= 2) computeTerrainRoute();
-      else routeStatus.textContent = "Add at least two waypoints in travel order.";
+      const b = event.target.closest("button");
+      const index = Number(b?.dataset.index);
+      if (!b || !Number.isInteger(index) || index < 0 || index >= routePoints.length) return;
+      if (b.dataset.action !== "remove") return;
+      routePoints.splice(index, 1);
+      routeStopsChanged();
     });
+    // Drag to reorder: grab a stop's grip, move it up or down, let go. Pointer events, so it
+    // works with a mouse, a pen or a finger; Alt + arrow keys on a grip do the same.
+    {
+      const listEl = document.getElementById("routeWaypointList");
+      let drag = null; // { from, li, startY, to }
+      const moveStop = (from, to) => {
+        if (to === from || to < 0 || to >= routePoints.length) return false;
+        routePoints.splice(to, 0, ...routePoints.splice(from, 1));
+        routeStopsChanged();
+        return true;
+      };
+      listEl.addEventListener("pointerdown", (e) => {
+        const grip = e.target.closest(".grip");
+        if (!grip || e.button > 0) return;
+        const li = grip.closest("li");
+        drag = { from: Number(li.dataset.index), li, startY: e.clientY, to: Number(li.dataset.index) };
+        li.classList.add("dragging");
+        listEl.classList.add("sorting");
+        grip.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      listEl.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        drag.li.style.transform = `translateY(${e.clientY - drag.startY}px)`;
+        // drop slot: how many other stops' midpoints are above the pointer
+        const items = [...listEl.querySelectorAll("li[data-index]")].filter((x) => x !== drag.li);
+        let to = 0;
+        for (const it of items) { const r = it.getBoundingClientRect(); if (e.clientY > r.top + r.height / 2) to++; }
+        drag.to = to;
+        items.forEach((it, i) => {
+          it.classList.toggle("dropBefore", i === to);
+          it.classList.toggle("dropAfter", to === items.length && i === items.length - 1);
+        });
+      });
+      const endDrag = () => {
+        if (!drag) return;
+        const { from, to, li } = drag;
+        drag = null;
+        li.style.transform = "";
+        li.classList.remove("dragging");
+        listEl.classList.remove("sorting");
+        listEl.querySelectorAll(".dropBefore, .dropAfter").forEach((x) => x.classList.remove("dropBefore", "dropAfter"));
+        moveStop(from, to);
+      };
+      listEl.addEventListener("pointerup", endDrag);
+      listEl.addEventListener("pointercancel", () => { if (drag) { drag.to = drag.from; endDrag(); } });
+      listEl.addEventListener("keydown", (e) => {
+        const grip = e.target.closest(".grip");
+        if (!grip || !e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+        const from = Number(grip.dataset.index), to = from + (e.key === "ArrowUp" ? -1 : 1);
+        if (moveStop(from, to)) listEl.querySelector(`.grip[data-index="${to}"]`)?.focus();
+        e.preventDefault();
+      });
+    }
     document.getElementById("routeClearBtn").addEventListener("click", () => {
-      routeRequest++; routePoints.length = 0; clearRouteGraphics(); syncRoutePins(); setRoutePickMode(null);
+      routePoints.length = 0; setRoutePickMode(null); routeStopsChanged();
     });
-    let slopeDebounce;
+    routeCalcBtn.addEventListener("click", () => {
+      if (routeRunning) { routeRequest++; setRouteRunning(false); setRouteStatus("Calculation cancelled."); return; }
+      computeTerrainRoute();
+    });
+    routeLoopBox.addEventListener("change", () => { routeStopsChanged(); });
     maxSlopeSlider.addEventListener("input", () => {
       maxSlopeValue.textContent = `${maxSlopeDeg()}°`;
       updateSlopeMeaning();
-      clearTimeout(slopeDebounce);
-      slopeDebounce = setTimeout(() => { if (routePoints.length >= 2) computeTerrainRoute(); }, 250);
+      if (routeGraphic || routeRunning) { routeRequest++; setRouteRunning(false); clearRouteGraphics(); syncRoutePins(); }
+      routeNeedsCalc();
     });
+
+    // Spot finder for stops: search, kind and sort over every spot (mission, USGS, custom).
+    const routeSpotSearch = document.getElementById("routeSpotSearch");
+    const routeSpotKind = document.getElementById("routeSpotKind");
+    const routeSpotSort = document.getElementById("routeSpotSort");
+    const routeSpotList = document.getElementById("routeSpotList");
+    function fillRouteKinds() {
+      const keep = routeSpotKind.value;
+      const present = new Set(allSpots.map((sp) => sp.category));
+      routeSpotKind.replaceChildren(Object.assign(document.createElement("option"), { value: "", textContent: "All kinds" }));
+      for (const k of allKinds()) if (present.has(k.kind))
+        routeSpotKind.append(Object.assign(document.createElement("option"), { value: k.kind, textContent: k.kind }));
+      routeSpotKind.value = [...routeSpotKind.options].some((o) => o.value === keep) ? keep : "";
+    }
+    function routeCandidates() {
+      const words = routeSpotSearch.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const kind = routeSpotKind.value;
+      const used = new Set(routePoints.map((p) => p.spotId).filter(Boolean));
+      return allSpots.filter((sp) => !used.has(sp.id) && (!kind || sp.category === kind) &&
+        words.every((w) => haystack(sp).includes(w)));
+    }
+    function sortCandidates(list) {
+      const mode = routeSpotSort.value;
+      let ref = null;
+      if (mode === "last" && routePoints.length) ref = routePoints.at(-1);
+      else if (mode === "view" || mode === "last") {
+        const c = MARS.cartesianToCartographic(viewCentre());
+        if (c) ref = { lat: deg(c.latitude), lon: deg(c.longitude) };
+      }
+      const dist = new Map();
+      if (ref) for (const sp of list) dist.set(sp.id, surfaceKm(ref, sp));
+      // with a search, spots whose *name* matches come first (whole query, then every word),
+      // then the chosen order; otherwise "boxwork target" could list a crater first
+      const q = routeSpotSearch.value.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean);
+      const rank = (sp) => {
+        if (!q) return 0;
+        const n = sp.name.toLowerCase();
+        return n.includes(q) ? 0 : words.every((w) => n.includes(w)) ? 1 : 2;
+      };
+      const by = mode === "name" ? (a, b) => a.name.localeCompare(b.name)
+        : mode === "size" ? (a, b) => (b.sizeKm ?? 0) - (a.sizeKm ?? 0) || a.name.localeCompare(b.name)
+        : (a, b) => dist.get(a.id) - dist.get(b.id);
+      list.sort((a, b) => rank(a) - rank(b) || by(a, b));
+      return { list, dist, refName: mode === "last" && routePoints.length ? "last stop" : "view centre" };
+    }
+    let routeSpotsTimer = 0;
+    function renderRouteSpots() {
+      if (!document.getElementById("winRoute").classList.contains("active")) return; // only while the tab is open
+      const { list, dist } = sortCandidates(routeCandidates());
+      const MAX = 60;
+      routeSpotList.replaceChildren(...list.slice(0, MAX).map((sp) => {
+        const b = document.createElement("button"); b.type = "button"; b.className = "rs";
+        b.style.setProperty("--k", pinColor(sp));
+        const i = document.createElement("i");
+        const name = document.createElement("span"); name.textContent = sp.name;
+        const meta = document.createElement("em");
+        meta.textContent = dist.has(sp.id) ? `${kindOf(sp).short} · ${fmtKm(dist.get(sp.id))}` : kindOf(sp).short;
+        b.append(i, name, meta);
+        b.title = `Add ${sp.name} as stop ${routePoints.length + 1}`;
+        b.addEventListener("click", () => addRouteStop(stopFromSpot(sp)));
+        return b;
+      }));
+      if (list.length > MAX) {
+        const more = document.createElement("div"); more.className = "rsMore";
+        more.textContent = `${(list.length - MAX).toLocaleString()} more: narrow the search or kind`;
+        routeSpotList.append(more);
+      }
+      if (!list.length) {
+        const none = document.createElement("div"); none.className = "rsMore"; none.textContent = "No spots match.";
+        routeSpotList.append(none);
+      }
+    }
+    routeSpotSearch.addEventListener("input", () => { clearTimeout(routeSpotsTimer); routeSpotsTimer = setTimeout(renderRouteSpots, 120); });
+    routeSpotKind.addEventListener("change", renderRouteSpots);
+    routeSpotSort.addEventListener("change", renderRouteSpots);
+    document.getElementById("routeRandomBtn").addEventListener("click", () => {
+      // random among the first 30 of the current sort (nearest by default), so a random stop
+      // stays within reach instead of landing on the other side of Mars
+      const { list } = sortCandidates(routeCandidates());
+      if (!list.length) { setRouteStatus("No spots match the search and kind to pick from."); return; }
+      const pool = list.slice(0, 30);
+      addRouteStop(stopFromSpot(pool[Math.floor(Math.random() * pool.length)]));
+    });
+    document.querySelector('#tabs [data-win="winRoute"]').addEventListener("click", () => setTimeout(renderRouteSpots, 0));
+    document.getElementById("spotRouteBtn").addEventListener("click", () => {
+      if (!selectedSpot) return;
+      if (routePoints.some((p) => p.spotId === selectedSpot.id)) { setRouteStatus(`${selectedSpot.name} is already a stop.`); }
+      else addRouteStop(stopFromSpot(selectedSpot));
+      showTab("winRoute");
+      renderRouteSpots();
+    });
+    fillRouteKinds();
+    routeKindsRefresh = () => { fillRouteKinds(); renderRouteSpots(); };
+    routeNeedsCalc();
     exagSlider.addEventListener("input", () => {
       if (routeGrid && routeRawPath) drawRouteLine(routeGrid, routeRawPath, routeRawTurns);
     });
@@ -3617,20 +4257,11 @@
         const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];
         const id = picked.map((p) => p?.id?.properties?.spotId?.getValue?.(Cesium.JulianDate.now())).find(Boolean);
         const spot = spotById.get(id);
-        if (spot) {
-          const snappedCarto = Cesium.Cartographic.fromDegrees(spot.lon, spot.lat);
-          const snappedHeight = terrainReady && reliefBox.checked ? globe.getHeight(snappedCarto) : 0;
-          point = {
-            lon: spot.lon, lat: spot.lat,
-            world: Cesium.Cartesian3.fromDegrees(spot.lon, spot.lat, Number.isFinite(snappedHeight) ? snappedHeight : 0, MARS),
-          };
-        }
-        routeRequest++;
-        routePoints.push(point);
-        syncRoutePins();
-        setRoutePickMode(null);
-        if (routePoints.length >= 2) computeTerrainRoute();
-        else routeStatus.textContent = `${spot ? `Snapped to ${spot.name}. ` : ""}Waypoint 1 set. Add another waypoint to route.`;
+        if (spot) point = stopFromSpot(spot); // clicked a pin: snap to that spot
+        routePickMode = null;
+        routeAddButton.classList.remove("on");
+        addRouteStop(point);
+        syncRouteAddButton();
         return;
       }
       const picked = spotsVisible ? viewer.scene.drillPick(e.position, 8) : [];

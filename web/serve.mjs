@@ -12,6 +12,8 @@ import { exec } from "node:child_process";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT) || 8080;
+// 127.0.0.1 by default (only this machine). A hosted deploy sets HOST=0.0.0.0 (see Dockerfile).
+const host = process.env.HOST || "127.0.0.1";
 const TREK_TILES = "https://trek.nasa.gov/tiles";
 // Trek is slow (2-10 s per tile), so every tile we fetch is kept on disk and served
 // instantly next time. Delete the folder to clear it.
@@ -654,6 +656,10 @@ function serveTerrain(url, res) {
       progress: DEMS[0].progress,
       error: terrain.error,
       cached: Object.fromEntries(DEMS.map((d) => [d.ppd, d.progress])),
+      // source data being fetched right now: chunks/blocks per dataset, and the two queues
+      downloading: Object.fromEntries(DEMS.map((d) => [d.ppd,
+        d.files ? d.files.reduce((n, f) => n + f.pending.size, 0) : d.pending?.size ?? 0]).filter(([, n]) => n > 0)),
+      queues: { pds: { active: net.active, waiting: net.stack.length }, s3: { active: s3.active, waiting: s3.queue.length } },
     }));
   }
   const m = /^\/terrain\/(\d{1,2})\/(\d{1,8})\/(\d{1,8})$/.exec(url.pathname);
@@ -780,6 +786,28 @@ async function customSpotsApi(req, res, url) {
   return send(res, 405, "Method not allowed");
 }
 
+// ---------------------------------------------------------------- REMS (Curiosity weather)
+// The public REMS JSON is not CORS-readable from every origin, so the page asks us; we keep
+// the latest 30 sols in memory for an hour. The page falls back to a committed snapshot.
+const REMS_URL = "https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json";
+const rems = { at: 0, body: null, job: null };
+async function serveRems(res) {
+  try {
+    if (!rems.body || Date.now() - rems.at > 3600_000) {
+      rems.job ??= fetch(REMS_URL, { signal: AbortSignal.timeout(20000) })
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then((d) => { rems.body = JSON.stringify({ source: REMS_URL, fetched_utc: new Date().toISOString(), soles: d.soles.slice(0, 30) }); rems.at = Date.now(); })
+        .finally(() => { rems.job = null; });
+      await rems.job;
+    }
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=600" });
+    res.end(rems.body);
+  } catch (err) {
+    if (rems.body) { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(rems.body); }
+    send(res, 502, `REMS feed unreachable: ${err.message}`);
+  }
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (url.pathname.startsWith("/api/custom-")) {
@@ -788,6 +816,11 @@ const server = http.createServer((req, res) => {
   }
   if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, "Method not allowed");
   if (url.pathname === "/__proxy") return send(res, 200, "ok"); // lets the page detect this server
+  if (url.pathname === "/rems") return serveRems(res);
+  if (url.pathname === "/healthz") {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    return res.end(JSON.stringify({ ok: true, terrain: terrain.ready, terrainError: terrain.error }));
+  }
   if (url.pathname === "/catalog") {
     return getCatalog().then(
       (list) => {
@@ -813,7 +846,7 @@ server.on("error", (err) => {
   process.exit(1);
 });
 
-server.listen(port, "127.0.0.1", () => {
+server.listen(port, host, () => {
   const url = `http://localhost:${port}/`;
   console.log(`Mars viewer running at ${url}  (Ctrl+C to stop)`);
   if (process.platform === "win32" && !process.argv.includes("--no-open")) {
