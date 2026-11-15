@@ -106,3 +106,26 @@ Model limits (shown in the UI): the return leg is the outbound path walked backw
 bound — a shortest-path return could be shorter); line of sight is computed on the planner's
 km-scale grid; no thermal environment, dust, or fatigue term; hypothetical failure scenarios
 (`SCENARIOS`) are demo stimuli, not failure statistics.
+
+## Rovers (crew.js)
+
+The crew panel (`web/crew.js`) takes the suited astronaut entirely from `survival.js` (speed,
+slope limit, metabolic O₂ curve, `DEFAULT_CREW[0]` capacities); the rows below are only the
+rover presets and the panel's own shaping terms. Every value can be edited per member in the UI.
+Speeds are averages including hazard stops, not top speeds.
+
+| Symbol | Meaning | Value | Unit | Source | Status |
+|---|---|---|---|---|---|
+| `o2Hours` (astronaut) | flat-walking O₂ endurance | 7.8 | h | `o2_kg × e_o2_j_per_kg ÷ metabolic_flat_w` (crew A) | DERIVED |
+| `batteryHours` (astronaut) | suit battery endurance | 8.0 | h | `battery_wh ÷ suit_power_w` (crew A) | DERIVED |
+| `speedKmh` (Curiosity) | average drive speed | 0.03 | km/h | NASA/JPL quote ~0.14 km/h top speed; average with hazard-avoidance stops is a few tens of m/h (not yet linked) | ASSUMED |
+| `speedKmh` (Perseverance) | average drive speed | 0.12 | km/h | NASA/JPL quote ~0.15 km/h top speed and ~120 m/h with AutoNav (not yet linked) | ASSUMED |
+| `maxSlope` (Curiosity, Perseverance) | drivable slope | 30 | ° | rover design limit, commonly quoted as 30° (not yet linked) | ASSUMED |
+| `dutyHours` (Curiosity / Perseverance) | driving hours per sol | 4 / 5 | h | — | ASSUMED |
+| `batteryHours` (Curiosity / Perseverance) | battery endurance (RTG-charged, so not limiting) | 6 | h | MMRTG keeps batteries charged; shown as "RTG · not limiting" | ASSUMED |
+| `speedKmh` (pressurized rover) | average drive speed | 10 | km/h | NASA Space Exploration Vehicle concept (not yet linked) | ASSUMED |
+| `maxSlope` (pressurized rover) | drivable slope | 20 | ° | — | ASSUMED |
+| `o2Hours` / `batteryHours` (pressurized rover) | cabin life support / battery | 72 / 12 | h | — | ASSUMED |
+| rover slope slowdown | speed × max(0.25, 1 − 0.6 · slope ÷ maxSlope) | 0.6, 0.25 | – | — | ASSUMED |
+| rover battery uphill / idle factor | draw × (1 + 2 · grade) moving, × 0.15 parked | 2, 0.15 | – | — | ASSUMED |
+| `commsKm` | radio range to base for line of sight | 10 | km | — | ASSUMED |
