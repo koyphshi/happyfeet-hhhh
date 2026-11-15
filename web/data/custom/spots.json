@@ -1,0 +1,32 @@
+{
+ "version": 1,
+ "kinds": [
+  {
+   "kind": "Smash Place",
+   "short": "Smash Place",
+   "color": "#ff66cc"
+  }
+ ],
+ "spots": [
+  {
+   "id": "custom-mwh5yglmtemh",
+   "name": "Nox and Moh's Love Spot",
+   "lat": -87.43932,
+   "lon": -9.73135,
+   "category": "Smash Place",
+   "subtitle": "hehehehe",
+   "description": "love type shit",
+   "tags": [
+    "Sex"
+   ],
+   "images": [
+    {
+     "url": "./data/custom/images/mwh5yd2n-gaoyae.png",
+     "caption": "woolly-mammoth"
+    }
+   ],
+   "created": "2026-11-15T01:36:15.754Z",
+   "updated": "2026-11-15T01:36:15.754Z"
+  }
+ ]
+}
