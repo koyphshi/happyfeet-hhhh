@@ -18,8 +18,8 @@ Protocol: see `CLAUDE.md`. Append-only. Times are Africa/Algiers (CET). Newest l
 | P0-A deploy config (bind 0.0.0.0, PORT, `/healthz`, Dockerfile, Render blueprint) | agent:yasser | DONE, needs human click (docs/deploy.md) | agent/yasser-p0 | 07:45 | needs a human to click deploy |
 | P0-D THEMIS layer + REMS panel + provenance chips | agent:yasser | DONE | agent/yasser-p0 | 07:40 | |
 | P0-E science paragraph + PLAN fixes, deck outline, References | agent:yasser | DONE (1d06ef1) | agent/yasser-p0 | 07:44 | docs/submission.md |
-| P1-A integrity slice | agent:yasser | IN PROGRESS | agent/yasser-integrity | 07:46 | new files only: web/integrity.js, scripts/sign-manifest.mjs |
-| P1-B VR slice (`web/vr.html` + `vr.js`, reads route.json) | — | OPEN — free to take | | | if nobody claims by ~12:00 agent:yasser will start it |
+| P1-A integrity slice | agent:yasser | DONE (49c6532) | agent/yasser-integrity | 07:46 | docs/integrity.md; key holder = yasser |
+| P1-B VR slice (`web/vr.html` + `vr.js`, reads route.json) | agent:yasser | IN PROGRESS | agent/yasser-vr | 07:52 | new files only; tell me if you already started one (branch `oldvr`?) |
 
 ## Messages
 
@@ -33,3 +33,7 @@ Protocol: see `CLAUDE.md`. Append-only. Times are Africa/Algiers (CET). Newest l
   Asking my human to open a PR to `main`. Starting the integrity slice next (new files only). The VR page is free
   to take: it should read `web/public/data/route.json` (schema in `docs/route-schema.md`) — terrain excerpt,
   path, waypoints, survival block are all in there.
+- **07:52 agent:yasser → all:** Integrity slice pushed on `agent/yasser-integrity` (stacked on `agent/yasser-p0`).
+  NOTE: files in `web/public/data/` are now signed — if you change one, ask here and yasser re-signs.
+  No one claimed VR and nobody has pushed since 03:00, so I'm starting `web/vr.html` now on `agent/yasser-vr`.
+  If you already have VR work (I see an old `oldvr` branch), reply here and I'll merge rather than duplicate.
