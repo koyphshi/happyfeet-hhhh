@@ -707,7 +707,7 @@
         "Cesium did not load. In the web folder run:  npm install cesium  and reload.";
       return;
     }
-    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg } = await import("./pathfinding.js");
+    const { estimateTerrainPatchCells, loadTerrainCorridor, loadTerrainPatch, lonLatToTerrainCell, planTerrainRoute, terrainCellSlopeDeg, steepMask } = await import("./pathfinding.js");
 
     // ---------------------------------------------------------------- tile source
     // NASA Trek is CORS-open but slow (2-10 s per tile). When the page is served by serve.mjs
@@ -3305,6 +3305,7 @@
     const routeCalcBtn = document.getElementById("routeCalcBtn");
     const routeLoopBox = document.getElementById("routeLoop");
     let routeRunning = false;
+    const routeLegCache = new Map(); // planned legs, see planSequence
     const routeSmoothBox = document.getElementById("routeSmooth");
     const maxSlopeSlider = document.getElementById("maxSlope");
     const maxSlopeValue = document.getElementById("maxSlopeValue");
@@ -3361,7 +3362,7 @@
     // prepared, which leg A* is on and how many cells it has explored, and what the server is
     // still downloading from NASA PDS (MOLA) and USGS S3 (HRSC) to answer those tiles.
     const routeProgressEl = document.getElementById("routeProgress");
-    const prog = { stage: "", tiles: null, leg: null, expanded: 0, server: null, started: 0 };
+    const prog = { stage: "", tiles: null, leg: null, expanded: 0, reused: 0, server: null, started: 0 };
     let progTimer = 0, progPoll = 0;
     const demLabel = (ppd) => (Number(ppd) > 200 ? "HRSC 200 m block" : `MOLA ${ppd} px/° chunk`);
     function renderRouteProgress() {
@@ -3378,6 +3379,7 @@
       if (prog.leg) {
         lines.push([`Leg ${prog.leg.i} of ${prog.leg.n}: ${prog.leg.from} → ${prog.leg.to}` +
           (prog.expanded ? ` · ${prog.expanded.toLocaleString()} cells explored` : "")]);
+        if (prog.reused) lines.push([`${prog.reused} unchanged leg${prog.reused === 1 ? "" : "s"} reused`]);
         if (!prog.tiles) frac = (prog.leg.i - 1) / prog.leg.n;
       }
       const down = Object.entries(prog.server?.downloading ?? {});
@@ -3405,7 +3407,7 @@
     const tileProgress = (t) => { prog.tiles = t; };
     function setRouteRunning(on) {
       if (on && !routeRunning) {
-        Object.assign(prog, { stage: "Starting", tiles: null, leg: null, expanded: 0, server: null, started: performance.now() });
+        Object.assign(prog, { stage: "Starting", tiles: null, leg: null, expanded: 0, reused: 0, server: null, started: performance.now() });
         routeProgressEl.hidden = false;
         pollRouteServer();
         progTimer = setInterval(renderRouteProgress, 400);
@@ -3625,69 +3627,103 @@
       });
     }
 
+    // Red "too steep" mask over the planned area. Painted into ONE image (a sparse corridor
+    // used to become up to 256 separate imagery layers, each costing frames to build and
+    // to draw), with time-sliced painting, and cached per grid + slope limit so redrawing
+    // the same area after a recalculation is instant.
+    const overlayCache = new WeakMap(); // grid -> { slope, parts: [{ blob, west, south, east, north }] }
     async function drawUnwalkableOverlay(grid, isCurrent = () => true) {
       for (const layer of unwalkableLayers) viewer.imageryLayers.remove(layer, true);
       unwalkableLayers = [];
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
-      const sparse = heights instanceof Map;
-      const addLayer = async (image, west, south, east, north) => {
-        const blob = await new Promise((resolve) => image.toBlob(resolve, "image/png"));
-        if (!blob) return;
+      const limit = maxSlopeDeg();
+      const addLayer = async ({ blob, west, south, east, north }) => {
         const url = URL.createObjectURL(blob);
         try {
           const provider = await Cesium.SingleTileImageryProvider.fromUrl(url, {
             rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north), ellipsoid: MARS,
           });
+          if (!isCurrent()) return;
           const layer = viewer.imageryLayers.addImageryProvider(provider);
           layer.alpha = 0.58;
           unwalkableLayers.push(layer);
         } finally { URL.revokeObjectURL(url); }
       };
-      const paint = async (canvas, x0, y0) => {
-        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(canvas.width, canvas.height);
-        const x1 = x0 + canvas.width, y1 = y0 + canvas.height;
-        const limit = maxSlopeDeg();
-        for (let y = y0; y < y1; y++) {
-          for (let x = x0; x < x1; x++) {
-            if (x >= width || y >= height || terrainCellSlopeDeg(grid, x, y) <= limit) continue;
-            const px = x - x0, py = y - y0, k = (py * canvas.width + px) * 4;
-            pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+      const cached = overlayCache.get(grid);
+      if (cached && cached.slope === limit) {
+        for (const part of cached.parts) { if (!isCurrent()) return; await addLayer(part); }
+        return;
+      }
+      const { heights, width, height, westDeg, northDeg, lonStepDeg, latStepDeg } = grid;
+      const sparse = !(heights instanceof Float32Array);
+      // paint the cells of [x0, x0 + w) x [y0, y0 + h) (grid cells; x may run past the seam)
+      // at (ox, oy) in the image; yields to the browser every ~12 ms
+      let slice = performance.now();
+      const paint = async (pixels, imgW, x0, y0, w, h, ox, oy) => {
+        // dense grids in bands of rows, corridor grids a tile at a time
+        const band = sparse ? h : Math.max(1, Math.floor(200_000 / Math.max(1, w)));
+        for (let j0 = 0; j0 < h; j0 += band) {
+          const bh = Math.min(band, h - j0);
+          const mask = steepMask(grid, limit, x0, y0 + j0, w, bh);
+          for (let j = 0; j < bh; j++) {
+            const rowOut = ((oy + j0 + j) * imgW + ox) * 4, rowIn = j * w;
+            for (let i = 0; i < w; i++) {
+              if (!mask[rowIn + i]) continue;
+              const k = rowOut + i * 4;
+              pixels.data[k] = 255; pixels.data[k + 1] = 55; pixels.data[k + 2] = 45; pixels.data[k + 3] = 115;
+            }
           }
-          if ((y - y0 + 1) % 32 === 0) {
-            await new Promise((resolve) => requestAnimationFrame(resolve));
+          if (performance.now() - slice > 12) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
             if (!isCurrent()) return false;
+            slice = performance.now();
           }
         }
-        ctx.putImageData(pixels, 0, 0);
         return true;
       };
+      const toParts = async (canvas, west, south, east, north) => { // split at the 180° seam
+        const blobOf = (c) => new Promise((resolve) => c.toBlob(resolve, "image/png"));
+        if (east <= 180) return [{ blob: await blobOf(canvas), west, south, east, north }];
+        const w = canvas.width, h = canvas.height;
+        const split = Math.max(1, Math.min(w - 1, Math.round((180 - west) / (east - west) * w)));
+        const left = document.createElement("canvas"); left.width = split; left.height = h;
+        left.getContext("2d").drawImage(canvas, 0, 0, split, h, 0, 0, split, h);
+        const right = document.createElement("canvas"); right.width = w - split; right.height = h;
+        right.getContext("2d").drawImage(canvas, split, 0, w - split, h, 0, 0, w - split, h);
+        return [{ blob: await blobOf(left), west, south, east: 180, north },
+          { blob: await blobOf(right), west: -180, south, east: east - 360, north }];
+      };
+      let parts;
       if (sparse) {
-        // Sparse worldwide coordinates stay cheap: one full-resolution canvas per loaded tile.
-        for (const [tx, ty] of grid.tileKeys || []) {
-          if (!isCurrent()) return;
-          const x = tx * 64, y = ty * 64, size = 64;
-          const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
-          if (!await paint(canvas, x, y)) return;
-          const west = -180 + x * lonStepDeg, east = west + size * lonStepDeg;
-          const north = 90 + y * latStepDeg, south = north + size * latStepDeg;
-          await addLayer(canvas, west, south, east, north);
-          await new Promise((resolve) => requestAnimationFrame(resolve));
+        // one image over the corridor's tiles: the smallest x span (it may wrap the seam)
+        const T = 64, tilesX = Math.round(width / T);
+        const txs = [...new Set((grid.tileKeys || []).map(([tx]) => tx))].sort((a, b) => a - b);
+        const tys = (grid.tileKeys || []).map(([, ty]) => ty);
+        if (!txs.length) return;
+        let gapAt = txs.length - 1, gap = txs[0] + tilesX - txs.at(-1);
+        for (let i = 0; i + 1 < txs.length; i++) if (txs[i + 1] - txs[i] > gap) { gap = txs[i + 1] - txs[i]; gapAt = i; }
+        const tx0 = txs[(gapAt + 1) % txs.length], spanX = tilesX - gap + 1;
+        const ty0 = Math.min(...tys), spanY = Math.max(...tys) - ty0 + 1;
+        const imgW = spanX * T, imgH = spanY * T;
+        if (imgW * imgH > 64_000_000) return; // absurdly spread corridor: skip the mask
+        const canvas = document.createElement("canvas"); canvas.width = imgW; canvas.height = imgH;
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(imgW, imgH);
+        for (const [tx, ty] of grid.tileKeys) {
+          const ox = ((tx - tx0 + tilesX) % tilesX) * T, oy = (ty - ty0) * T;
+          if (!await paint(pixels, imgW, tx * T, ty * T, T, T, ox, oy)) return;
         }
+        ctx.putImageData(pixels, 0, 0);
+        const west = -180 + tx0 * T * lonStepDeg, north = 90 + ty0 * T * latStepDeg;
+        parts = await toParts(canvas, west, north + imgH * latStepDeg, west + imgW * lonStepDeg, north);
       } else {
         const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
-        if (!await paint(canvas, 0, 0)) return;
-        const south = northDeg + height * latStepDeg, east = westDeg + width * lonStepDeg;
-        if (east > 180) {
-          const split = Math.max(1, Math.min(width - 1, Math.round((180 - westDeg) / (east - westDeg) * width)));
-          const left = document.createElement("canvas"); left.width = split; left.height = height;
-          left.getContext("2d").drawImage(canvas, 0, 0, split, height, 0, 0, split, height);
-          const right = document.createElement("canvas"); right.width = width - split; right.height = height;
-          right.getContext("2d").drawImage(canvas, split, 0, width - split, height, 0, 0, width - split, height);
-          await addLayer(left, westDeg, south, 180, northDeg);
-          await addLayer(right, -180, south, east - 360, northDeg);
-        } else await addLayer(canvas, westDeg, south, east, northDeg);
+        const ctx = canvas.getContext("2d"), pixels = ctx.createImageData(width, height);
+        if (!await paint(pixels, width, 0, 0, width, height, 0, 0)) return;
+        ctx.putImageData(pixels, 0, 0);
+        parts = await toParts(canvas, westDeg, northDeg + height * latStepDeg, westDeg + width * lonStepDeg, northDeg);
       }
+      parts = parts.filter((part) => part.blob);
+      overlayCache.set(grid, { slope: limit, parts });
+      for (const part of parts) { if (!isCurrent()) return; await addLayer(part); }
     }
     async function waitForMola() {
       for (let i = 0; i < 300; i++) {
@@ -3734,6 +3770,10 @@
           south: Math.max(-90, Math.min(...waypoints.map((p) => p.lat)) - pad),
           north: Math.min(90, Math.max(...waypoints.map((p) => p.lat)) + pad),
         };
+        // A leg that has not changed (same two stops, slope limit and kind of grid) is not
+        // planned again: adding, removing or reordering stops only plans the new legs.
+        const legKey = (grid, a, b) => `${grid.level}|${grid.heights instanceof Float32Array ? "patch" : "corridor"}|${maxSlopeDeg()}|` +
+          `${a.lon.toFixed(6)},${a.lat.toFixed(6)}|${b.lon.toFixed(6)},${b.lat.toFixed(6)}`;
         const planSequence = async (grid) => {
           const combined = { path: [], displayPath: [], turnIndices: [], waypointPositions: [], horizontalDistanceM: 0, terrainDistanceM: 0 };
           for (let i = 1; i < waypoints.length; i++) {
@@ -3744,10 +3784,17 @@
             prog.tiles = null; prog.expanded = 0;
             prog.leg = { i, n: waypoints.length - 1, from: nameOf(waypoints[i - 1], i),
               to: i === routePoints.length ? nameOf(waypoints[i], 1) : nameOf(waypoints[i], i + 1) };
-            const leg = a && b ? await planTerrainRoute(grid, a, b, {
-              maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
-              onProgress: ({ expanded }) => { prog.expanded = expanded; },
-            }) : null;
+            const key = legKey(grid, waypoints[i - 1], waypoints[i]);
+            let leg = routeLegCache.get(key);
+            if (leg === undefined) {
+              leg = a && b ? await planTerrainRoute(grid, a, b, {
+                maxSlopeDeg: maxSlopeDeg(), shouldCancel: () => request !== routeRequest,
+                onProgress: ({ expanded }) => { prog.expanded = expanded; },
+              }) : null;
+              if (request !== routeRequest) return null;          // cancelled: do not cache
+              routeLegCache.set(key, leg);
+              while (routeLegCache.size > 300) routeLegCache.delete(routeLegCache.keys().next().value);
+            } else prog.reused++;
             if (!leg) return null;
             const legDisplayPath = leg.displayPath.map((point) => ({ ...point }));
             legDisplayPath[0] = { ...legDisplayPath[0], lon: waypoints[i - 1].lon, lat: waypoints[i - 1].lat };
@@ -3815,13 +3862,14 @@
         routeRawTurns = result?.turnIndices ?? [];
         routePinPositions = result?.waypointPositions ?? null;
         syncRoutePins();
-        setRouteStage("Drawing the slope mask");
-        try { await drawUnwalkableOverlay(grid, () => request === routeRequest); }
-        catch (error) { console.warn("Could not draw slope mask:", error); }
         if (request !== routeRequest) return;
+        // the route first; the red slope mask is painted afterwards without blocking
+        drawUnwalkableOverlay(grid, () => request === routeRequest)
+          .catch((error) => console.warn("Could not draw slope mask:", error));
         if (!result) { setRouteStatus("No walkable route found at this slope limit."); return; }
         drawRouteLine(grid, routeRawPath, routeRawTurns);
-        setRouteStatus(`${routeLoopBox.checked ? "Loop · " : ""}terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${routeRawPath.length.toLocaleString()} samples · ${detail}`);
+        setRouteStatus(`${routeLoopBox.checked ? "Loop · " : ""}terrain ${(result.terrainDistanceM / 1000).toFixed(2)} km · horizontal ${(result.horizontalDistanceM / 1000).toFixed(2)} km · ${routeRawPath.length.toLocaleString()} samples · ${detail}` +
+          (prog.reused ? ` · ${prog.reused} leg${prog.reused === 1 ? "" : "s"} reused` : ""));
       } catch (error) {
         if (request === routeRequest) setRouteStatus(`Route failed: ${error.message}`);
       } finally {
